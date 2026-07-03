@@ -109,6 +109,8 @@ const Icons = {
   Star: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   FolderOpen: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg>,
   HelpCircle: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  Square: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="3" rx="2"/></svg>,
+  Settings: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
 };
 
 // --- CAREER GUIDE AI LOGO ---
@@ -448,7 +450,7 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
       <motion.div 
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-2xl mx-auto p-6 text-center space-y-6 w-full"
+        className="max-w-4xl mx-auto p-6 text-center space-y-6 w-full"
       >
         <div className="space-y-2">
           <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -461,67 +463,108 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 items-stretch">
           {[
             { 
               length: 13, 
               title: isVi ? 'Bản Rút gọn' : 'Quick Version', 
-              desc: isVi ? 'Khảo sát nhanh sơ lược' : 'Fast core estimation', 
+              desc: isVi ? 'Khảo sát nhanh sơ lược tính cách & sở thích cốt lõi.' : 'Fast core estimation', 
               time: isVi ? '⏱️ 2 phút' : '⏱️ 2 mins', 
               badge: isVi ? 'Nhanh' : 'Fast',
-              color: 'from-amber-500 to-orange-500' 
+              icon: Icons.Zap,
+              color: 'from-amber-500 to-orange-500',
+              bgColor: 'bg-amber-50 dark:bg-amber-950/20',
+              borderColor: 'hover:border-amber-400 dark:hover:border-amber-800',
+              textColor: 'text-amber-600 dark:text-amber-400',
+              glowColor: 'shadow-amber-500/5 hover:shadow-amber-500/15'
             },
             { 
               length: 20, 
               title: isVi ? 'Bản Tiêu chuẩn' : 'Standard Version', 
-              desc: isVi ? 'Cân bằng, tối ưu hóa' : 'Balanced & optimized', 
+              desc: isVi ? 'Đo lường cân bằng, tối ưu hóa độ chính xác nghề nghiệp.' : 'Balanced & optimized', 
               time: isVi ? '⏱️ 4 phút' : '⏱️ 4 mins', 
               badge: isVi ? 'Khuyên dùng' : 'Recommended',
-              color: 'from-indigo-500 to-purple-500' 
+              icon: Icons.Sparkles,
+              color: 'from-indigo-500 to-purple-500',
+              bgColor: 'bg-indigo-50 dark:bg-indigo-950/20',
+              borderColor: 'hover:border-indigo-400 dark:hover:border-indigo-800',
+              textColor: 'text-indigo-600 dark:text-indigo-400',
+              glowColor: 'shadow-indigo-500/5 hover:shadow-indigo-500/15'
             },
             { 
               length: 30, 
               title: isVi ? 'Bản Chuyên sâu' : 'In-depth Version', 
-              desc: isVi ? 'Đầy đủ, chính xác cao' : 'Fully comprehensive', 
+              desc: isVi ? 'Phân tích đầy đủ, chuyên sâu và có độ chính xác cao nhất.' : 'Fully comprehensive', 
               time: isVi ? '⏱️ 6 phút' : '⏱️ 6 mins', 
               badge: isVi ? 'Toàn diện' : 'Complete',
-              color: 'from-emerald-500 to-teal-500' 
+              icon: Icons.Award,
+              color: 'from-emerald-500 to-teal-500',
+              bgColor: 'bg-emerald-50 dark:bg-emerald-950/20',
+              borderColor: 'hover:border-emerald-400 dark:hover:border-emerald-800',
+              textColor: 'text-emerald-600 dark:text-emerald-400',
+              glowColor: 'shadow-emerald-500/5 hover:shadow-emerald-500/15'
             },
-          ].map((opt) => (
-            <motion.button 
-              key={opt.length} 
-              whileHover={{ scale: 1.04, y: -4 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                setQuizLength(opt.length);
-                setStep(0);
-                setScores({ R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 });
-              }} 
-              className="p-6 rounded-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-left flex flex-col justify-between transition-all shadow-md relative overflow-hidden group"
-            >
-              <div className="absolute top-0 right-0 h-1 w-full bg-gradient-to-r" style={{ backgroundImage: `linear-gradient(to right, var(--tw-gradient-stops))` }} />
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full text-white bg-gradient-to-r ${opt.color}`}>
-                    {opt.badge}
-                  </span>
-                  <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
-                    {opt.length} {isVi ? 'Câu' : 'Qs'}
-                  </span>
+          ].map((opt) => {
+            const IconComponent = opt.icon;
+            return (
+              <motion.div 
+                key={opt.length} 
+                whileHover={{ scale: 1.03, y: -4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setQuizLength(opt.length);
+                  setStep(0);
+                  setScores({ R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 });
+                }} 
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setQuizLength(opt.length);
+                    setStep(0);
+                    setScores({ R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 });
+                  }
+                }}
+                className={`p-6 rounded-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-[#0c0c0c] ${opt.borderColor} hover:bg-gray-50/50 dark:hover:bg-white/[0.02] text-left flex flex-col justify-between transition-all shadow-md hover:shadow-xl ${opt.glowColor} relative overflow-hidden group h-full cursor-pointer`}
+              >
+                <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${opt.color}`} />
+                
+                <div className="space-y-4 w-full flex-1 flex flex-col">
+                  <div className="flex items-center justify-between">
+                    <div className={`p-2 rounded-xl ${opt.bgColor} ${opt.textColor}`}>
+                      <IconComponent className="w-5 h-5" />
+                    </div>
+                    <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full text-white bg-gradient-to-r ${opt.color} tracking-wider`}>
+                      {opt.badge}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className={`text-2xl font-black ${opt.textColor}`}>
+                      {opt.length} <span className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">{isVi ? 'Câu' : 'Qs'}</span>
+                    </span>
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors pt-1">
+                      {opt.title}
+                    </h4>
+                  </div>
+
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed flex-1 pt-1">
+                    {opt.desc}
+                  </p>
                 </div>
-                <h4 className="text-lg font-bold text-gray-900 dark:text-white mt-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                  {opt.title}
-                </h4>
-                <p className="text-xs text-gray-550 dark:text-gray-400 leading-relaxed">
-                  {opt.desc}
-                </p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold text-gray-400">
-                <span>{opt.time}</span>
-                <Icons.ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
-              </div>
-            </motion.button>
-          ))}
+
+                <div className="mt-6 pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold text-gray-400 dark:text-gray-500 w-full">
+                  <span className="flex items-center gap-1.5">
+                    {opt.time}
+                  </span>
+                  <div className={`flex items-center gap-1 font-semibold ${opt.textColor} group-hover:translate-x-1 transition-transform`}>
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] uppercase tracking-wider">{isVi ? 'Bắt đầu' : 'Start'}</span>
+                    <Icons.ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </motion.div>
     );
@@ -2333,7 +2376,7 @@ export default function App() {
 
                 {/* UI bot labels */}
                 <div className="relative z-20 text-left font-sans">
-                  <p className="text-xs text-indigo-300 font-extrabold tracking-wider uppercase">Screencast Overview</p>
+                  <p className="text-xs text-indigo-300 font-extrabold tracking-wider uppercase">{lang === Language.VI ? 'Tổng quan tính năng' : 'Screencast Overview'}</p>
                   <p className="text-xs text-white font-bold truncate mt-0.5 font-sans">
                     {lang === Language.VI ? "Nhấn vào đây để khởi chạy nhanh trải nghiệm thực tế" : "Click to launch mock session and see all charts instantly"}
                   </p>
@@ -2400,13 +2443,13 @@ export default function App() {
                             <ol className="list-decimal list-inside space-y-1">
                                 {lang === Language.VI ? (
                                     <>
-                                        <li>Truy cập <a href="https://console.firebase.google.com/project/career-compass-ai-40718/authentication/settings" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 underline font-semibold">Firebase Console &gt; Authentication &gt; Settings</a></li>
+                                        <li>Truy cập <a href="https://console.firebase.google.com/project/careerguideaiforeveryone-1/authentication/settings" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 underline font-semibold">Firebase Console &gt; Authentication &gt; Settings</a></li>
                                         <li>Tìm phần <strong>Authorized domains</strong> chọn "Add domain"</li>
                                         <li>Thêm lần lượt 2 tên miền sau:</li>
                                     </>
                                 ) : (
                                     <>
-                                        <li>Visit <a href="https://console.firebase.google.com/project/career-compass-ai-40718/authentication/settings" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 underline font-semibold">Firebase Console &gt; Authentication &gt; Settings</a></li>
+                                        <li>Visit <a href="https://console.firebase.google.com/project/careerguideaiforeveryone-1/authentication/settings" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 underline font-semibold">Firebase Console &gt; Authentication &gt; Settings</a></li>
                                         <li>Find <strong>Authorized domains</strong> and click "Add domain"</li>
                                         <li>Add the following 2 domains:</li>
                                     </>
@@ -2939,7 +2982,7 @@ export default function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -30 }}
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex-1 flex flex-col h-full overflow-hidden relative"
+            className="flex-1 flex flex-col min-h-0 overflow-hidden relative"
           >
             {tab === DashboardTab.CHAT && (
             <div className={`flex-1 flex flex-col h-full overflow-hidden relative ${messages.length === 0 ? 'w-full max-w-3xl mx-auto' : ''}`}>
@@ -3078,23 +3121,7 @@ export default function App() {
                             </div>
                         </div>
                     )}
-                    <div className="w-full max-w-4xl flex justify-end mb-2 px-4">
-                        <div className="flex items-center gap-2" title={t.tempChatTooltip}>
-                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.temporaryChat}</span>
-                            <button 
-                                type="button"
-                                onClick={() => {
-                                    if (messages.length > 0) {
-                                        startNewChat();
-                                    }
-                                    setIsTemporaryChat(!isTemporaryChat);
-                                }} 
-                                className={`w-9 h-5 rounded-full transition-colors relative ${isTemporaryChat ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-700'}`}
-                            >
-                                <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-transform ${isTemporaryChat ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
-                            </button>
-                        </div>
-                    </div>
+
                     <form onSubmit={handleSendMessage} className={`relative w-full flex flex-col transition-all shadow-sm ${messages.length === 0 ? 'max-w-3xl bg-gray-100 dark:bg-[#2F2F2F] rounded-[24px]' : 'max-w-4xl bg-gray-100 dark:bg-[#1e1e1e] rounded-[24px] md:rounded-[32px]'} p-3 md:p-4`}>
                         <input type="file" id="chat-file-upload" className="hidden" accept="image/*,application/pdf,text/plain,text/csv" onChange={(e) => { handleFileUpload(e); setShowAttachmentMenu(false); }} />
                         
@@ -3184,7 +3211,7 @@ export default function App() {
                                     type="button" 
                                     onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} 
                                     className={`p-2.5 md:p-2 rounded-full transition-colors ${showAttachmentMenu ? 'bg-gray-200 dark:bg-white/10 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white'}`}
-                                    title="Attach"
+                                    title={lang === Language.VI ? 'Đính kèm' : 'Attach'}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 md:w-5 md:h-5 ${showAttachmentMenu ? 'rotate-45' : ''}`}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                 </motion.button>
@@ -3285,47 +3312,93 @@ export default function App() {
             </div>
         )}
         {tab === DashboardTab.VOICE && (
-             <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#050505]">
-                 <div className="w-full p-6 flex justify-between items-center z-20">
-                    <div className="flex flex-col"><h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t.voiceMode}</h2><span className="text-sm text-gray-500 font-medium">{voiceStatus || t.readyToConnect}</span></div>
-                     <div className="px-4 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-black rounded-full flex items-center gap-2 animate-pulse"><div className="w-2 h-2 bg-red-500 rounded-full"></div>{t.live}</div>
+             <div className="flex-1 flex flex-col h-full bg-[#f8fafc] dark:bg-[#030303] overflow-hidden relative">
+                 {/* Abstract ambient background */}
+                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] sm:w-[800px] sm:h-[800px] bg-gradient-to-tr from-indigo-500/20 via-purple-500/10 to-transparent blur-[100px] rounded-full transition-all duration-1000 ${isVoiceActive ? 'scale-110 opacity-100' : 'scale-90 opacity-40'}`} />
                  </div>
-                 <div className="flex-1 flex flex-col md:flex-row p-6 gap-6 overflow-hidden">
-                    <div className="flex-1 flex flex-col items-center justify-center relative rounded-[2rem] bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/5 p-6">
-                        <div className={`relative w-56 h-56 transition-all duration-700 cursor-pointer group mb-10`} onClick={handleVoiceToggle}>
-                             <div className={`absolute inset-0 rounded-full blur-3xl transition-opacity duration-1000 ${isVoiceActive ? 'bg-indigo-500 opacity-40' : 'bg-gray-200 dark:bg-indigo-900 opacity-10'}`}></div>
-                             <div className={`relative w-full h-full rounded-full flex items-center justify-center shadow-2xl border-[6px] transition-all duration-500 overflow-hidden ${isVoiceActive ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-400/50 scale-105' : 'bg-white dark:bg-[#111] border-gray-100 dark:border-white/5 group-hover:scale-105'}`}>
-                                 <Icons.Microphone className={`w-20 h-20 z-10 transition-colors duration-300 ${isVoiceActive ? 'text-white' : 'text-gray-300 dark:text-gray-700'}`} />
-                             </div>
+
+                 {/* Center Stage */}
+                 <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6">
+                    
+                    {/* Glowing Orb */}
+                    <div 
+                        className="relative w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center cursor-pointer group"
+                        onClick={handleVoiceToggle}
+                    >
+                        {/* Audio Reactive Rings */}
+                        {isVoiceActive && (
+                            <>
+                                <div className="absolute inset-0 rounded-full border-2 border-indigo-500/30 animate-[ping_2s_ease-out_infinite]" style={{ transform: `scale(${1 + (audioLevel / 100) * 0.5})` }} />
+                                <div className="absolute inset-[-20px] rounded-full border border-purple-500/20 animate-[ping_3s_ease-out_infinite_200ms]" style={{ transform: `scale(${1 + (audioLevel / 100) * 0.8})` }} />
+                            </>
+                        )}
+                        
+                        {/* Main Sphere */}
+                        <div className={`relative w-full h-full rounded-full flex flex-col items-center justify-center transition-all duration-700 overflow-hidden shadow-2xl backdrop-blur-md border ${isVoiceActive ? 'bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 border-indigo-400/50 scale-105 shadow-indigo-500/30' : 'bg-white/80 dark:bg-white/5 border-gray-200 dark:border-white/10 group-hover:scale-105 group-hover:border-indigo-500/50 shadow-black/5'}`}>
+                            {isVoiceActive && <div className="absolute inset-0 bg-black/10 animate-pulse" />}
+                            <Icons.Microphone className={`w-16 h-16 transition-colors duration-500 relative z-10 ${isVoiceActive ? 'text-white drop-shadow-lg' : 'text-gray-400 group-hover:text-indigo-500'}`} />
                         </div>
-                        <div className="w-full max-w-sm h-24 rounded-2xl overflow-hidden mb-8 bg-black/5 dark:bg-white/5 backdrop-blur-sm p-4 border border-white/10"><Visualizer isActive={isVoiceActive} level={audioLevel} /></div>
-                        <div className="w-full max-w-sm space-y-4">
-                             <div className="relative group">
-                                <label className="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">{t.selectMic}</label>
-                                <div className="relative">
-                                    <select value={selectedDeviceId} onChange={(e) => setSelectedDeviceId(e.target.value)} disabled={isVoiceActive} className="w-full appearance-none bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white py-3.5 px-4 pr-8 rounded-xl leading-tight focus:outline-none focus:border-indigo-500 font-medium transition-colors">
-                                        {inputDevices.map((device) => (<option key={device.deviceId} value={device.deviceId}>{device.label || `${t.microphone} ${device.deviceId.slice(0, 5)}...`}</option>))}
-                                    </select>
-                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500"><Icons.ChevronDown className="w-4 h-4" /></div>
+                    </div>
+
+                    {/* Status Text */}
+                    <div className="mt-12 text-center space-y-3 z-10">
+                        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-white transition-all">
+                             {isVoiceActive ? (lang === Language.VI ? 'Đang lắng nghe...' : 'Listening...') : (lang === Language.VI ? 'Chạm để trò chuyện' : 'Tap to start')}
+                        </h2>
+                        <p className={`text-sm sm:text-base font-medium transition-colors ${isVoiceActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                             {voiceStatus || (isVoiceActive ? (lang === Language.VI ? 'Trợ lý AI đang xử lý giọng nói của bạn' : 'AI is processing your voice') : (lang === Language.VI ? 'Trợ lý AI hướng nghiệp thông minh' : 'Intelligent Career AI Assistant'))}
+                        </p>
+                    </div>
+
+                 </div>
+
+                 {/* Floating Transcript (Latest messages) */}
+                 <div className="absolute bottom-28 left-0 right-0 max-w-3xl mx-auto px-6 max-h-[35vh] flex flex-col justify-end overflow-hidden pointer-events-none z-10">
+                    <div className="flex flex-col space-y-4 pb-4 overflow-y-auto no-scrollbar" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 15%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%)' }}>
+                        {transcripts.slice(-4).map((tr, i) => (
+                            <div key={i} className={`flex ${tr.isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
+                                <div className={`max-w-[85%] px-5 py-3.5 rounded-3xl text-sm sm:text-base leading-relaxed pointer-events-auto backdrop-blur-md shadow-sm ${tr.isUser ? 'bg-indigo-600/95 text-white rounded-tr-md' : 'bg-white/95 dark:bg-[#1A1A1A]/95 text-gray-800 dark:text-gray-100 rounded-tl-md border border-gray-200/50 dark:border-white/10'}`}>
+                                    {tr.text}
                                 </div>
-                             </div>
-                             <motion.button 
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={handleVoiceToggle} 
-                                className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-xl ${isVoiceActive ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white'}`}
+                            </div>
+                        ))}
+                    </div>
+                 </div>
+
+                 {/* Floating Controls Toolbar */}
+                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-4 bg-white/90 dark:bg-[#111]/90 backdrop-blur-xl px-4 py-3 rounded-full border border-gray-200/50 dark:border-white/10 shadow-xl z-20">
+                     
+                     <div className="flex items-center gap-2 pl-2">
+                         <div className={`w-2 h-2 rounded-full ${isVoiceActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+                         <Icons.Settings className="w-4 h-4 text-gray-500" />
+                         <select 
+                            value={selectedDeviceId} 
+                            onChange={(e) => setSelectedDeviceId(e.target.value)} 
+                            disabled={isVoiceActive} 
+                            className="appearance-none bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none font-medium text-xs sm:text-sm w-28 sm:w-40 truncate cursor-pointer disabled:opacity-50"
+                         >
+                             {inputDevices.map((device) => (
+                                <option key={device.deviceId} value={device.deviceId} className="bg-white dark:bg-black">
+                                    {device.label || `${t.microphone} ${device.deviceId.slice(0, 5)}...`}
+                                </option>
+                             ))}
+                         </select>
+                         <Icons.ChevronDown className="w-3 h-3 text-gray-400 mr-2 pointer-events-none" />
+                     </div>
+                     
+                     {isVoiceActive && (
+                         <>
+                             <div className="w-px h-6 bg-gray-200 dark:bg-white/10" />
+                             <button 
+                                onClick={handleVoiceToggle}
+                                className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white transition-transform active:scale-95 shadow-lg shadow-red-500/20"
+                                title={lang === Language.VI ? 'Dừng cuộc gọi' : 'End Call'}
                              >
-                                {isVoiceActive ? t.endVoice : t.startVoice}
-                             </motion.button>
-                        </div>
-                    </div>
-                    <div className="flex-1 flex flex-col rounded-[2rem] bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/5 overflow-hidden shadow-sm">
-                        <div className="p-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5"><h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide">{t.transcript}</h3></div>
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            {transcripts.length === 0 ? (<div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-600 text-sm font-medium italic">{isVoiceActive ? t.listening : t.readyToStart}</div>) : (transcripts.map((tr, i) => (<div key={i} className={`flex ${tr.isUser ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm font-medium ${tr.isUser ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-900 dark:text-indigo-200 rounded-tr-none' : 'bg-gray-50 dark:bg-white/5 text-gray-800 dark:text-gray-200 rounded-tl-none'}`}>{tr.text}</div></div>)))}
-                            <div ref={transcriptEndRef} />
-                        </div>
-                    </div>
+                                <Icons.Square className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
+                             </button>
+                         </>
+                     )}
                  </div>
              </div>
         )}
@@ -3399,7 +3472,9 @@ export default function App() {
             />
         )}
         {tab === DashboardTab.SCHOLARSHIPS && (
-            <Scholarships language={lang} userProfile={auth.user} />
+            <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#050505] overflow-y-auto p-4 md:p-8">
+              <Scholarships language={lang} userProfile={auth.user} />
+            </div>
         )}
         {tab === DashboardTab.SCORES && (
             <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#050505] overflow-y-auto p-4 md:p-8">
@@ -3485,7 +3560,7 @@ export default function App() {
                     <button 
                         onClick={() => setIsProfileModalOpen(false)}
                         className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full transition-colors"
-                        aria-label="Close"
+                        aria-label={lang === Language.VI ? 'Đóng' : 'Close'}
                     >
                         <Icons.X className="w-5 h-5" />
                     </button>
@@ -3548,6 +3623,89 @@ export default function App() {
                                 <option value={Language.VI}>{t.langVi}</option>
                             </select>
                         </div>
+                    </div>
+
+                    {/* AI Configuration Section */}
+                    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-white/5 space-y-4">
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <Icons.Cpu className="w-4 h-4 text-indigo-500" />
+                            {t.aiConfigTitle}
+                        </h4>
+                        
+                        <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{t.aiProvider}</label>
+                            <select 
+                                value={auth.user?.aiProvider || AIProvider.GEMINI} 
+                                onChange={(e) => updateUserProfile({ aiProvider: e.target.value as AIProvider })} 
+                                className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-xl text-gray-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all cursor-pointer"
+                            >
+                                <option value={AIProvider.GEMINI}>{t.providerGemini}</option>
+                                <option value={AIProvider.CUSTOM}>{t.providerCustom}</option>
+                                <option value={AIProvider.N8N}>{t.providerN8N}</option>
+                            </select>
+                        </div>
+
+                        {/* If Gemini is selected: Custom Gemini API Key */}
+                        {(auth.user?.aiProvider === AIProvider.GEMINI || !auth.user?.aiProvider) && (
+                            <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">
+                                    {lang === Language.VI ? "Khóa API Gemini của bạn (Tùy chọn)" : "Your Gemini API Key (Optional)"}
+                                </label>
+                                <input 
+                                    type="password"
+                                    value={auth.user?.customGeminiApiKey || ''} 
+                                    onChange={(e) => updateUserProfile({ customGeminiApiKey: e.target.value })} 
+                                    placeholder={lang === Language.VI ? "Dán khóa API Gemini (AIzaSy...) để vượt qua giới hạn dùng thử" : "Paste your Gemini API key (AIzaSy...) to bypass trial limits"} 
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-xl text-gray-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                />
+                                <p className="text-[10px] text-gray-500 mt-1">
+                                    {lang === Language.VI 
+                                        ? "Khóa của bạn sẽ được bảo mật, lưu cục bộ và gửi trực tiếp qua proxy máy chủ để thực hiện yêu cầu." 
+                                        : "Your key is secured, stored locally, and proxied securely to avoid exposure."}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* If Custom is selected */}
+                        {auth.user?.aiProvider === AIProvider.CUSTOM && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{t.endpointUrl}</label>
+                                    <input 
+                                        value={auth.user?.customEndpoint || ''} 
+                                        onChange={(e) => updateUserProfile({ customEndpoint: e.target.value })} 
+                                        placeholder="http://localhost:11434/v1/chat/completions" 
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-xl text-gray-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{t.modelName}</label>
+                                    <input 
+                                        value={auth.user?.customModelName || ''} 
+                                        onChange={(e) => updateUserProfile({ customModelName: e.target.value })} 
+                                        placeholder="llama3" 
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-xl text-gray-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-gray-500 col-span-2">{t.endpointNote}</p>
+                            </div>
+                        )}
+
+                        {/* If n8n is selected */}
+                        {auth.user?.aiProvider === AIProvider.N8N && (
+                            <div className="space-y-2">
+                                <div>
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{t.n8nWebhookUrl}</label>
+                                    <input 
+                                        value={auth.user?.customEndpoint || ''} 
+                                        onChange={(e) => updateUserProfile({ customEndpoint: e.target.value })} 
+                                        placeholder="https://primary-production.up.railway.app/webhook/..." 
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-xl text-gray-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-gray-500">{t.n8nNote}</p>
+                            </div>
+                        )}
                     </div>
                     
                     <div className="mt-8 pt-6 border-t border-gray-100 dark:border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

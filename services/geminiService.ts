@@ -170,6 +170,18 @@ export const generateRoadmap = async (
 // --- API CLIENT (Backend Proxy) ---
 
 export const getGeminiApiKey = async () => {
+    try {
+        const storedUser = localStorage.getItem('currentUser');
+        if (storedUser) {
+            const user = JSON.parse(storedUser);
+            if (user.customGeminiApiKey && user.customGeminiApiKey.trim()) {
+                return user.customGeminiApiKey.trim();
+            }
+        }
+    } catch (e) {
+        console.warn("Failed to check customGeminiApiKey from localStorage", e);
+    }
+
     let apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!apiKey) {
         try {
@@ -763,11 +775,49 @@ export const searchUniversityScores = async (query: string, language: Language) 
 };
 
 export const compareCareers = async (career1: string, career2: string, language: Language) => {
-  const systemInstruction = "You are a career analyst. Return ONLY a valid JSON object comparing two given careers. The structure must be EXACTLY: { career1: { name, salary, demand, competition, workLife, description }, career2: { name, salary, demand, competition, workLife, description } }. For salary, demand, competition, workLife, provide specific numeric examples, ranges or detailed concrete facts (e.g. '20 - 50 triệu/tháng', '90% placement rate'). Do not include markdown formatting like ```json.";
+  const systemInstruction = `You are an expert senior career analyst and strategist. Return ONLY a valid JSON object comparing two given careers in depth.
+The JSON structure must be EXACTLY:
+{
+  "career1": {
+    "name": "Career 1 Name",
+    "description": "Short overview description",
+    "salary": "Salary range or specific average details with local context (e.g. million VNĐ/tháng if Vietnamese, or USD/year if English)",
+    "demand": "Market demand details with growth rates/percentages if possible",
+    "competition": "Competition description and entry barriers",
+    "workLife": "Work-life balance and stress level details",
+    "skills": ["Skill 1", "Skill 2", "Skill 3"],
+    "careerPath": "Advancement path or stages (e.g. Junior -> Senior -> Lead)",
+    "aiRisk": "AI disruption threat level and reason (Low/Medium/High)",
+    "education": "Required education, bootcamps or key certifications",
+    "suitability": "Traits or interests of people who would excel here"
+  },
+  "career2": {
+    "name": "Career 2 Name",
+    "description": "Short overview description",
+    "salary": "Salary range or specific average details with local context (e.g. million VNĐ/tháng if Vietnamese, or USD/year if English)",
+    "demand": "Market demand details with growth rates/percentages if possible",
+    "competition": "Competition description and entry barriers",
+    "workLife": "Work-life balance and stress level details",
+    "skills": ["Skill 1", "Skill 2", "Skill 3"],
+    "careerPath": "Advancement path or stages (e.g. Junior -> Senior -> Lead)",
+    "aiRisk": "AI disruption threat level and reason (Low/Medium/High)",
+    "education": "Required education, bootcamps or key certifications",
+    "suitability": "Traits or interests of people who would excel here"
+  },
+  "comparisonPoints": {
+    "salaryWinner": "career1" | "career2" | "tie",
+    "demandWinner": "career1" | "career2" | "tie",
+    "workLifeWinner": "career1" | "career2" | "tie",
+    "aiResilienceWinner": "career1" | "career2" | "tie",
+    "summaryAnalysis": "A deep analysis of the trade-offs and differences between the two careers.",
+    "recommendation": "Actionable career advice on how to choose between them depending on personal traits."
+  }
+}
+Do NOT include any markdown formatting like \`\`\`json or trailing comments. Ensure all strings are translated into the requested language (either Vietnamese or English).`;
   
   const callApi = async () => {
     const apiKey = await getGeminiApiKey();
-    const prompt = `Compare these two careers: "${career1}" and "${career2}". Language: ${language === Language.EN ? 'English' : 'Vietnamese'}. Values for salary, demand, competition, workLife MUST be specific and concise, including numbers or percentages.`;
+    const prompt = `Provide an in-depth comparison between "${career1}" and "${career2}". Language requested: ${language === Language.EN ? 'English' : 'Vietnamese'}. Make the analysis highly specific, detailed, and realistic (include local salary ranges if appropriate).`;
     
     const response = await fetch('/api/chat', {
         method: 'POST',

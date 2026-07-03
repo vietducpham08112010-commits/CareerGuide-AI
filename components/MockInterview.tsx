@@ -116,7 +116,22 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
     : "";
 
   // State managers
-  const [step, setStep] = useState<'setup' | 'interview' | 'results'>('setup');
+  const [step, setStep] = useState<'setup' | 'interview' | 'evaluating' | 'results'>('setup');
+  const [evalStep, setEvalStep] = useState(0);
+
+  useEffect(() => {
+    if (step !== 'evaluating') {
+      setEvalStep(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setEvalStep((prev) => {
+        if (prev < 4) return prev + 1;
+        return prev;
+      });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [step]);
   const [job, setJob] = useState(defaultRole);
   const [level, setLevel] = useState('junior');
   const [tone, setTone] = useState('friendly');
@@ -218,6 +233,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
   };
 
   const evaluateInterview = async (completedAnswers: string[]) => {
+    setStep('evaluating');
     setIsLoading(true);
     try {
       const apiKey = await getGeminiApiKey();
@@ -534,6 +550,72 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
             </motion.div>
           )}
 
+          {step === 'evaluating' && (
+            <motion.div
+              key="evaluating-view"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              className="bg-white dark:bg-[#0c0c0c] border border-gray-150 dark:border-white/5 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col items-center justify-center text-center py-12 space-y-6"
+            >
+              {/* Spinning AI Brain/CPU icon with pulses */}
+              <div className="relative">
+                <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-xl animate-pulse" />
+                <div className="relative w-20 h-20 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-3xl flex items-center justify-center shadow-md animate-bounce">
+                  <Icons.Cpu className="w-10 h-10 animate-spin" style={{ animationDuration: '6s' }} />
+                </div>
+              </div>
+
+              <div className="space-y-2 max-w-md">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {isEn ? "AI Expert is Analyzing Your Interview..." : "Chuyên gia AI đang phân tích buổi phỏng vấn..."}
+                </h2>
+                <p className="text-sm text-gray-400 dark:text-gray-500">
+                  {isEn ? "We are evaluating your answers against Vietnamese market standards and professional rubrics." : "AI đang rà soát câu trả lời của bạn đối chiếu với yêu cầu thực tế thị trường lao động 2026."}
+                </p>
+              </div>
+
+              {/* Progress visual list */}
+              <div className="w-full max-w-md text-left bg-gray-50 dark:bg-white/5 border border-gray-150 dark:border-white/5 rounded-2xl p-5 space-y-3.5">
+                {[
+                  { vi: "Thu thập & xâu chuỗi biên bản phỏng vấn", en: "Extracting & compiling interview transcript" },
+                  { vi: "Đánh giá kiến thức nghiệp vụ & chuyên môn", en: "Assessing domain expertise & professional terms" },
+                  { vi: "Kiểm tra kỹ năng diễn đạt & độ mạch lạc", en: "Analyzing communication style & narrative flow" },
+                  { vi: "Đo lường độ tương thích tính cách RIASEC", en: "Mapping behavioral match with RIASEC benchmarks" },
+                  { vi: "Tổng hợp phiếu điểm chi tiết & lời khuyên", en: "Synthesizing detailed scorecard & action plan" }
+                ].map((item, idx) => {
+                  const isDone = evalStep > idx;
+                  const isCurrent = evalStep === idx;
+                  return (
+                    <div key={idx} className="flex items-center gap-3">
+                      {isDone ? (
+                        <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      ) : isCurrent ? (
+                        <div className="w-5 h-5 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin shrink-0" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full border-2 border-gray-200 dark:border-white/10 shrink-0" />
+                      )}
+                      <span className={`text-xs font-semibold ${isDone ? "text-gray-500 dark:text-gray-400 line-through" : isCurrent ? "text-indigo-600 dark:text-indigo-400 font-bold" : "text-gray-400 dark:text-gray-600"}`}>
+                        {isEn ? item.en : item.vi}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="w-full max-w-md h-1.5 bg-gray-150 dark:bg-white/5 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-indigo-600 transition-all duration-500"
+                  style={{ width: `${Math.min(100, (evalStep + 1) * 20)}%` }}
+                />
+              </div>
+            </motion.div>
+          )}
+
           {step === 'results' && result && (
             <motion.div 
               key="results-view"
@@ -586,15 +668,15 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
                 </div>
               </div>
 
-              {/* Rubric Score Breakdown Section (NextX 2026 Enhanced) */}
-              <div className="bg-white dark:bg-[#0c0c0c] border border-gray-150 dark:border-white/5 rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
+              {/* Rubric Score Breakdown Section */}
+              <div className="bg-white dark:bg-[#0c0c0c] border border-gray-150 dark:border-white/5 rounded-3xl p-6 md:p-8 space-y-6 shadow-sm mt-8">
                 <div>
                   <h3 className="text-base font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
                     <Icons.Sliders className="w-5 h-5 text-indigo-500" />
-                    <span>{isEn ? "Detailed Rubric-based Competency Mapping" : "📊 Biểu Điểm Chi Tiết Theo Tiêu Chí Đánh Giá (Rubric)"}</span>
+                    <span>{isEn ? "Detailed Assessment (Rubric)" : "Chi tiết tiêu chí đánh giá (Rubric)"}</span>
                   </h3>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    {isEn ? "Detailed subscores generated by Gemini following elite HR executive directives." : "Điểm số thành phần dựa trên dữ liệu đánh giá khoa học hành vi được trích xuất thời gian thực bởi AI."}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isEn ? "Detailed subscores generated based on your performance." : "Điểm số chi tiết đánh giá năng lực của bạn trong buổi phỏng vấn."}
                   </p>
                 </div>
 
@@ -602,68 +684,68 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
                   {/* Item 1 - Knowledge */}
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
-                      <span>{isEn ? "Professional Knowledge" : "📚 Kiến thức chuyên môn & Nghiệp vụ"}</span>
+                      <span>{isEn ? "Professional Knowledge" : "Kiến thức chuyên môn"}</span>
                       <span className="text-indigo-600 dark:text-indigo-400 font-mono">{result.categories?.knowledge || 80}%</span>
                     </div>
                     <div className="h-2 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full" 
+                        className="h-full bg-indigo-500 rounded-full" 
                         style={{ width: `${result.categories?.knowledge || 80}%` }}
                       />
                     </div>
                     <p className="text-[10px] text-gray-400">
-                      {isEn ? "Demonstrates alignment with core theories and industry standards." : "Khả năng thấu hiểu kiến thức nền tảng, học thuật và quy trình thao tác chuyên ngành."}
+                      {isEn ? "Demonstrates alignment with core theories and industry standards." : "Khả năng thấu hiểu kiến thức nền tảng và nghiệp vụ."}
                     </p>
                   </div>
 
                   {/* Item 2 - Communication */}
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
-                      <span>{isEn ? "Communication & Clarity" : "🗣️ Kỹ năng giao tiếp & Biểu đạt"}</span>
+                      <span>{isEn ? "Communication" : "Kỹ năng giao tiếp"}</span>
                       <span className="text-emerald-500 font-mono">{result.categories?.communication || 80}%</span>
                     </div>
                     <div className="h-2 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full" 
+                        className="h-full bg-emerald-500 rounded-full" 
                         style={{ width: `${result.categories?.communication || 80}%` }}
                       />
                     </div>
                     <p className="text-[10px] text-gray-400">
-                      {isEn ? "Structured answer formatting, tone adherence, and confident phrasing." : "Bố cục câu trả lời mạch lạc, sử dụng từ ngữ chuẩn mực và tôn trọng người đối thoại."}
+                      {isEn ? "Structured answer formatting and confident phrasing." : "Bố cục câu trả lời mạch lạc, sử dụng từ ngữ chuẩn mực."}
                     </p>
                   </div>
 
                   {/* Item 3 - Problem Solving */}
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
-                      <span>{isEn ? "Problem Solving" : "💡 Khả năng giải quyết vấn đề (Situational)"}</span>
+                      <span>{isEn ? "Problem Solving" : "Giải quyết vấn đề"}</span>
                       <span className="text-cyan-500 font-mono">{result.categories?.problemSolving || 80}%</span>
                     </div>
                     <div className="h-2 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-full" 
+                        className="h-full bg-cyan-500 rounded-full" 
                         style={{ width: `${result.categories?.problemSolving || 80}%` }}
                       />
                     </div>
                     <p className="text-[10px] text-gray-400">
-                      {isEn ? "Logical analysis, structured steps, and realistic action plans." : "Cách tiếp cận các tình hư cấu, giải pháp thực tiễn và tư duy xử lý khủng hoảng."}
+                      {isEn ? "Logical analysis, structured steps, and realistic plans." : "Cách tiếp cận các tình huống, tư duy xử lý vấn đề thực tiễn."}
                     </p>
                   </div>
 
                   {/* Item 4 - RIASEC alignment */}
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
-                      <span>{isEn ? "RIASEC & Career Alignment" : "🎯 Sự tương hợp tính cách nghề nghiệp"}</span>
+                      <span>{isEn ? "Career Alignment" : "Sự phù hợp nghề nghiệp"}</span>
                       <span className="text-violet-500 font-mono">{result.categories?.riasecFit || 80}%</span>
                     </div>
                     <div className="h-2 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-violet-500 to-violet-600 rounded-full" 
+                        className="h-full bg-violet-500 rounded-full" 
                         style={{ width: `${result.categories?.riasecFit || 80}%` }}
                       />
                     </div>
                     <p className="text-[10px] text-gray-400">
-                      {isEn ? "Compatibility of candidate interests with the requirements of this career track." : "Sự hòa hợp giữa tính cách RIASEC cá nhân và mục tiêu chuyển dời cốt lõi của nghề."}
+                      {isEn ? "Compatibility of candidate interests with the requirements." : "Sự hòa hợp giữa tính cách cá nhân và mục tiêu cốt lõi của nghề."}
                     </p>
                   </div>
                 </div>

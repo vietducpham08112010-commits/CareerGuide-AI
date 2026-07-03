@@ -77,6 +77,7 @@ export interface UserProfile {
   aiProvider?: AIProvider;
   customEndpoint?: string; // e.g., http://localhost:11434/v1/chat/completions OR n8n Webhook URL
   customModelName?: string; // e.g., llama3 (Not used for n8n)
+  customGeminiApiKey?: string; // Custom Gemini API Key provided by user
   streak?: number;
   lastCheckIn?: string;
   provider?: 'google' | 'local' | 'email';
