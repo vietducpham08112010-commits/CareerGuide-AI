@@ -259,3 +259,4 @@ body {
   margin: 0 0 1em 0;
 }
 .dark .markdown-body blockquote { color: #8b949e; border-left-color: #30363d; }
+.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

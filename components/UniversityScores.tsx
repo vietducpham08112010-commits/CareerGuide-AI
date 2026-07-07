@@ -39,6 +39,16 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
     }
   };
 
+  const getTypeLabel = (type: string) => {
+    if (lang === Language.EN) return type;
+    const map: Record<string, string> = {
+      'Engineering': 'Kỹ thuật',
+      'Technology': 'Công nghệ',
+      'Business': 'Kinh doanh',
+    };
+    return map[type] || type;
+  };
+
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col items-stretch px-4 md:px-0">
       <motion.div 
@@ -169,7 +179,7 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
                     {lang === Language.VI ? 'Kết Quả Phân Tích Điểm Chuẩn' : 'Admission Score Analytics'}
                   </h4>
                   <span className="text-[10px] uppercase font-bold tracking-widest text-gray-400 dark:text-gray-500">
-                    Real-time AI Grounding Active
+                    {lang === Language.VI ? 'Dữ liệu AI thời gian thực' : 'Real-time AI Grounding Active'}
                   </span>
                 </div>
               </div>
@@ -246,7 +256,7 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
                           {item.name}
                         </span>
                         <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400">
-                          {item.type}
+                          {getTypeLabel(item.type)}
                         </span>
                       </div>
                       <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">

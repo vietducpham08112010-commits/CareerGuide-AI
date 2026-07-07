@@ -141,6 +141,31 @@ const CAREER_SKILL_MAPS: CareerSkillMap[] = [
       { id: 'gis_map', name: 'GIS Mapping & Satellites', level: 'mid', description_vi: 'Phân tích hiện trạng cây trồng qua bản đồ vệ tinh GIS.', description_en: 'Remote sensing satellite analytics for crop monitoring.' },
       { id: 'biotech', name: 'BioTech Crossbreeding', level: 'senior', description_vi: 'Nghiên cứu công nghệ sinh học lai tạo giống chất lượng cao.', description_en: 'Molecular biology procedures for high resistant seed breeding.' }
     ]
+  },
+  {
+    id: 'data-analyst',
+    title_vi: 'Chuyên viên Phân tích Dữ liệu (Data Analyst)',
+    title_en: 'Data Analyst',
+    category: 'Information Technology',
+    skills: [
+      { id: 'excel_advanced', name: 'Advanced Excel', level: 'junior', description_vi: 'Xử lý dữ liệu phức tạp bằng Pivot, Power Query, Macros.', description_en: 'Complex data manipulation using Pivot Tables and Power Query.' },
+      { id: 'sql_da', name: 'SQL Querying', level: 'junior', description_vi: 'Truy vấn và kết nối nhiều bảng cơ sở dữ liệu (JOIN, Window Functions).', description_en: 'Extracting and joining data using advanced SQL.' },
+      { id: 'data_viz', name: 'Data Visualization (Tableau/PowerBI)', level: 'mid', description_vi: 'Xây dựng dashboard trực quan hóa dữ liệu kinh doanh.', description_en: 'Building interactive business dashboards.' },
+      { id: 'python_da', name: 'Python (Pandas/Matplotlib)', level: 'mid', description_vi: 'Phân tích và làm sạch dữ liệu lớn bằng Python.', description_en: 'Analyzing large datasets using Python libraries.' },
+      { id: 'stat_modeling', name: 'Statistical Modeling', level: 'senior', description_vi: 'Mô hình hóa dữ liệu, dự báo xu hướng kinh doanh.', description_en: 'Statistical modeling for business trend forecasting.' }
+    ]
+  },
+  {
+    id: 'ecommerce-manager',
+    title_vi: 'Quản lý Thương mại điện tử (E-Commerce Manager)',
+    title_en: 'E-Commerce Manager',
+    category: 'Management & Logistics',
+    skills: [
+      { id: 'omnichannel', name: 'Omnichannel Strategy', level: 'junior', description_vi: 'Tích hợp bán hàng đa kênh: Shopee, Tiktok, Website.', description_en: 'Managing multiple online sales channels.' },
+      { id: 'conversion_opt', name: 'Conversion Rate Optimization (CRO)', level: 'mid', description_vi: 'Tối ưu hóa tỷ lệ chuyển đổi khách truy cập thành người mua.', description_en: 'Optimizing the user journey to increase sales.' },
+      { id: 'scm_ecommerce', name: 'Fulfillment & SCM', level: 'mid', description_vi: 'Quản lý kho bãi, đóng gói, vận chuyển và hoàn vòng.', description_en: 'Managing warehousing, packing, and shipping operations.' },
+      { id: 'ecom_analytics', name: 'E-Commerce Analytics', level: 'senior', description_vi: 'Phân tích GMV, CAC, LTV để hoạch định chiến lược giá.', description_en: 'Analyzing core business metrics (GMV, LTV) for pricing strategy.' }
+    ]
   }
 ];
 
@@ -170,7 +195,10 @@ const JOB_POSTINGS: JobPosting[] = [
 
   // AgriTech
   { id: 'job-14', title: 'Kỹ Sư IoT Cảm Biến Nhà Kính Nông Nghiệp', company: 'Lộc Trời Group', salary: '22,000,000 - 38,000,000 VND', location: 'TP. HCM', level: 'Midweight', requiredSkills: ['Hydroponics setup', 'IoT Sensors'], url: 'https://www.topcv.vn/tim-kiem-viec-lam?keyword=N%C3%B4ng+nghi%E1%BB%87p', source: 'TopCV' },
-  { id: 'job-15', title: 'Chuyên Gia Nghiên Cứu Lai Tạo Giống Thủy Sản', company: 'VinEco', salary: '25,000,000 - 45,000,000 VND', location: 'Hà Nội', level: 'Senior', requiredSkills: ['Soil & Plant Science', 'GIS Mapping & Satellites', 'BioTech Crossbreeding'], url: 'https://www.topcv.vn/tim-kiem-viec-lam?keyword=AgriTech', source: 'TopCV' }
+  { id: 'job-15', title: 'Chuyên Gia Nghiên Cứu Lai Tạo Giống Thủy Sản', company: 'VinEco', salary: '25,000,000 - 45,000,000 VND', location: 'Hà Nội', level: 'Senior', requiredSkills: ['Soil & Plant Science', 'GIS Mapping & Satellites', 'BioTech Crossbreeding'], url: 'https://www.topcv.vn/tim-kiem-viec-lam?keyword=AgriTech', source: 'TopCV' },
+  { id: 'job-16', title: 'Chuyên Viên Phân Tích Dữ Liệu Kinh Doanh (BI Analyst)', company: 'Momo', salary: '25,000,000 - 45,000,000 VND', location: 'TP. HCM', level: 'Midweight', requiredSkills: ['SQL Querying', 'Data Visualization (Tableau/PowerBI)', 'Python (Pandas/Matplotlib)'], url: 'https://itviec.com/it-jobs?query=Data+Analyst', source: 'ITviec' },
+  { id: 'job-17', title: 'Chuyên Gia Phân Tích Dữ Liệu (Senior Data Analyst)', company: 'Shopee Vietnam', salary: '45,000,000 - 80,000,000 VND', location: 'TP. HCM', level: 'Senior', requiredSkills: ['Advanced Excel', 'SQL Querying', 'Statistical Modeling'], url: 'https://www.topcv.vn/tim-kiem-viec-lam?keyword=Data+Analyst', source: 'TopCV' },
+  { id: 'job-18', title: 'Trưởng Phòng Thương Mại Điện Tử', company: 'Unilever Vietnam', salary: '50,000,000 - 90,000,000 VND', location: 'Hà Nội', level: 'Senior', requiredSkills: ['Omnichannel Strategy', 'E-Commerce Analytics', 'Fulfillment & SCM'], url: 'https://www.topcv.vn/tim-kiem-viec-lam?keyword=Ecommerce', source: 'TopCV' }
 ];
 
 export const ProgressBoard: React.FC<ProgressBoardProps> = ({ 

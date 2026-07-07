@@ -256,9 +256,10 @@ const StaggerContainer = ({ children, delay = 0, once = true }: { children: Reac
   );
 };
 
-const StaggerItem = ({ children, y = 24 }: { children: React.ReactNode, y?: number }) => {
+const StaggerItem = ({ children, y = 24, className = "" }: { children: React.ReactNode, y?: number, className?: string }) => {
   return (
     <motion.div
+      className={className}
       variants={{
         initial: { opacity: 0, y: y },
         animate: { 
@@ -1176,7 +1177,7 @@ export default function App() {
               setAuth({ isAuthenticated: true, user });
               localStorage.setItem('currentUser', JSON.stringify(user));
               
-              if (mode === AppMode.AUTH) {
+              if (mode === AppMode.AUTH && !user.isGuest) {
                   setMode(AppMode.DASHBOARD);
               }
 
@@ -1218,7 +1219,7 @@ export default function App() {
                       let userObj = JSON.parse(storedUser);
                       setAuth({ isAuthenticated: true, user: userObj });
                       localStorage.setItem('currentUser', JSON.stringify(userObj));
-                      if (mode === AppMode.AUTH) {
+                      if (mode === AppMode.AUTH && !userObj.isGuest) {
                           setMode(AppMode.DASHBOARD);
                       }
                   } catch (e) {
@@ -1614,6 +1615,22 @@ export default function App() {
     try {
       localStorage.setItem('currentUser', JSON.stringify(demoUserByLanguage));
       localStorage.setItem(`roadmap_${demoEmail}`, JSON.stringify(mockRoadmap));
+      
+      const demoSkillProgress = {
+        python: 100,
+        sql: 80,
+        stats: 75,
+        dml: 90,
+        pytorch: 60,
+        nlp: 45,
+        cv: 85,
+        apis: 70,
+        mlops: 30,
+        dist: 20,
+        finetuning: 15
+      };
+      localStorage.setItem(`skill_progress_${demoEmail}`, JSON.stringify(demoSkillProgress));
+
       await storage.set(`chatHistory_${demoEmail}`, [mockSession]);
       
       // Update main states
@@ -1910,17 +1927,38 @@ export default function App() {
              <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
                 {theme === Theme.LIGHT ? <Icons.Moon className="w-5 h-5"/> : <Icons.Sun className="w-5 h-5"/>}
               </button>
+
+             {/* Exclusive Glowing Judge Privilege Bypass Button on Navbar */}
+             <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleActivateDemo}
+                className="hidden sm:flex items-center gap-1.5 px-4.5 py-2 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 text-white text-xs font-black rounded-full uppercase tracking-wider shadow-lg shadow-emerald-500/20 hover:shadow-indigo-500/30 transition-all border border-emerald-400/20 animate-pulse"
+             >
+                <Icons.Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-bounce" />
+                <span>{lang === Language.VI ? "Đặc Quyền BGK (60s)" : "Judge Privilege (60s)"}</span>
+             </motion.button>
              
-             {auth.isAuthenticated && !auth.user?.isGuest ? (
-                 <motion.button 
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setMode(AppMode.DASHBOARD)} 
-                    className="bg-black dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full font-bold transition-shadow hover:shadow-lg hover:shadow-indigo-500/20 flex items-center gap-2"
-                 >
-                    <Icons.Briefcase className="w-4 h-4" />
-                    {t.dashboard}
-                 </motion.button>
+             {auth.isAuthenticated ? (
+                 <div className="flex items-center gap-2">
+                    {auth.user?.isGuest && (
+                        <button 
+                           onClick={() => { setMode(AppMode.AUTH); setAuthType('login'); }} 
+                           className="hidden md:block font-bold text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors px-3 py-2 rounded-full"
+                        >
+                           {t.login}
+                        </button>
+                    )}
+                    <motion.button 
+                       whileHover={{ scale: 1.05 }}
+                       whileTap={{ scale: 0.95 }}
+                       onClick={() => setMode(AppMode.DASHBOARD)} 
+                       className="bg-black dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full font-bold transition-shadow hover:shadow-lg hover:shadow-indigo-500/20 flex items-center gap-2"
+                    >
+                       <Icons.Briefcase className="w-4 h-4" />
+                       {t.dashboard}
+                    </motion.button>
+                 </div>
              ) : (
                  <>
                     <button onClick={() => { setMode(AppMode.AUTH); setAuthType('login'); }} className="hidden md:block font-medium hover:text-indigo-500 transition-colors">{t.login}</button>
@@ -1961,7 +1999,7 @@ export default function App() {
                 }
               }
             }}
-            className="max-w-4xl space-y-8 flex flex-col items-center relative z-10"
+            className="max-w-4xl space-y-8 flex flex-col items-center"
           >
             <motion.div 
               variants={{
@@ -1997,8 +2035,8 @@ export default function App() {
             >
               {t.subTagline}
             </motion.p>
-            
-            {auth.isAuthenticated && !auth.user?.isGuest && (
+
+            {auth.isAuthenticated && (
                 <motion.p 
                   variants={{
                     hidden: { opacity: 0, y: 10 },
@@ -2006,7 +2044,7 @@ export default function App() {
                   }}
                   className="text-indigo-600 dark:text-indigo-400 font-medium mb-2"
                 >
-                    {t.continueJourney} {auth.user?.name.split(' ')[0]}?
+                    {t.continueJourney} {auth.user?.name ? auth.user.name.split(' ')[0] : (lang === Language.VI ? "Khách" : "Guest")}?
                 </motion.p>
             )}
  
@@ -2017,17 +2055,31 @@ export default function App() {
               }}
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
-              {auth.isAuthenticated && !auth.user?.isGuest ? (
-                  <motion.button 
-                      whileHover={{ scale: 1.05, y: -4 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setMode(AppMode.DASHBOARD)} 
-                      className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-extrabold text-lg transition-shadow shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 flex items-center justify-center gap-2"
-                  >
-                      {t.goToDashboard} <Icons.ArrowRight className="w-5 h-5" />
-                  </motion.button>
+              {auth.isAuthenticated ? (
+                  <div className="flex flex-col sm:flex-row gap-4 items-center">
+                    <motion.button 
+                        whileHover={{ scale: 1.05, y: -4 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setMode(AppMode.DASHBOARD)} 
+                        className="px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-extrabold text-lg transition-shadow shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 flex items-center justify-center gap-2"
+                    >
+                        {t.goToDashboard} <Icons.ArrowRight className="w-5 h-5" />
+                    </motion.button>
+                    
+                    {auth.user?.isGuest && (
+                      <motion.button 
+                          whileHover={{ scale: 1.05, y: -4 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handleActivateDemo} 
+                          className="px-8 py-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white rounded-2xl font-extrabold text-lg transition-shadow shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 flex items-center justify-center gap-2"
+                      >
+                          <Icons.Sparkles className="w-5 h-5 text-yellow-300 animate-bounce" />
+                          {lang === Language.VI ? "Kích hoạt Đặc Quyền BGK (Bypass 60s)" : "Activate Judge Privilege (60s)"}
+                      </motion.button>
+                    )}
+                  </div>
               ) : (
-                  <>
+                  <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
                     <motion.button 
                         whileHover={{ scale: 1.05, y: -4 }}
                         whileTap={{ scale: 0.95 }}
@@ -2037,13 +2089,24 @@ export default function App() {
                         {t.getStarted}
                     </motion.button>
 
+                    {/* Highly prominent pulsing Judge bypass button in the Hero area */}
+                    <motion.button 
+                        whileHover={{ scale: 1.08, y: -4 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleActivateDemo} 
+                        className="px-8 py-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white rounded-2xl font-black text-lg transition-shadow shadow-xl shadow-emerald-500/40 hover:shadow-emerald-500/60 flex items-center justify-center gap-2.5 animate-pulse"
+                    >
+                        <Icons.Sparkles className="w-5.5 h-5.5 text-yellow-300 animate-bounce" />
+                        <span>{lang === Language.VI ? "ĐẶC QUYỀN BAN GIÁM KHẢO (Bypass 60s)" : "JUDGE PRIVILEGE (60s Bypass)"}</span>
+                    </motion.button>
+
                     <button 
                         onClick={handleGuestLogin} 
-                        className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors py-2 underline hover:underline"
+                        className="text-sm font-semibold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors py-2 underline hover:underline"
                     >
                         {t.guestLogin}
                     </button>
-                  </>
+                  </div>
               )}
             </motion.div>
           </motion.div>
@@ -2089,13 +2152,13 @@ export default function App() {
              </ScrollReveal>
              
              <StaggerContainer>
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 <div className="flex overflow-x-auto pb-8 snap-x snap-mandatory gap-6 hide-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
                      {HOT_INDUSTRIES.map((industry) => {
                          const iconKey = industry.icon as keyof typeof Icons;
                          const IconComponent = Icons[iconKey] || Icons.TrendingUp;
                          
                          return (
-                            <StaggerItem key={industry.id}>
+                            <StaggerItem key={industry.id} className="min-w-[85vw] snap-center md:min-w-0 md:w-auto">
                                 <motion.div 
                                     whileHover={{ y: -8, scale: 1.02 }}
                                     transition={{ type: "spring", stiffness: 300, damping: 20 }}

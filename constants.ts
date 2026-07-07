@@ -113,6 +113,33 @@ export const HOT_INDUSTRIES = [
     desc_vi: "Bộ não của mọi thiết bị điện tử. Việt Nam đang trở thành trung tâm toàn cầu.", 
     color: "from-indigo-500 to-blue-700",
     icon: "Cpu"
+  },
+  { 
+    id: 8, 
+    name_en: "E-Commerce & Logistics", 
+    name_vi: "Thương mại điện tử & Logistics", 
+    desc_en: "Powering the global supply chain and the future of online retail.", 
+    desc_vi: "Vận hành chuỗi cung ứng toàn cầu và tương lai của bán lẻ trực tuyến.", 
+    color: "from-orange-500 to-red-600",
+    icon: "Globe"
+  },
+  { 
+    id: 9, 
+    name_en: "Robotics & Automation", 
+    name_vi: "Robot & Tự động hóa", 
+    desc_en: "Creating smart machines to assist and automate complex tasks.", 
+    desc_vi: "Chế tạo máy móc thông minh để hỗ trợ và tự động hóa các tác vụ phức tạp.", 
+    color: "from-gray-500 to-slate-700",
+    icon: "Server"
+  },
+  { 
+    id: 10, 
+    name_en: "Creative & Digital Media", 
+    name_vi: "Sáng tạo & Truyền thông số", 
+    desc_en: "Content creation, UI/UX design, and digital entertainment.", 
+    desc_vi: "Sáng tạo nội dung, thiết kế UI/UX và giải trí kỹ thuật số.", 
+    color: "from-fuchsia-500 to-pink-600",
+    icon: "Camera"
   }
 ];
 

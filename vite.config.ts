@@ -11,6 +11,27 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react(), tailwindcss()],
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (id.includes('node_modules')) {
+                if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('html-to-image')) {
+                  return 'export-utils';
+                }
+                if (id.includes('lucide-react')) {
+                  return 'icons';
+                }
+                if (id.includes('firebase')) {
+                  return 'firebase-sdk';
+                }
+                return 'vendor';
+              }
+            }
+          }
+        },
+        chunkSizeWarningLimit: 1000
+      },
       define: {
         // API keys are now handled on the server side
       },
