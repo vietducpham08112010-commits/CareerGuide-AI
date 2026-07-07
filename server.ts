@@ -214,6 +214,60 @@ app.post("/api/search", async (req, res) => {
   }
 });
 
+// --- AI Skill Map Generator API ---
+app.post("/api/generate-skill-map", async (req, res) => {
+  try {
+    const { career, apiKey } = req.body;
+    if (!career) {
+      return res.status(400).json({ error: "Career name is required" });
+    }
+
+    const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || (k1 + k2);
+    const aiInstance = new GoogleGenAI({ apiKey: finalApiKey });
+
+    const careerId = "ai-gen-" + Math.random().toString(36).substring(2, 9);
+    const systemInstruction = "You are a professional industrial and career mapping expert. You specialize in analyzing job roles and decomposing them into clean, structural learning levels (junior, mid, senior).";
+    
+    const prompt = `Hãy thiết kế bản đồ kỹ năng (Skill Map) chuyên sâu cho nghề nghiệp: "${career}".
+Bản đồ kỹ năng phải chia làm 3 cấp độ: junior (cơ bản/nhập môn), mid (trung cấp/thực hành), senior (cao cấp/hoạch định).
+Hãy tạo từ 6 đến 9 kỹ năng trải dài trên cả 3 cấp độ này.
+
+Bạn BẮT BUỘC phải trả về dữ liệu dưới định dạng JSON thuần túy, KHÔNG được có ký tự bọc markdown như \`\`\`json hay bất kỳ ký tự thừa nào ngoài JSON.
+Cấu trúc JSON chính xác như sau:
+{
+  "id": "${careerId}",
+  "title_vi": "Tên tiếng Việt của nghề nghiệp",
+  "title_en": "Tên tiếng Anh của nghề nghiệp",
+  "category": "Lĩnh vực (ví dụ: Y tế, Kinh tế, Công nghệ, Nghệ thuật, Dịch vụ, Kỹ thuật...)",
+  "skills": [
+    {
+      "id": "viet-lien-khong-dau-vi-du-skill1",
+      "name": "Tên kỹ năng",
+      "level": "junior",
+      "description_vi": "Mô tả ngắn gọn bằng tiếng Việt về kỹ năng này và vì sao cần thiết",
+      "description_en": "Brief English description of this skill and why it is required"
+    }
+  ]
+}`;
+
+    const response = await generateContentWithFallback(aiInstance, {
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        systemInstruction
+    });
+
+    let text = response.text || "";
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    const parsed = JSON.parse(text);
+    return res.json(parsed);
+
+  } catch (error: any) {
+    console.error("Generate Skill Map API Error:", error);
+    const errorMessage = cleanGeminiErrorMessage(error);
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
 // --- Email/Milestone Reminder API ---
 app.post("/api/send-reminder", (req, res) => {
   const { email, milestone } = req.body;

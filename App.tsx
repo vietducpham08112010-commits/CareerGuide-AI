@@ -89,6 +89,8 @@ const Icons = {
   EyeOff: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>,
   Server: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>,
   Key: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></svg>,
+  ChevronLeft: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="15 18 9 12 15 6"/></svg>,
+  ChevronRight: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="9 18 15 12 9 6"/></svg>,
   Check: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="20 6 9 17 4 12"/></svg>,
   Search: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
   Plus: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
@@ -788,6 +790,17 @@ export default function App() {
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const landingCareersScrollRef = useRef<HTMLDivElement>(null);
+  const scrollLandingCareersLeft = () => {
+    if (landingCareersScrollRef.current) {
+      landingCareersScrollRef.current.scrollBy({ left: -320, behavior: 'smooth' });
+    }
+  };
+  const scrollLandingCareersRight = () => {
+    if (landingCareersScrollRef.current) {
+      landingCareersScrollRef.current.scrollBy({ left: 320, behavior: 'smooth' });
+    }
+  };
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -2097,7 +2110,7 @@ export default function App() {
                         className="px-8 py-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white rounded-2xl font-black text-lg transition-shadow shadow-xl shadow-emerald-500/40 hover:shadow-emerald-500/60 flex items-center justify-center gap-2.5 animate-pulse"
                     >
                         <Icons.Sparkles className="w-5.5 h-5.5 text-yellow-300 animate-bounce" />
-                        <span>{lang === Language.VI ? "ĐẶC QUYỀN BAN GIÁM KHẢO (Bypass 60s)" : "JUDGE PRIVILEGE (60s Bypass)"}</span>
+                        <span>{lang === Language.VI ? "TRẢI NGHIỆM NHANH (Bypass 60s)" : "FAST EXPERIENCE (60s Bypass)"}</span>
                     </motion.button>
 
                     <button 
@@ -2152,7 +2165,7 @@ export default function App() {
              </ScrollReveal>
              
              <StaggerContainer>
-                 <div className="flex overflow-x-auto pb-8 snap-x snap-mandatory gap-6 hide-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
+                 <div ref={landingCareersScrollRef} style={{ touchAction: 'pan-x' }} className="flex overflow-x-auto pb-8 snap-x snap-mandatory gap-6 hide-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
                      {HOT_INDUSTRIES.map((industry) => {
                          const iconKey = industry.icon as keyof typeof Icons;
                          const IconComponent = Icons[iconKey] || Icons.TrendingUp;
@@ -2181,6 +2194,30 @@ export default function App() {
                             </StaggerItem>
                          );
                      })}
+                 </div>
+
+                 {/* Mobile Scroll Navigation Arrows & Swipe Hint */}
+                 <div className="flex md:hidden items-center justify-between mt-2 px-2">
+                   <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 animate-pulse flex items-center gap-1">
+                     <Icons.Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+                     {lang === Language.VI ? "Vuốt ngang hoặc nhấn nút để xem tiếp" : "Swipe or click to view more"}
+                   </span>
+                   <div className="flex gap-2">
+                     <button 
+                       onClick={scrollLandingCareersLeft}
+                       className="p-2 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 transition-all active:scale-90"
+                       title="Left"
+                     >
+                       <Icons.ChevronLeft className="w-4 h-4" />
+                     </button>
+                     <button 
+                       onClick={scrollLandingCareersRight}
+                       className="p-2 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 transition-all active:scale-90"
+                       title="Right"
+                     >
+                       <Icons.ChevronRight className="w-4 h-4" />
+                     </button>
+                   </div>
                  </div>
              </StaggerContainer>
         </section>
@@ -2366,7 +2403,7 @@ export default function App() {
                   ⚡ {lang === Language.VI ? "Hướng dẫn khám phá trong 60 giây" : "60-Second Demo & Run Scenarios"}
                 </h3>
                 <p className="text-xs text-gray-500 mt-1 font-sans">
-                  {lang === Language.VI ? "Danh sách kịch bản để ban giám khảo chấm điểm nhanh và tối ưu nhất:" : "Follow these preset scenarios for instant product evaluation:"}
+                  {lang === Language.VI ? "Danh sách kịch bản để trải nghiệm sản phẩm nhanh và tối ưu nhất:" : "Follow these preset scenarios for instant product evaluation:"}
                 </p>
               </div>
 

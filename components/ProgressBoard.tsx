@@ -166,6 +166,34 @@ const CAREER_SKILL_MAPS: CareerSkillMap[] = [
       { id: 'scm_ecommerce', name: 'Fulfillment & SCM', level: 'mid', description_vi: 'Quản lý kho bãi, đóng gói, vận chuyển và hoàn vòng.', description_en: 'Managing warehousing, packing, and shipping operations.' },
       { id: 'ecom_analytics', name: 'E-Commerce Analytics', level: 'senior', description_vi: 'Phân tích GMV, CAC, LTV để hoạch định chiến lược giá.', description_en: 'Analyzing core business metrics (GMV, LTV) for pricing strategy.' }
     ]
+  },
+  {
+    id: 'healthcare',
+    title_vi: 'Bác sĩ / Chuyên viên Y tế Công nghệ cao',
+    title_en: 'Smart Healthcare & Medical Specialist',
+    category: 'Healthcare & Medicine',
+    skills: [
+      { id: 'clinical_basics', name: 'Clinical Knowledge', level: 'junior', description_vi: 'Kiến thức y khoa lâm sàng và sơ cứu cơ bản.', description_en: 'Foundational clinical knowledge and basic first aid.' },
+      { id: 'anatomy', name: 'Human Anatomy', level: 'junior', description_vi: 'Hiểu cấu trúc giải phẫu học cơ thể người.', description_en: 'Understanding of human anatomical structures.' },
+      { id: 'telehealth', name: 'Telehealth Systems', level: 'mid', description_vi: 'Vận hành phần mềm khám chữa bệnh từ xa và lưu trữ hồ sơ bệnh án EHR.', description_en: 'Operating telemedicine and electronic health record systems.' },
+      { id: 'medical_devices', name: 'IoT Medical Devices', level: 'mid', description_vi: 'Sử dụng các thiết bị đo lường sinh học kết nối thông minh.', description_en: 'Utilizing smart connected bio-measurement devices.' },
+      { id: 'ai_diagnostics', name: 'AI Image Diagnostics', level: 'senior', description_vi: 'Ứng dụng AI phân tích hình ảnh MRI, CT để hỗ trợ chẩn đoán bệnh sớm.', description_en: 'Applying AI-powered MRI/CT image diagnostics for early detection assistance.' },
+      { id: 'hospital_mgmt', name: 'Hospital Operations', level: 'senior', description_vi: 'Quản trị quy trình bệnh viện và an toàn sinh học quốc tế.', description_en: 'Managing hospital workflows and global biosafety protocols.' }
+    ]
+  },
+  {
+    id: 'finance-economics',
+    title_vi: 'Chuyên viên Phân tích Tài chính & Kinh tế',
+    title_en: 'Financial & Economic Analyst',
+    category: 'Finance & Economics',
+    skills: [
+      { id: 'micro_macro', name: 'Micro & Macro Economics', level: 'junior', description_vi: 'Hiểu các nguyên lý kinh tế vi mô, vĩ mô cơ bản.', description_en: 'Understanding basic micro and macro economics principles.' },
+      { id: 'accounting_basics', name: 'Financial Accounting', level: 'junior', description_vi: 'Đọc hiểu báo cáo tài chính, bảng cân đối kế toán.', description_en: 'Analyzing financial statements and balance sheets.' },
+      { id: 'market_research', name: 'Market Analysis', level: 'mid', description_vi: 'Nghiên cứu thị trường, định giá tài sản và phân tích dòng tiền.', description_en: 'Conducting market research, asset valuation and cash flow projection.' },
+      { id: 'data_finance', name: 'Financial Modeling', level: 'mid', description_vi: 'Xây dựng mô hình tài chính dự báo doanh thu trên Excel hoặc Python.', description_en: 'Building financial forecasting models on Excel or Python.' },
+      { id: 'portfolio_mgmt', name: 'Portfolio Management', level: 'senior', description_vi: 'Quản lý danh mục đầu tư và kiểm soát rủi ro hệ thống.', description_en: 'Managing investment portfolios and controlling systemic risks.' },
+      { id: 'algo_trading', name: 'Quantitative & Algo Finance', level: 'senior', description_vi: 'Phát triển thuật toán giao dịch tự động và phân tích định lượng.', description_en: 'Developing algorithmic trading systems and quantitative analysis.' }
+    ]
   }
 ];
 
@@ -229,10 +257,55 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
   const [syncingEmailId, setSyncingEmailId] = useState<string | null>(null);
   
   // Skills States
-  const [selectedCareerId, setSelectedCareerId] = useState<'ai-engineer' | 'cybersecurity' | 'sustainability' | 'logistics-supply-chain' | 'digital-marketing' | 'agritech'>('ai-engineer');
+  const [selectedCareerId, setSelectedCareerId] = useState<string>('ai-engineer');
+  const [customSkillMaps, setCustomSkillMaps] = useState<CareerSkillMap[]>([]);
+  const [aiCareerInput, setAiCareerInput] = useState('');
+  const [isGeneratingMap, setIsGeneratingMap] = useState(false);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [filterLocation, setFilterLocation] = useState<'All' | 'Hà Nội' | 'TP. HCM' | 'Đà Nẵng'>('All');
   const [skillProgress, setSkillProgress] = useState<Record<string, number>>({});
+
+  const handleGenerateCustomMap = async () => {
+    if (!aiCareerInput.trim()) return;
+    setIsGeneratingMap(true);
+    try {
+      const response = await fetch('/api/generate-skill-map', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ career: aiCareerInput }),
+      });
+      if (!response.ok) {
+        throw new Error('API failed');
+      }
+      const newMap: CareerSkillMap = await response.json();
+      if (newMap && newMap.id && newMap.skills) {
+        setCustomSkillMaps(prev => [newMap, ...prev]);
+        setSelectedCareerId(newMap.id);
+        setSelectedSkillId(null);
+        setAiCareerInput('');
+        showToast(
+          language === Language.VI 
+            ? `🎉 Đã tạo sơ đồ kỹ năng cho "${newMap.title_vi}" bằng AI thành công!` 
+            : `🎉 Created skill map for "${newMap.title_en}" using AI!`, 
+          'success'
+        );
+      } else {
+        throw new Error('Invalid format');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(
+        language === Language.VI 
+          ? '❌ Không thể tạo sơ đồ kỹ năng bằng AI. Vui lòng thử lại sau.' 
+          : '❌ Failed to generate skill map using AI. Please try again.', 
+        'error'
+      );
+    } finally {
+      setIsGeneratingMap(false);
+    }
+  };
   
   const boardRef = useRef<HTMLDivElement>(null);
 
@@ -590,7 +663,8 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
   };
 
   // Skill calculations for selected career
-  const currentSkillMap = CAREER_SKILL_MAPS.find(m => m.id === selectedCareerId) || CAREER_SKILL_MAPS[0];
+  const allSkillMaps = [...CAREER_SKILL_MAPS, ...customSkillMaps];
+  const currentSkillMap = allSkillMaps.find(m => m.id === selectedCareerId) || allSkillMaps[0];
   const careerSkills = currentSkillMap.skills;
   
   // Calculate selected career total average progress
@@ -603,17 +677,27 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
   const matchingJobs = JOB_POSTINGS.filter(job => {
     const isTargetLoc = filterLocation === 'All' || job.location === filterLocation;
     // Map current selectedCareerId back to standard search terms
-    const careerMatches = {
+    const careerMatches: Record<string, string[]> = {
       'ai-engineer': ['ai', 'learning', 'scientist', 'học máy', 'intel', 'ml'],
       'cybersecurity': ['cyber', 'bảo mật', 'an ninh', 'ethical', 'pentest', 'soc'],
       'sustainability': ['energy', 'năng lượng', 'carbon', 'esg', 'sustain'],
       'logistics-supply-chain': ['logistics', 'supply', 'chuỗi cung ứng', 'kho'],
       'digital-marketing': ['marketing', 'brand', 'ads', 'seo', 'hacker', 'marketer'],
-      'agritech': ['agritech', 'nông nghiệp', 'iot', 'gis', 'biotech']
+      'agritech': ['agritech', 'nông nghiệp', 'iot', 'gis', 'biotech'],
+      'healthcare': ['y tế', 'health', 'medical', 'bác sĩ', 'bệnh viện', 'clinical', 'sinh học'],
+      'finance-economics': ['tài chính', 'finance', 'kinh tế', 'accounting', 'modeling', 'market', 'portfolio', 'investment']
     };
-    const queryList = careerMatches[selectedCareerId] || [];
+    let queryList = careerMatches[selectedCareerId] || [];
+    if (queryList.length === 0) {
+      // Custom AI map: extract keywords from title
+      const words = (currentSkillMap.title_vi + ' ' + currentSkillMap.title_en)
+        .toLowerCase()
+        .split(/[\s,.\-/]+/)
+        .filter(w => w.length > 2);
+      queryList = words;
+    }
     const docString = `${job.title} ${job.company} ${job.requiredSkills.join(' ')}`.toLowerCase();
-    const isTargetCareer = queryList.some(q => docString.includes(q));
+    const isTargetCareer = queryList.some(q => docString.includes(q)) || queryList.length === 0;
     return isTargetLoc && isTargetCareer;
   });
 
@@ -1063,17 +1147,55 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
                     <select 
                       value={selectedCareerId}
                       onChange={(e) => {
-                        setSelectedCareerId(e.target.value as any);
+                        setSelectedCareerId(e.target.value);
                         setSelectedSkillId(null);
                       }}
                       className="w-full md:w-72 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500"
                     >
-                      {CAREER_SKILL_MAPS.map(m => (
+                      {allSkillMaps.map(m => (
                         <option key={m.id} value={m.id} className="dark:bg-gray-900 font-bold">
                           {language === Language.VI ? m.title_vi : m.title_en}
                         </option>
                       ))}
                     </select>
+                  </div>
+                </div>
+
+                {/* AI Custom Career Generator */}
+                <div className="mt-4 pt-4 border-t border-dashed border-gray-250 dark:border-white/10">
+                  <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-gray-400">
+                      <Icons.Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
+                      <span>{language === Language.VI ? "Hoặc để AI tự động vẽ sơ đồ kỹ năng cho ngành bất kỳ:" : "Or let AI auto-generate skill map for any job:"}</span>
+                    </div>
+                    
+                    <div className="flex gap-2 flex-1 max-w-md">
+                      <input 
+                        type="text"
+                        value={aiCareerInput}
+                        onChange={(e) => setAiCareerInput(e.target.value)}
+                        placeholder={language === Language.VI ? "Ví dụ: Lập trình game, Thiết kế thời trang, Tâm lý học..." : "E.g., Game dev, Fashion designer, Psychology..."}
+                        className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-250 dark:border-white/15 rounded-xl px-3 py-1.5 text-xs font-medium text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                        disabled={isGeneratingMap}
+                      />
+                      <button
+                        onClick={handleGenerateCustomMap}
+                        disabled={isGeneratingMap || !aiCareerInput.trim()}
+                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                      >
+                        {isGeneratingMap ? (
+                          <>
+                            <Icons.Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>{language === Language.VI ? "Đang phân tích..." : "Analyzing..."}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Icons.Cpu className="w-3.5 h-3.5" />
+                            <span>{language === Language.VI ? "AI Tạo Sơ Đồ" : "AI Map"}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 

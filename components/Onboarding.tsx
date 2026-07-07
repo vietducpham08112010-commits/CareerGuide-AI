@@ -136,7 +136,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
   const progressPct = ((step + 1) / 4) * 100;
 
   return (
-    <div className="absolute inset-0 z-50 bg-[#fafafa]/90 dark:bg-[#070707]/90 backdrop-blur-xl flex flex-col items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-[#fafafa]/90 dark:bg-[#070707]/90 backdrop-blur-xl overflow-y-auto flex items-start sm:items-center justify-center p-3 sm:p-4 py-8 sm:py-4">
       {/* Outer Onboarding Card Container */}
       <motion.div 
         initial={{ opacity: 0, y: 30, scale: 0.98 }}
