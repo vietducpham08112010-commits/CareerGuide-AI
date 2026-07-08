@@ -216,7 +216,7 @@ const AnimatedLogoButton = ({ onClick, text, isCollapsed = false, className = ""
         }}
         transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
         style={{ backgroundSize: "200% 200%" }}
-        className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500 dark:from-indigo-400 dark:via-fuchsia-400 dark:to-pink-400 whitespace-nowrap"
+        className="font-bold text-base sm:text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500 dark:from-indigo-400 dark:via-fuchsia-400 dark:to-pink-400 whitespace-nowrap"
       >
         {text}
       </motion.span>
@@ -793,12 +793,12 @@ export default function App() {
   const landingCareersScrollRef = useRef<HTMLDivElement>(null);
   const scrollLandingCareersLeft = () => {
     if (landingCareersScrollRef.current) {
-      landingCareersScrollRef.current.scrollBy({ left: -320, behavior: 'smooth' });
+      landingCareersScrollRef.current.scrollBy({ left: -400, behavior: 'smooth' });
     }
   };
   const scrollLandingCareersRight = () => {
     if (landingCareersScrollRef.current) {
-      landingCareersScrollRef.current.scrollBy({ left: 320, behavior: 'smooth' });
+      landingCareersScrollRef.current.scrollBy({ left: 400, behavior: 'smooth' });
     }
   };
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -1927,18 +1927,18 @@ export default function App() {
   const renderLanding = () => {
     return (
       <div className="min-h-screen bg-white dark:bg-[#050505] text-slate-900 dark:text-white transition-colors duration-500 overflow-x-hidden bg-mesh-grid">
-        <nav className="fixed w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-sm bg-white/70 dark:bg-[#050505]/70 border-b border-gray-200 dark:border-white/5">
+        <nav className="fixed w-full z-50 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center backdrop-blur-sm bg-white/70 dark:bg-[#050505]/70 border-b border-gray-200 dark:border-white/5">
           <AnimatedLogoButton 
             onClick={() => { setMode(AppMode.LANDING); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
             text={t.appName} 
           />
-          <div className="flex items-center gap-4">
-             <button onClick={toggleLang} className="flex items-center gap-1 text-sm font-medium hover:text-indigo-500 transition-colors text-gray-600 dark:text-gray-300">
-                <Icons.Globe className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 sm:gap-4">
+             <button onClick={toggleLang} className="flex items-center gap-0.5 sm:gap-1 text-xs sm:text-sm font-medium hover:text-indigo-500 transition-colors text-gray-600 dark:text-gray-300">
+                <Icons.Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>{lang === Language.EN ? 'VI' : 'EN'}</span>
              </button>
-             <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                {theme === Theme.LIGHT ? <Icons.Moon className="w-5 h-5"/> : <Icons.Sun className="w-5 h-5"/>}
+             <button onClick={toggleTheme} className="p-1.5 sm:p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                {theme === Theme.LIGHT ? <Icons.Moon className="w-4 h-4 sm:w-5 sm:h-5"/> : <Icons.Sun className="w-4 h-4 sm:w-5 sm:h-5"/>}
               </button>
 
              {/* Exclusive Glowing Judge Privilege Bypass Button on Navbar */}
@@ -1966,9 +1966,9 @@ export default function App() {
                        whileHover={{ scale: 1.05 }}
                        whileTap={{ scale: 0.95 }}
                        onClick={() => setMode(AppMode.DASHBOARD)} 
-                       className="bg-black dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full font-bold transition-shadow hover:shadow-lg hover:shadow-indigo-500/20 flex items-center gap-2"
+                       className="bg-black dark:bg-white text-white dark:text-black px-3.5 py-1.5 sm:px-6 sm:py-2.5 rounded-full font-bold transition-shadow hover:shadow-lg hover:shadow-indigo-500/20 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-base"
                     >
-                       <Icons.Briefcase className="w-4 h-4" />
+                       <Icons.Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                        {t.dashboard}
                     </motion.button>
                  </div>
@@ -1979,7 +1979,7 @@ export default function App() {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => { setMode(AppMode.AUTH); setAuthType('login'); }} 
-                        className="bg-black dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full font-bold transition-shadow hover:shadow-lg hover:shadow-indigo-500/20"
+                        className="bg-black dark:bg-white text-white dark:text-black px-3.5 py-1.5 sm:px-6 sm:py-2.5 rounded-full font-bold transition-shadow hover:shadow-lg hover:shadow-indigo-500/20 text-xs sm:text-base"
                     >
                         {t.getStarted}
                     </motion.button>
@@ -2033,7 +2033,7 @@ export default function App() {
                 hidden: { opacity: 0, y: 30 },
                 visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 150, damping: 18 } }
               }}
-              className="text-6xl md:text-8xl font-bold leading-[1.1] tracking-tight text-balance"
+              className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-bold leading-tight md:leading-[1.1] tracking-tight text-balance px-4"
             >
               {t.heroTitlePrefix}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-cyan-500 animate-gradient-x">{t.heroTitleSuffix}</span>
@@ -2066,15 +2066,15 @@ export default function App() {
                 hidden: { opacity: 0, y: 20 },
                 visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
               }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-sm sm:max-w-none px-4"
             >
               {auth.isAuthenticated ? (
-                  <div className="flex flex-col sm:flex-row gap-4 items-center">
+                  <div className="flex flex-col sm:flex-row gap-4 items-center w-full justify-center">
                     <motion.button 
                         whileHover={{ scale: 1.05, y: -4 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setMode(AppMode.DASHBOARD)} 
-                        className="px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-extrabold text-lg transition-shadow shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 flex items-center justify-center gap-2"
+                        className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-extrabold text-sm sm:text-lg transition-shadow shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 flex items-center justify-center gap-2"
                     >
                         {t.goToDashboard} <Icons.ArrowRight className="w-5 h-5" />
                     </motion.button>
@@ -2084,7 +2084,7 @@ export default function App() {
                           whileHover={{ scale: 1.05, y: -4 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={handleActivateDemo} 
-                          className="px-8 py-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white rounded-2xl font-extrabold text-lg transition-shadow shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 flex items-center justify-center gap-2"
+                          className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white rounded-2xl font-extrabold text-sm sm:text-lg transition-shadow shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 flex items-center justify-center gap-2"
                       >
                           <Icons.Sparkles className="w-5 h-5 text-yellow-300 animate-bounce" />
                           {lang === Language.VI ? "Kích hoạt Đặc Quyền BGK (Bypass 60s)" : "Activate Judge Privilege (60s)"}
@@ -2092,12 +2092,12 @@ export default function App() {
                     )}
                   </div>
               ) : (
-                  <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+                  <div className="flex flex-col sm:flex-row gap-4 items-center justify-center w-full">
                     <motion.button 
                         whileHover={{ scale: 1.05, y: -4 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => { setMode(AppMode.AUTH); setAuthType('login'); }} 
-                        className="px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-extrabold text-lg transition-all border border-transparent dark:hover:bg-slate-100"
+                        className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-extrabold text-sm sm:text-lg transition-all border border-transparent dark:hover:bg-slate-100"
                     >
                         {t.getStarted}
                     </motion.button>
@@ -2107,7 +2107,7 @@ export default function App() {
                         whileHover={{ scale: 1.08, y: -4 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleActivateDemo} 
-                        className="px-8 py-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white rounded-2xl font-black text-lg transition-shadow shadow-xl shadow-emerald-500/40 hover:shadow-emerald-500/60 flex items-center justify-center gap-2.5 animate-pulse"
+                        className="w-full sm:w-auto px-5 py-3.5 sm:px-8 sm:py-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white rounded-2xl font-black text-sm sm:text-lg transition-shadow shadow-xl shadow-emerald-500/40 hover:shadow-emerald-500/60 flex items-center justify-center gap-2.5 animate-pulse"
                     >
                         <Icons.Sparkles className="w-5.5 h-5.5 text-yellow-300 animate-bounce" />
                         <span>{lang === Language.VI ? "TRẢI NGHIỆM NHANH (Bypass 60s)" : "FAST EXPERIENCE (60s Bypass)"}</span>
@@ -2159,8 +2159,8 @@ export default function App() {
              <ScrollReveal>
                  <div className="mb-12 text-center md:text-left relative">
                     <div className="absolute -top-10 -left-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl"></div>
-                    <h2 className="text-3xl md:text-5xl font-bold mb-4 relative z-10">{t.hotIndustriesTitle}</h2>
-                    <p className="text-xl text-gray-500 max-w-2xl relative z-10">{t.hotIndustriesSub}</p>
+                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold leading-tight mb-4 relative z-10">{t.hotIndustriesTitle}</h2>
+                    <p className="text-lg sm:text-xl text-gray-500 max-w-2xl relative z-10">{t.hotIndustriesSub}</p>
                  </div>
              </ScrollReveal>
              
@@ -2225,7 +2225,7 @@ export default function App() {
         <section className="py-16 md:py-24 px-6 max-w-7xl mx-auto">
              <ScrollReveal>
                  <div className="mb-12 md:mb-16">
-                     <h2 className="text-3xl md:text-5xl font-bold mb-4 md:mb-6 text-balance">{t.featureHeader} <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-fuchsia-500 italic">{t.featureHeaderHighlight}</span> {t.featureHeaderSuffix}</h2>
+                     <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold leading-tight mb-4 md:mb-6 text-balance">{t.featureHeader} <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-fuchsia-500 italic">{t.featureHeaderHighlight}</span> {t.featureHeaderSuffix}</h2>
                      <p className="text-lg md:text-xl text-gray-500 max-w-2xl">{t.featureSub}</p>
                  </div>
              </ScrollReveal>
@@ -2587,6 +2587,36 @@ export default function App() {
                                     </>
                                 )}
                             </ul>
+                        </div>
+                    )}
+
+                    {(authError.includes('api-key-not-valid') || authError.includes('invalid-api-key') || authError.includes('API key') || authError.includes('firebaseNotConfigured') || authError.includes('Firebase connection error') || authError.includes('Firebase: Error')) && (
+                        <div className="mt-3 pt-3 border-t border-red-200/50 dark:border-red-800/30 text-xs text-gray-700 dark:text-gray-300 space-y-3">
+                            <p className="font-bold text-red-800 dark:text-red-300">
+                                {lang === Language.VI ? "💡 GIẢI PHÁP BỎ QUA NHANH:" : "💡 QUICK BYPASS SOLUTIONS:"}
+                            </p>
+                            <p className="text-gray-600 dark:text-gray-400 text-[11px] leading-relaxed">
+                                {lang === Language.VI 
+                                    ? "Do bạn chưa hoàn thành cấu hình hoặc khóa Firebase không hợp lệ, bạn vẫn có thể trải nghiệm toàn bộ tính năng của ứng dụng (Định hướng, Chat AI, lộ trình học tập, v.v.) bằng chế độ Khách hoặc Trải Nghiệm Nhanh sau đây:"
+                                    : "Since Firebase is not fully configured or the API Key is invalid, you can still experience all the features of the app (Career guidance, AI Chat, Roadmaps, etc.) using the Guest or Demo modes:"}
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-2 pt-1.5">
+                                <button
+                                    type="button"
+                                    onClick={handleGuestLogin}
+                                    className="flex-1 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs text-center transition-colors shadow-sm cursor-pointer"
+                                >
+                                    {lang === Language.VI ? "Chế độ Khách (Guest Mode)" : "Guest Mode"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleActivateDemo}
+                                    className="flex-1 px-3 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold rounded-lg text-xs text-center transition-colors shadow-sm flex items-center justify-center gap-1 cursor-pointer"
+                                >
+                                    <Icons.Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                                    {lang === Language.VI ? "Trải Nghiệm Nhanh (Demo)" : "Demo Mode"}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -3086,7 +3116,7 @@ export default function App() {
           >
             {tab === DashboardTab.CHAT && (
             <div className={`flex-1 flex flex-col h-full overflow-hidden relative ${messages.length === 0 ? 'w-full max-w-3xl mx-auto' : ''}`}>
-                <div className={`overflow-y-auto p-4 md:p-8 space-y-4 md:space-y-6 scroll-smooth ${messages.length === 0 ? 'flex flex-col items-center justify-end h-auto pb-4' : 'flex-1'}`}>
+                <div className={`overflow-y-auto p-4 md:p-8 space-y-4 md:space-y-6 scroll-smooth ${messages.length === 0 ? 'flex-1 flex flex-col items-center justify-center' : 'flex-1'}`}>
                     {isLoadingData ? (
                         <div className="w-full h-full flex flex-col justify-end gap-6 p-4">
                             <div className="flex items-start gap-4 animate-pulse">
@@ -3103,15 +3133,15 @@ export default function App() {
                     ) : (
                         <>
                             {messages.length === 0 && (
-                                <div className="w-full flex-col flex justify-center items-center mt-20 md:mt-32 mb-8">
+                                <div className="w-full max-w-3xl flex-col flex justify-center items-center py-6 sm:py-12">
                                     <motion.div 
                                         initial={{ opacity: 0, y: 40 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                                        className="w-full flex justify-center items-center gap-3"
+                                        className="w-full flex justify-center items-center gap-3 text-center px-4"
                                     >
                                         <CareerGuideLogo className="w-8 h-8 md:w-12 md:h-12 text-[#E3AA8B] dark:text-[#D4A373] flex-shrink-0" />
-                                        <h1 className="text-3xl md:text-5xl font-sans font-medium text-[#E3AA8B] dark:text-[#D4A373] tracking-tight">
+                                        <h1 className="text-2xl sm:text-3xl md:text-5xl font-sans font-medium text-[#E3AA8B] dark:text-[#D4A373] tracking-tight text-center">
                                             {greeting.text}, {greeting.name}
                                         </h1>
                                     </motion.div>
@@ -3119,7 +3149,7 @@ export default function App() {
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                                        className="text-gray-500 dark:text-gray-400 text-lg md:text-xl text-center max-w-2xl mt-4"
+                                        className="text-gray-500 dark:text-gray-400 text-sm sm:text-base md:text-lg text-center max-w-xl mt-3 px-4"
                                     >
                                         {welcomePhrase}
                                     </motion.p>
@@ -3388,25 +3418,33 @@ export default function App() {
 
                     </form>
 
-                    {messages.length === 0 && (
-                        <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-3xl mb-8">
-                            {SUGGESTION_PROMPTS[lang] && SUGGESTION_PROMPTS[lang].map((suggestion, idx) => {
-                                const IconComponent = (Icons as any)[suggestion.icon] || Icons.MessageSquare;
-                                return (
-                                    <motion.button
-                                        key={idx}
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() => handleSendMessage(undefined, suggestion.prompt)}
-                                        className="px-4 py-2 rounded-full border border-gray-200 dark:border-white/10 text-sm font-medium transition-all hover:bg-gray-100 dark:hover:bg-white/10 bg-white dark:bg-white/5 flex items-center gap-2 text-gray-700 dark:text-gray-300"
-                                    >
-                                        <IconComponent className="w-4 h-4 text-gray-500" />
-                                        {suggestion.title}
-                                    </motion.button>
-                                );
-                            })}
-                        </div>
-                    )}
+                    <AnimatePresence>
+                        {messages.length === 0 && !inputMsg.trim() && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 15, height: 0 }}
+                                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                                exit={{ opacity: 0, y: 15, height: 0 }}
+                                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                className="flex flex-wrap justify-center gap-2 mt-4 max-w-3xl mb-4 overflow-hidden"
+                            >
+                                {SUGGESTION_PROMPTS[lang] && SUGGESTION_PROMPTS[lang].map((suggestion, idx) => {
+                                    const IconComponent = (Icons as any)[suggestion.icon] || Icons.MessageSquare;
+                                    return (
+                                        <motion.button
+                                            key={idx}
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() => handleSendMessage(undefined, suggestion.prompt)}
+                                            className="px-4 py-2 rounded-full border border-gray-200 dark:border-white/10 text-xs sm:text-sm font-medium transition-all hover:bg-gray-100 dark:hover:bg-white/10 bg-white dark:bg-white/5 flex items-center gap-2 text-gray-700 dark:text-gray-300 shadow-sm"
+                                        >
+                                            <IconComponent className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                                            {suggestion.title}
+                                        </motion.button>
+                                    );
+                                })}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
                  <div className="text-center pb-2 text-[10px] text-gray-400 uppercase tracking-widest font-bold opacity-60">{t.footerDisclaimer}</div>
             </div>
@@ -3603,38 +3641,6 @@ export default function App() {
         )}
         </motion.div>
         </AnimatePresence>
-        
-        {/* Mobile Bottom Navigation */}
-        <div className="md:hidden shrink-0 h-16 bg-white dark:bg-[#0a0a0a] border-t border-gray-200 dark:border-white/5 flex items-center justify-around px-2 z-20 pb-safe">
-            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setTab(DashboardTab.CHAT)} className={`group flex flex-col items-center justify-center w-16 h-full ${tab === DashboardTab.CHAT ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'}`}>
-                <Icons.MessageSquare className="w-5 h-5 mb-1 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />
-                <span className="text-[10px] font-medium truncate w-full text-center px-1">{t.chatMode}</span>
-            </motion.button>
-            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setTab(DashboardTab.VOICE)} className={`group flex flex-col items-center justify-center w-16 h-full ${tab === DashboardTab.VOICE ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'}`}>
-                <Icons.Microphone className="w-5 h-5 mb-1 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />
-                <span className="text-[10px] font-medium truncate w-full text-center px-1">{t.voiceMode}</span>
-            </motion.button>
-            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setTab(DashboardTab.QUIZ)} className={`group flex flex-col items-center justify-center w-16 h-full ${tab === DashboardTab.QUIZ ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'}`}>
-                <Icons.Zap className="w-5 h-5 mb-1 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
-                <span className="text-[10px] font-medium truncate w-full text-center px-1">{t.careerQuizTitle}</span>
-            </motion.button>
-            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setTab(DashboardTab.PROGRESS)} className={`group flex flex-col items-center justify-center w-16 h-full ${tab === DashboardTab.PROGRESS ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'}`}>
-                <Icons.Target className="w-5 h-5 mb-1 transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110" />
-                <span className="text-[10px] font-medium truncate w-full text-center px-1">{t.progress}</span>
-            </motion.button>
-            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setTab(DashboardTab.MOCK_INTERVIEW)} className={`group flex flex-col items-center justify-center w-16 h-full ${tab === DashboardTab.MOCK_INTERVIEW ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'}`}>
-                <Icons.Cpu className="w-5 h-5 mb-1 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
-                <span className="text-[10px] font-medium truncate w-full text-center px-1">{t.mockInterview}</span>
-            </motion.button>
-            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setTab(DashboardTab.PORTFOLIO)} className={`group flex flex-col items-center justify-center w-16 h-full ${tab === DashboardTab.PORTFOLIO ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'}`}>
-                <Icons.Briefcase className="w-5 h-5 mb-1 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />
-                <span className="text-[10px] font-medium truncate w-full text-center px-1">{t.portfolio}</span>
-            </motion.button>
-            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setTab(DashboardTab.SCHOLARSHIPS)} className={`flex flex-col items-center justify-center w-16 h-full ${tab === DashboardTab.SCHOLARSHIPS ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'}`}>
-                <Icons.Search className="w-5 h-5 mb-1" />
-                <span className="text-[10px] font-medium truncate w-full text-center px-1">{t.scholarships}</span>
-            </motion.button>
-        </div>
       </main>
 
       {/* Profile Modal */}

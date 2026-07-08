@@ -41,14 +41,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({
 
   const grades = isVi ? [
     { id: '9-below', label: 'Học sinh Lớp 9 hoặc thấp hơn', desc: 'Định hướng ôn thi vào lớp 10 & lựa chọn tổ hợp môn học sớm' },
-    { id: '10', label: 'Học sinh Lớp 10 trở xuống', desc: 'Mới vào THPT, làm quen môi trường học tập mới' },
+    { id: '10', label: 'Học sinh Lớp 10', desc: 'Mới vào THPT, làm quen môi trường học tập mới' },
     { id: '11', label: 'Học sinh Lớp 11', desc: 'Chọn tổ hợp chuyên sâu, bồi đắp kỹ năng' },
     { id: '12', label: 'Học sinh Lớp 12', desc: 'Ôn thi Đại học & tìm cơ hội Học bổng' },
     { id: 'uni', label: 'Sinh viên Đại học', desc: 'Cần bổ túc lộ trình việc làm, CV/Portfolio' },
     { id: 'other', label: 'Giai đoạn khác / Phụ huynh', desc: 'Hướng nghiệp cho tương lai dài hạn' },
   ] : [
     { id: '9-below', label: '9th Grade or Below Student', desc: 'Preparing for High School entrance exam & early cluster selection' },
-    { id: '10', label: '10th Grade and Below Student', desc: 'Starting high school, finding interest fields' },
+    { id: '10', label: '10th Grade Student', desc: 'Starting high school, finding interest fields' },
     { id: '11', label: '11th Grade Student', desc: 'Diving deeper, matching skill sets' },
     { id: '12', label: '12th Grade Student', desc: 'College prep & searching scholarships' },
     { id: 'uni', label: 'University Student', desc: 'Expanding competencies, compiling Portfolio/CV' },

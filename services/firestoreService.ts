@@ -20,26 +20,30 @@ if (configFiles.length > 0) {
 }
 
 const fallbackConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDRv2bfw0ncLYCUsjWrUeGoTwglyrpCRdU",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "careerguideaiforeveryone-1.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "careerguideaiforeveryone-1",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "careerguideaiforeveryone-1.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1024644813771",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1024644813771:web:1d3ce4b9ba6e98f6efdc4e",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-M0QS8VL6XY",
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || 'ai-studio-careercompassaib-9a817e3b-b82f-4260-bfa8-3a1843a2c4f2'
+  apiKey: "AIzaSyDRv2bfw0ncLYCUsjWrUeGoTwglyrpCRdU",
+  authDomain: "careerguideaiforeveryone-1.firebaseapp.com",
+  projectId: "careerguideaiforeveryone-1",
+  storageBucket: "careerguideaiforeveryone-1.firebasestorage.app",
+  messagingSenderId: "1024644813771",
+  appId: "1:1024644813771:web:1d3ce4b9ba6e98f6efdc4e",
+  measurementId: "G-M0QS8VL6XY",
+  firestoreDatabaseId: 'default'
 };
+
+// Check if there is a non-default custom environment variable setup, otherwise default to the user's custom project
+const useEnv = import.meta.env.VITE_FIREBASE_PROJECT_ID && 
+               import.meta.env.VITE_FIREBASE_PROJECT_ID !== 'career-compass-ai-40718';
 
 // Merge workspace config if it exists, prioritizing the file-based configuration (firebase-applet-config)
 const activeFirebaseConfig = {
-  apiKey: firebaseConfig.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || fallbackConfig.apiKey,
-  authDomain: firebaseConfig.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || fallbackConfig.authDomain,
-  projectId: firebaseConfig.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID || fallbackConfig.projectId,
-  storageBucket: firebaseConfig.storageBucket || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || fallbackConfig.storageBucket,
-  messagingSenderId: firebaseConfig.messagingSenderId || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || fallbackConfig.messagingSenderId,
-  appId: firebaseConfig.appId || import.meta.env.VITE_FIREBASE_APP_ID || fallbackConfig.appId,
-  measurementId: firebaseConfig.measurementId || import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || fallbackConfig.measurementId,
-  firestoreDatabaseId: firebaseConfig.firestoreDatabaseId || import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || fallbackConfig.firestoreDatabaseId
+  apiKey: firebaseConfig.apiKey || (useEnv ? import.meta.env.VITE_FIREBASE_API_KEY : null) || fallbackConfig.apiKey,
+  authDomain: firebaseConfig.authDomain || (useEnv ? import.meta.env.VITE_FIREBASE_AUTH_DOMAIN : null) || fallbackConfig.authDomain,
+  projectId: firebaseConfig.projectId || (useEnv ? import.meta.env.VITE_FIREBASE_PROJECT_ID : null) || fallbackConfig.projectId,
+  storageBucket: firebaseConfig.storageBucket || (useEnv ? import.meta.env.VITE_FIREBASE_STORAGE_BUCKET : null) || fallbackConfig.storageBucket,
+  messagingSenderId: firebaseConfig.messagingSenderId || (useEnv ? import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID : null) || fallbackConfig.messagingSenderId,
+  appId: firebaseConfig.appId || (useEnv ? import.meta.env.VITE_FIREBASE_APP_ID : null) || fallbackConfig.appId,
+  measurementId: firebaseConfig.measurementId || (useEnv ? import.meta.env.VITE_FIREBASE_MEASUREMENT_ID : null) || fallbackConfig.measurementId,
+  firestoreDatabaseId: firebaseConfig.firestoreDatabaseId || (useEnv ? import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID : null) || fallbackConfig.firestoreDatabaseId
 };
 
 console.log("Firebase Active Config:", {
