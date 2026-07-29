@@ -19,6 +19,9 @@ import { FeedbackModal } from './components/FeedbackModal';
 import { MockInterview } from './components/MockInterview';
 import { InlineGuide } from './components/InlineGuide';
 import { Onboarding } from './components/Onboarding';
+import { RoadmapPromptBuilder } from './components/RoadmapPromptBuilder';
+import { CareerLifecycleManager } from './components/CareerLifecycleManager';
+import { MonetizationRewardsHub } from './components/MonetizationRewardsHub';
 import { 
   syncUserProfileToCloud, 
   fetchUserProfileFromCloud, 
@@ -1721,7 +1724,13 @@ export default function App() {
       setMessages([]);
       setCurrentSessionId(null);
       setCurrentChatTitle('');
+      setIsTemporaryChat(false);
       setTab(DashboardTab.CHAT);
+  };
+
+  const startTemporaryChat = () => {
+      startNewChat(false);
+      setIsTemporaryChat(true);
   };
 
   const loadSession = (session: ChatSession) => {
@@ -2797,7 +2806,7 @@ export default function App() {
                 </button>
             </div>
             
-            <div className="px-4 mb-2">
+            <div className="px-4 mb-2 space-y-2">
                 <motion.button 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -2805,6 +2814,14 @@ export default function App() {
                     className="w-full flex items-center justify-center gap-3 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold shadow-lg"
                 >
                     <span className="text-xl leading-none">+</span> {t.newChat}
+                </motion.button>
+                <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => { startTemporaryChat(); setIsMobileSidebarOpen(false); }} 
+                    className="w-full flex items-center justify-center gap-3 py-3 border border-dashed border-amber-500/50 dark:border-amber-400/30 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-400/10 rounded-xl font-bold transition-all shadow-sm"
+                >
+                    <Icons.Shield className="w-4 h-4 text-amber-500" /> {t.temporaryChat}
                 </motion.button>
             </div>
             
@@ -2814,6 +2831,9 @@ export default function App() {
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.TRENDING); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.TRENDING ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Flame className="w-5 h-5" />{t.trendingCareers}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.QUIZ); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.QUIZ ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Zap className="w-5 h-5" />{t.careerQuizTitle}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.PROGRESS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.PROGRESS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Target className="w-5 h-5" />{t.progress}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.PROMPT_BUILDER); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.PROMPT_BUILDER ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Sparkles className="w-5 h-5 text-indigo-500" />{t.promptBuilder || 'Mẫu & Tạo Prompt AI'}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.CAREER_LIFECYCLE); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.CAREER_LIFECYCLE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Compass className="w-5 h-5 text-teal-500" />{t.careerLifecycle || 'Vòng đời sự nghiệp'}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.MONETIZATION_PARTNERS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.MONETIZATION_PARTNERS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.CreditCard className="w-5 h-5 text-emerald-500" />{t.monetizationPartners || 'Gói cước & Đối tác'}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.PORTFOLIO); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.PORTFOLIO ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Briefcase className="w-5 h-5" />{t.portfolio}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.SCHOLARSHIPS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.SCHOLARSHIPS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Search className="w-5 h-5" />{t.scholarships}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.SCORES); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.SCORES ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.BookOpen className="w-5 h-5" />{t.universityScores}</motion.button>
@@ -2895,14 +2915,24 @@ export default function App() {
                 />
         </div>
         
-        <div className="px-4 mb-2">
+        <div className="px-4 mb-2 space-y-2">
             <motion.button 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => startNewChat()} 
                 className={`w-full flex items-center justify-center gap-3 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl transition-all font-bold shadow-lg ${isSidebarOpen ? 'px-4' : 'px-0'}`}
+                title={t.newChat}
             >
-                <span className="text-xl leading-none">+</span> {isSidebarOpen && t.newChat}
+                <Icons.Plus className="w-5 h-5 flex-shrink-0" /> {isSidebarOpen && t.newChat}
+            </motion.button>
+            <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => startTemporaryChat()} 
+                className={`w-full flex items-center justify-center gap-3 py-3 border border-dashed border-amber-500/50 dark:border-amber-400/30 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-400/10 rounded-xl transition-all font-bold shadow-sm ${isSidebarOpen ? 'px-4' : 'px-0'}`}
+                title={t.temporaryChat}
+            >
+                <Icons.Shield className="w-5 h-5 flex-shrink-0 text-amber-500 animate-pulse" /> {isSidebarOpen && t.temporaryChat}
             </motion.button>
         </div>
         
@@ -2912,6 +2942,9 @@ export default function App() {
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.TRENDING)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.TRENDING ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.trendingCareers}><Icons.Flame className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.trendingCareers}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.QUIZ)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.QUIZ ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerQuizTitle}><Icons.Zap className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerQuizTitle}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PROGRESS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PROGRESS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.progress}><Icons.Target className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.progress}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PROMPT_BUILDER)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PROMPT_BUILDER ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.promptBuilder || 'Mẫu & Tạo Prompt AI'}><Icons.Sparkles className="w-5 h-5 flex-shrink-0 text-indigo-500 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.promptBuilder || 'Mẫu & Tạo Prompt AI'}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.CAREER_LIFECYCLE)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.CAREER_LIFECYCLE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerLifecycle || 'Vòng đời sự nghiệp'}><Icons.Compass className="w-5 h-5 flex-shrink-0 text-teal-500 transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerLifecycle || 'Vòng đời sự nghiệp'}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.MONETIZATION_PARTNERS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.MONETIZATION_PARTNERS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.monetizationPartners || 'Gói cước & Đối tác'}><Icons.CreditCard className="w-5 h-5 flex-shrink-0 text-emerald-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.monetizationPartners || 'Gói cước & Đối tác'}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.MOCK_INTERVIEW)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.MOCK_INTERVIEW ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.mockInterview}><Icons.Cpu className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.mockInterview}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PORTFOLIO)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PORTFOLIO ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.portfolio}><Icons.Briefcase className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.portfolio}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.SCHOLARSHIPS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.SCHOLARSHIPS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.scholarships}><Icons.Search className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.scholarships}</span>}</motion.button>
@@ -3116,6 +3149,24 @@ export default function App() {
           >
             {tab === DashboardTab.CHAT && (
             <div className={`flex-1 flex flex-col h-full overflow-hidden relative ${messages.length === 0 ? 'w-full max-w-3xl mx-auto' : ''}`}>
+                {isTemporaryChat && (
+                    <div className="w-full bg-amber-500/10 dark:bg-amber-400/5 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between text-xs text-amber-700 dark:text-amber-400 z-20 animate-fade-in">
+                        <div className="flex items-center gap-2">
+                            <Icons.Shield className="w-4 h-4 text-amber-500 flex-shrink-0 animate-pulse" />
+                            <span className="font-medium">
+                                {lang === Language.VI 
+                                    ? "Chế độ Trò chuyện tạm thời đang hoạt động. Tin nhắn trong phiên này sẽ không được lưu." 
+                                    : "Temporary Chat mode is active. Messages in this session will not be saved."}
+                            </span>
+                        </div>
+                        <button 
+                            onClick={() => startNewChat()}
+                            className="text-[10px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-300 px-2 py-1 rounded transition-colors cursor-pointer"
+                        >
+                            {lang === Language.VI ? "Thoát" : "Exit"}
+                        </button>
+                    </div>
+                )}
                 <div className={`overflow-y-auto p-4 md:p-8 space-y-4 md:space-y-6 scroll-smooth ${messages.length === 0 ? 'flex-1 flex flex-col items-center justify-center' : 'flex-1'}`}>
                     {isLoadingData ? (
                         <div className="w-full h-full flex flex-col justify-end gap-6 p-4">
@@ -3590,7 +3641,47 @@ export default function App() {
                 onConnectGoogleCalendar={handleGoogleCalendarConnect}
                 showToast={showToast}
                 onNavigateToChat={() => setTab(DashboardTab.CHAT)} 
+                onSendPromptToChat={(promptText) => {
+                    setTab(DashboardTab.CHAT);
+                    handleSendMessage(undefined, promptText);
+                }}
             />
+        )}
+        {tab === DashboardTab.PROMPT_BUILDER && (
+            <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#050505] overflow-y-auto p-4 md:p-6">
+                <RoadmapPromptBuilder
+                    language={lang}
+                    user={auth.user}
+                    onSendPromptToChat={(promptText) => {
+                        setTab(DashboardTab.CHAT);
+                        handleSendMessage(undefined, promptText);
+                    }}
+                    showToast={showToast}
+                />
+            </div>
+        )}
+        {tab === DashboardTab.CAREER_LIFECYCLE && (
+            <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#050505] overflow-y-auto p-4 md:p-6">
+                <CareerLifecycleManager
+                    language={lang}
+                    user={auth.user}
+                    onSendPromptToChat={(promptText) => {
+                        setTab(DashboardTab.CHAT);
+                        handleSendMessage(undefined, promptText);
+                    }}
+                    showToast={showToast}
+                />
+            </div>
+        )}
+        {tab === DashboardTab.MONETIZATION_PARTNERS && (
+            <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#050505] overflow-y-auto p-4 md:p-6">
+                <MonetizationRewardsHub
+                    language={lang}
+                    user={auth.user}
+                    showToast={showToast}
+                    onNavigateToChat={() => setTab(DashboardTab.CHAT)}
+                />
+            </div>
         )}
         {tab === DashboardTab.MOCK_INTERVIEW && (
             <MockInterview 
