@@ -22,6 +22,9 @@ import { Onboarding } from './components/Onboarding';
 import { RoadmapPromptBuilder } from './components/RoadmapPromptBuilder';
 import { CareerLifecycleManager } from './components/CareerLifecycleManager';
 import { MonetizationRewardsHub } from './components/MonetizationRewardsHub';
+import { CvBuilder } from './components/CvBuilder';
+import { UpgradeModal } from './components/UpgradeModal';
+import { getSubscriptionDetails } from './utils/subscriptionUtils';
 import { 
   syncUserProfileToCloud, 
   fetchUserProfileFromCloud, 
@@ -116,6 +119,7 @@ const Icons = {
   HelpCircle: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
   Square: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="3" rx="2"/></svg>,
   Settings: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+  Lock: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
 };
 
 // --- CAREER GUIDE AI LOGO ---
@@ -328,7 +332,13 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
   const [quizLength, setQuizLength] = useState<number | null>(null);
   const [step, setStep] = useState(0);
   const [scores, setScores] = useState({ R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 });
+  const [answersHistory, setAnswersHistory] = useState<{ step: number; value: number; type: string }[]>([]);
   const [result, setResult] = useState<string | null>(null);
+  const [detailedResult, setDetailedResult] = useState<{
+    topCode: string;
+    sortedScores: { type: string; score: number; percentage: number }[];
+    topDescription: string;
+  } | null>(null);
 
   const allQuestions = isVi ? [
     // Round 1 (1-6)
@@ -365,7 +375,42 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
     { text: 'Mình thích sáng tác bài hát, thiết kế thời trang hoặc đồ họa.', type: 'A' },
     { text: 'Mình thích tư vấn tâm lý, lắng nghe và đưa ra lời khuyên cho mọi người.', type: 'S' },
     { text: 'Mình thích quản lý một đội nhóm, chịu trách nhiệm về chỉ tiêu doanh số.', type: 'E' },
-    { text: 'Mình thích lập báo cáo chi tiết, thống kê số liệu trên máy tính.', type: 'C' }
+    { text: 'Mình thích lập báo cáo chi tiết, thống kê số liệu trên máy tính.', type: 'C' },
+    // Round 6 (31-36)
+    { text: 'Mình thích đo đạc, khảo sát địa hình hoặc chăm sóc cây trồng, nông nghiệp.', type: 'R' },
+    { text: 'Mình thích đọc tạp chí khoa học, tìm hiểu giả thuyết toán học mới.', type: 'I' },
+    { text: 'Mình thích thiết kế nội thất, sáng tạo kịch bản quảng cáo hoặc quay phim.', type: 'A' },
+    { text: 'Mình thích hỗ trợ Y tế, chăm sóc sức khỏe cộng đồng và người bệnh.', type: 'S' },
+    { text: 'Mình thích kêu gọi vốn đầu tư, đàm phán các giao dịch thương mại lớn.', type: 'E' },
+    { text: 'Mình thích quản lý ngân sách thu chi, lập hóa đơn và rà soát kế toán.', type: 'C' },
+    // Round 7 (37-42)
+    { text: 'Mình thích lắp ráp, bảo trì hệ thống rô-bốt hoặc tự động hóa công nghiệp.', type: 'R' },
+    { text: 'Mình thích nghiên cứu thuật toán máy tính, mô phỏng dữ liệu hoặc AI.', type: 'I' },
+    { text: 'Mình thích chụp ảnh nghệ thuật, biên tập video chuyên nghiệp hoặc làm gốm.', type: 'A' },
+    { text: 'Mình thích kết nối cộng đồng, tổ chức chương trình hỗ trợ thanh thiếu niên.', type: 'S' },
+    { text: 'Mình thích tiếp thị sản phẩm, xây dựng thương hiệu cá nhân hoặc truyền thông.', type: 'E' },
+    { text: 'Mình thích kiểm toán giấy tờ, lưu trữ hồ sơ thuế và hợp đồng pháp lý.', type: 'C' },
+    // Round 8 (43-48)
+    { text: 'Mình thích chế tác đồ gỗ, làm mộc hoặc thi công công trình xây dựng.', type: 'R' },
+    { text: 'Mình thích điều tra, khám phá nguyên nhân của các hiện tượng tự nhiên.', type: 'I' },
+    { text: 'Mình thích hòa âm phối khí, sản xuất âm nhạc hoặc dàn dựng sân khấu.', type: 'A' },
+    { text: 'Mình thích tham vấn tâm lý học đường, hỗ trợ trẻ em có hoàn cảnh khó khăn.', type: 'S' },
+    { text: 'Mình thích quản trị chuỗi cung ứng, mở rộng chi nhánh hoặc thương lượng mua bán.', type: 'E' },
+    { text: 'Mình thích cập nhật bảng lương, kiểm kê kho hàng và quản lý tài sản cố định.', type: 'C' },
+    // Round 9 (49-54)
+    { text: 'Mình thích sửa chữa phần cứng máy tính, thiết bị điện dân dụng hoặc viễn thông.', type: 'R' },
+    { text: 'Mình thích viết bài báo khoa học hoặc tham gia phát minh sáng chế mới.', type: 'I' },
+    { text: 'Mình thích múa, đạo diễn sân khấu kịch hoặc sáng tạo nghệ thuật đương đại.', type: 'A' },
+    { text: 'Mình thích làm công tác cứu trợ thiên tai, phụng sự cộng đồng xã hội.', type: 'S' },
+    { text: 'Mình thích điều hành công ty, đưa ra các quyết định chiến lược kinh doanh.', type: 'E' },
+    { text: 'Mình thích xây dựng danh mục tài liệu ngăn nắp và tự động hóa quy trình văn phòng.', type: 'C' },
+    // Round 10 (55-60)
+    { text: 'Mình thích bảo dưỡng xe cộ, máy móc công nghiệp nặng hoặc thiết bị hàng không.', type: 'R' },
+    { text: 'Mình thích giải mã dữ liệu y sinh, phân tích gen hoặc sinh học phân tử.', type: 'I' },
+    { text: 'Mình thích vẽ tranh minh họa, thiết kế phụ kiện thời trang hoặc thủ công mỹ nghệ.', type: 'A' },
+    { text: 'Mình thích làm huấn luyện viên cá nhân (coaching), định hướng phát triển con người.', type: 'S' },
+    { text: 'Mình thích quản lý dự án quy mô lớn và thúc đẩy tăng trưởng doanh thu.', type: 'E' },
+    { text: 'Mình thích rà soát tính tuân thủ pháp lý, đối chiếu sổ sách và chứng từ doanh nghiệp.', type: 'C' }
   ] : [
     // Round 1 (1-6)
     { text: 'I like to work with animals, tools, or machines.', type: 'R' },
@@ -401,7 +446,42 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
     { text: 'I like songwriting, fashion design, or graphic illustration.', type: 'A' },
     { text: 'I like counseling, active listening, and giving life advice.', type: 'S' },
     { text: 'I like managing a team and being responsible for targets.', type: 'E' },
-    { text: 'I like compiling detailed reports and typing database entries.', type: 'C' }
+    { text: 'I like compiling detailed reports and typing database entries.', type: 'C' },
+    // Round 6 (31-36)
+    { text: 'I enjoy land surveying, agriculture, or working with crops.', type: 'R' },
+    { text: 'I enjoy reading scientific journals and investigating mathematical theories.', type: 'I' },
+    { text: 'I enjoy interior decoration, filmmaking, or advertising concepts.', type: 'A' },
+    { text: 'I enjoy healthcare assistance, patient care, or community health.', type: 'S' },
+    { text: 'I enjoy venture fundraising, investing, and commercial deal-making.', type: 'E' },
+    { text: 'I enjoy budget accounting, invoicing, and auditing financial ledgers.', type: 'C' },
+    // Round 7 (37-42)
+    { text: 'I enjoy assembling, testing, or maintaining robotics hardware.', type: 'R' },
+    { text: 'I enjoy researching computer algorithms, data simulation, or AI.', type: 'I' },
+    { text: 'I enjoy artistic photography, video editing, or pottery crafting.', type: 'A' },
+    { text: 'I enjoy community outreach and organizing youth empowerment programs.', type: 'S' },
+    { text: 'I enjoy product marketing, personal branding, and media campaigns.', type: 'E' },
+    { text: 'I enjoy auditing tax documents, contract compliance, and legal filing.', type: 'C' },
+    // Round 8 (43-48)
+    { text: 'I enjoy woodworking, carpentry, or civil construction work.', type: 'R' },
+    { text: 'I enjoy investigating the scientific causes behind natural phenomena.', type: 'I' },
+    { text: 'I enjoy music arrangement, sound engineering, or stage directing.', type: 'A' },
+    { text: 'I enjoy school counseling and supporting underprivileged youth.', type: 'S' },
+    { text: 'I enjoy managing supply chains, branch expansion, or corporate M&A.', type: 'E' },
+    { text: 'I enjoy payroll administration, inventory auditing, and asset logs.', type: 'C' },
+    // Round 9 (49-54)
+    { text: 'I enjoy repairing computer hardware, electrical wiring, or telecom equipment.', type: 'R' },
+    { text: 'I enjoy writing scientific papers or inventing technological solutions.', type: 'I' },
+    { text: 'I enjoy dance choreography, theater direction, or contemporary art.', type: 'A' },
+    { text: 'I enjoy disaster relief work and humanitarian community service.', type: 'S' },
+    { text: 'I enjoy executive leadership, business strategy, and risk governance.', type: 'E' },
+    { text: 'I enjoy structuring corporate filing systems and workflow automation.', type: 'C' },
+    // Round 10 (55-60)
+    { text: 'I enjoy heavy machinery maintenance, automotive or aviation engineering.', type: 'R' },
+    { text: 'I enjoy genomic analysis, microbiological testing, or biomedical data.', type: 'I' },
+    { text: 'I enjoy book illustration, fashion accessory design, or artisan crafts.', type: 'A' },
+    { text: 'I enjoy professional career coaching and personal development mentoring.', type: 'S' },
+    { text: 'I enjoy directing enterprise-scale projects and scaling revenue growth.', type: 'E' },
+    { text: 'I enjoy legal compliance auditing, financial reconciliations, and bookkeeping.', type: 'C' }
   ];
 
   const questions = quizLength ? allQuestions.slice(0, quizLength) : [];
@@ -411,11 +491,22 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
     const typeKey = q.type as keyof typeof scores;
     const newScores = { ...scores, [typeKey]: scores[typeKey] + value };
     setScores(newScores);
+    setAnswersHistory([...answersHistory, { step, value, type: q.type }]);
+
     if (step < questions.length - 1) {
       setStep(step + 1);
     } else {
       calculateResult(newScores, questions);
     }
+  };
+
+  const handlePrevQuestion = () => {
+    if (step <= 0 || answersHistory.length === 0) return;
+    const lastAns = answersHistory[answersHistory.length - 1];
+    const typeKey = lastAns.type as keyof typeof scores;
+    setScores({ ...scores, [typeKey]: Math.max(0, scores[typeKey] - lastAns.value) });
+    setAnswersHistory(answersHistory.slice(0, -1));
+    setStep(step - 1);
   };
 
   const calculateResult = (finalScores: typeof scores, activeQuestions: typeof questions) => {
@@ -428,11 +519,19 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
     const normalized = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
     Object.keys(finalScores).forEach(key => {
       const k = key as keyof typeof scores;
-      normalized[k] = counts[k] > 0 ? (finalScores[k] / counts[k]) : 0;
+      normalized[k] = counts[k] > 0 ? (finalScores[k] / (counts[k] * 2)) * 100 : 0;
     });
 
-    const sorted = Object.entries(normalized).sort((a, b) => b[1] - a[1]);
-    const topType = sorted[0][0];
+    const sortedEntries = Object.entries(normalized).sort((a, b) => b[1] - a[1]);
+    const topType = sortedEntries[0][0];
+    const topCode = sortedEntries.slice(0, 3).map(([type]) => type).join('');
+
+    const sortedScores = sortedEntries.map(([type, percentage]) => ({
+      type,
+      score: finalScores[type as keyof typeof scores],
+      percentage: Math.round(percentage)
+    }));
+
     const descriptions: any = {
       R: t.quizRealistic,
       I: t.quizInvestigative,
@@ -441,13 +540,22 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
       E: t.quizEnterprising,
       C: t.quizConventional,
     };
-    setResult(descriptions[topType]);
+
+    setDetailedResult({
+      topCode,
+      sortedScores,
+      topDescription: descriptions[topType] || descriptions['R']
+    });
+
+    setResult(`Mã Holland (RIASEC): ${topCode} - ${descriptions[topType] || ''}`);
   };
 
   const resetQuiz = () => {
     setStep(0);
     setScores({ R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 });
+    setAnswersHistory([]);
     setResult(null);
+    setDetailedResult(null);
     setQuizLength(null);
   };
 
@@ -456,20 +564,20 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
       <motion.div 
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-4xl mx-auto p-6 text-center space-y-6 w-full"
+        className="max-w-5xl mx-auto p-4 sm:p-6 text-center space-y-6 w-full"
       >
         <div className="space-y-2">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             {isVi ? 'Chọn phiên bản trắc nghiệm RIASEC' : 'Select RIASEC Quiz Version'}
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
             {isVi 
-              ? 'Lựa chọn số lượng câu hỏi phù hợp với quỹ thời gian của bạn để bắt đầu khám phá bản thân.' 
-              : 'Choose the number of questions that fits your time to begin self-discovery.'}
+              ? 'Lựa chọn số lượng câu hỏi phù hợp với quỹ thời gian của bạn. Phiên bản 60 câu là bài trắc nghiệm chuẩn quốc tế gốc (Holland Code).' 
+              : 'Choose the question count that fits your time. The 60-question version is the original full Holland Code standard assessment.'}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 items-stretch">
           {[
             { 
               length: 13, 
@@ -500,7 +608,7 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
             { 
               length: 30, 
               title: isVi ? 'Bản Chuyên sâu' : 'In-depth Version', 
-              desc: isVi ? 'Phân tích đầy đủ, chuyên sâu và có độ chính xác cao nhất.' : 'Fully comprehensive', 
+              desc: isVi ? 'Phân tích chi tiết các nhóm sở thích hành vi.' : 'Fully comprehensive', 
               time: isVi ? '⏱️ 6 phút' : '⏱️ 6 mins', 
               badge: isVi ? 'Toàn diện' : 'Complete',
               icon: Icons.Award,
@@ -509,6 +617,19 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
               borderColor: 'hover:border-emerald-400 dark:hover:border-emerald-800',
               textColor: 'text-emerald-600 dark:text-emerald-400',
               glowColor: 'shadow-emerald-500/5 hover:shadow-emerald-500/15'
+            },
+            { 
+              length: 60, 
+              title: isVi ? 'Bản Gốc Đầy Đủ' : 'Original Standard', 
+              desc: isVi ? 'Bộ câu hỏi Holland Code gốc 60 câu, đo đạc tối đa độ chính xác cho 6 nhóm RIASEC.' : 'Original full 60-item Holland Code questionnaire for ultimate accuracy.', 
+              time: isVi ? '⏱️ 10-12 phút' : '⏱️ 10-12 mins', 
+              badge: isVi ? 'Chuẩn Quốc Tế' : 'Official Full',
+              icon: Icons.Compass,
+              color: 'from-rose-500 to-pink-600',
+              bgColor: 'bg-pink-50 dark:bg-pink-950/20',
+              borderColor: 'hover:border-pink-400 dark:hover:border-pink-800',
+              textColor: 'text-pink-600 dark:text-pink-400',
+              glowColor: 'shadow-pink-500/5 hover:shadow-pink-500/15'
             },
           ].map((opt) => {
             const IconComponent = opt.icon;
@@ -521,6 +642,7 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
                   setQuizLength(opt.length);
                   setStep(0);
                   setScores({ R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 });
+                  setAnswersHistory([]);
                 }} 
                 role="button"
                 tabIndex={0}
@@ -529,13 +651,14 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
                     setQuizLength(opt.length);
                     setStep(0);
                     setScores({ R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 });
+                    setAnswersHistory([]);
                   }
                 }}
-                className={`p-6 rounded-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-[#0c0c0c] ${opt.borderColor} hover:bg-gray-50/50 dark:hover:bg-white/[0.02] text-left flex flex-col justify-between transition-all shadow-md hover:shadow-xl ${opt.glowColor} relative overflow-hidden group h-full cursor-pointer`}
+                className={`p-5 sm:p-6 rounded-2xl border border-gray-200 dark:border-white/5 bg-white dark:bg-[#0c0c0c] ${opt.borderColor} hover:bg-gray-50/50 dark:hover:bg-white/[0.02] text-left flex flex-col justify-between transition-all shadow-md hover:shadow-xl ${opt.glowColor} relative overflow-hidden group h-full cursor-pointer`}
               >
                 <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${opt.color}`} />
                 
-                <div className="space-y-4 w-full flex-1 flex flex-col">
+                <div className="space-y-3 sm:space-y-4 w-full flex-1 flex flex-col">
                   <div className="flex items-center justify-between">
                     <div className={`p-2 rounded-xl ${opt.bgColor} ${opt.textColor}`}>
                       <IconComponent className="w-5 h-5" />
@@ -549,7 +672,7 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
                     <span className={`text-2xl font-black ${opt.textColor}`}>
                       {opt.length} <span className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">{isVi ? 'Câu' : 'Qs'}</span>
                     </span>
-                    <h4 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors pt-1">
+                    <h4 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors pt-1">
                       {opt.title}
                     </h4>
                   </div>
@@ -559,7 +682,7 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
                   </p>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold text-gray-400 dark:text-gray-500 w-full">
+                <div className="mt-5 pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold text-gray-400 dark:text-gray-500 w-full">
                   <span className="flex items-center gap-1.5">
                     {opt.time}
                   </span>
@@ -576,41 +699,91 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
     );
   }
 
-  if (result) {
+  const traitLabels: Record<string, { label: string; labelEn: string; color: string }> = {
+    R: { label: "Thực tế (Realistic)", labelEn: "Realistic", color: "from-blue-500 to-indigo-500" },
+    I: { label: "Nghiên cứu (Investigative)", labelEn: "Investigative", color: "from-indigo-500 to-purple-500" },
+    A: { label: "Nghệ thuật (Artistic)", labelEn: "Artistic", color: "from-fuchsia-500 to-pink-500" },
+    S: { label: "Xã hội (Social)", labelEn: "Social", color: "from-emerald-500 to-teal-500" },
+    E: { label: "Thuyết phục (Enterprising)", labelEn: "Enterprising", color: "from-amber-500 to-orange-500" },
+    C: { label: "Quy chuẩn (Conventional)", labelEn: "Conventional", color: "from-slate-500 to-gray-600" }
+  };
+
+  if (result && detailedResult) {
     return (
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center justify-center p-8 text-center"
+        className="flex flex-col items-center justify-center p-4 sm:p-6 text-center max-w-2xl mx-auto w-full"
       >
         <motion.div 
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className="w-20 h-20 bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-green-500/20"
+            className="w-16 h-16 bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-green-500/20"
         >
-          <Icons.Check className="w-10 h-10" />
+          <Icons.Check className="w-8 h-8" />
         </motion.div>
-        <h3 className="text-2xl font-bold mb-4">{t.quizResultTitle}</h3>
-        <p className="text-lg text-gray-700 dark:text-gray-300 bg-white dark:bg-white/5 p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-xl max-w-md leading-relaxed">
-          {result}
+        
+        <h3 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">{t.quizResultTitle}</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">
+          {isVi ? `Đã hoàn thành phiên bản ${quizLength} câu hỏi chuẩn RIASEC` : `Completed ${quizLength}-question RIASEC assessment`}
         </p>
-        <div className="flex gap-4 mt-8">
+
+        <div className="bg-white dark:bg-[#0d0d0d] p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-xl w-full text-left space-y-5">
+          <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-4">
+            <div>
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{isVi ? 'Mã Holland chính' : 'Primary Holland Code'}</span>
+              <h4 className="text-3xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">{detailedResult.topCode}</h4>
+            </div>
+            <div className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-bold border border-indigo-200 dark:border-indigo-800/40">
+              {detailedResult.sortedScores[0]?.percentage}% {isVi ? 'Độ khớp' : 'Match'}
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+            {detailedResult.topDescription}
+          </p>
+
+          <div className="space-y-3 pt-2">
+            <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider">{isVi ? 'Biểu đồ điểm số 6 nhóm RIASEC' : '6 RIASEC Scores Breakdown'}</h5>
+            <div className="space-y-2.5">
+              {detailedResult.sortedScores.map((item) => {
+                const trait = traitLabels[item.type] || { label: item.type, labelEn: item.type, color: 'from-gray-500 to-slate-500' };
+                return (
+                  <div key={item.type} className="space-y-1">
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-gray-800 dark:text-gray-200 font-semibold">{isVi ? trait.label : trait.labelEn}</span>
+                      <span className="font-mono font-bold text-gray-600 dark:text-gray-400">{item.percentage}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full bg-gradient-to-r ${trait.color} rounded-full transition-all duration-700`} 
+                        style={{ width: `${Math.max(8, item.percentage)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3 mt-6 w-full justify-center">
             <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={resetQuiz} 
-                className="px-6 py-3 bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+                className="px-5 py-2.5 bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-sm"
             >
             {t.retakeQuiz}
             </motion.button>
             <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => onComplete(result)} 
-                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-500 hover:to-purple-500 transition-colors shadow-lg flex items-center gap-2"
+                className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-500 hover:to-purple-500 transition-colors shadow-lg flex items-center gap-2 text-sm"
             >
-            <Icons.MessageSquare className="w-5 h-5" /> {t.discussWithAI}
+            <Icons.MessageSquare className="w-4 h-4" /> {t.discussWithAI}
             </motion.button>
         </div>
       </motion.div>
@@ -621,52 +794,73 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
     <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-2xl mx-auto p-6 w-full"
+        className="max-w-2xl mx-auto p-4 sm:p-6 w-full"
     >
-      <div className="mb-8">
-        <div className="flex justify-between text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+      <div className="mb-6">
+        <div className="flex justify-between items-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
           <span>{t.question} {step + 1} {t.of} {questions.length}</span>
-          <span>{Math.round(((step + 1) / questions.length) * 100)}%</span>
+          <span className="text-indigo-600 dark:text-indigo-400 font-mono">{Math.round(((step + 1) / questions.length) * 100)}%</span>
         </div>
-        <div className="w-full h-2 bg-gray-200 dark:bg-white/5 rounded-full overflow-hidden">
+        <div className="w-full h-2.5 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden p-0.5 border border-gray-200/50 dark:border-white/5">
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: `${((step + 1) / questions.length) * 100}%` }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full"
           />
         </div>
       </div>
-      <div className="min-h-[6rem] flex items-center justify-center mb-10">
+
+      <div className="min-h-[7rem] flex items-center justify-center mb-8 p-4 bg-gray-50/50 dark:bg-white/[0.02] rounded-2xl border border-gray-100 dark:border-white/5">
         <AnimatePresence mode="wait">
           <motion.h3 
               key={step}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="text-2xl font-bold text-gray-900 dark:text-white text-center leading-relaxed w-full"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white text-center leading-relaxed w-full"
           >
-            {questions[step].text}
+            {questions[step]?.text}
           </motion.h3>
         </AnimatePresence>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: t.quizNo, value: 0, color: 'bg-red-50 dark:bg-red-500/10 text-red-600 border-red-200 dark:border-red-500/20' },
-          { label: t.quizMaybe, value: 1, color: 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 border-yellow-200 dark:border-yellow-500/20' },
-          { label: t.quizYes, value: 2, color: 'bg-green-50 dark:bg-green-500/10 text-green-600 border-green-200 dark:border-green-500/20' },
+          { label: t.quizNo, value: 0, color: 'bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-600 border-red-200 dark:border-red-500/20' },
+          { label: t.quizMaybe, value: 1, color: 'bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-500/10 dark:hover:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-500/20' },
+          { label: t.quizYes, value: 2, color: 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-600 border-emerald-200 dark:border-emerald-500/20' },
         ].map((opt) => (
           <motion.button 
             key={opt.value} 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => handleAnswer(opt.value)} 
-            className={`p-6 rounded-2xl border-2 font-bold text-lg transition-colors ${opt.color} flex flex-col items-center gap-2 shadow-sm hover:shadow-md`}
+            className={`p-4 rounded-xl border-2 font-bold text-base transition-all ${opt.color} flex flex-col items-center justify-center gap-1 shadow-sm hover:shadow cursor-pointer`}
           >
             {opt.label}
           </motion.button>
         ))}
+      </div>
+
+      <div className="mt-6 flex items-center justify-between text-xs">
+        {step > 0 ? (
+          <button 
+            onClick={handlePrevQuestion}
+            className="flex items-center gap-1.5 font-bold text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors py-2 px-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
+          >
+            <Icons.ChevronDown className="w-4 h-4 rotate-90" />
+            <span>{isVi ? 'Câu trước' : 'Previous'}</span>
+          </button>
+        ) : <div />}
+
+        <button 
+          onClick={resetQuiz}
+          className="text-gray-400 hover:text-red-500 transition-colors font-medium py-2 px-3 cursor-pointer"
+        >
+          {isVi ? 'Đổi phiên bản' : 'Change version'}
+        </button>
       </div>
     </motion.div>
   );
@@ -805,6 +999,13 @@ export default function App() {
     }
   };
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [upgradeFeatureName, setUpgradeFeatureName] = useState<string | undefined>(undefined);
+
+  const triggerUpgradeModal = useCallback((featureName?: string) => {
+    setUpgradeFeatureName(featureName);
+    setIsUpgradeModalOpen(true);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
 
   const [auth, setAuth] = useState<AuthState>({ isAuthenticated: false, user: null });
@@ -1758,6 +1959,16 @@ export default function App() {
     const currentPastedTexts = [...pastedTexts];
     
     if (!textToSend.trim() && !selectedFile && currentPastedTexts.length === 0) return;
+
+    // Check freemium query limit (5 questions per day)
+    const subDetails = getSubscriptionDetails(auth.user?.subscription);
+    if (subDetails.tier === 'free') {
+      if (subDetails.dailyQueriesUsed >= subDetails.dailyQueriesLimit && (subDetails.extraQueriesCredits || 0) <= 0) {
+        triggerUpgradeModal(lang === Language.VI ? 'Hạn ngạch 5 câu hỏi/ngày (Gói Miễn phí)' : 'Daily 5 Questions Limit (Free Tier)');
+        showToast(lang === Language.VI ? 'Bạn đã dùng hết 5 lượt hỏi AI miễn phí hôm nay! Nâng cấp gói để hỏi không giới hạn.' : 'You reached your daily 5 free question limit! Upgrade for unlimited access.', 'error');
+        return;
+      }
+    }
     
     isSendingRef.current = true;
     if (!overrideText) {
@@ -1805,6 +2016,25 @@ export default function App() {
         
       const responseText = await sendChatMessage(history, fullTextToSend, lang, auth.user, currentFile);
       setMessages(prev => [...prev, { id: `${Date.now()}-ai-${Math.random().toString(36).substr(2, 9)}`, role: 'model', text: responseText || '', timestamp: new Date() }]);
+
+      // Increment query count if on free plan or using extra credits
+      if (subDetails.tier === 'free') {
+        if ((subDetails.extraQueriesCredits || 0) > 0) {
+          updateUserProfile({
+            subscription: {
+              ...subDetails,
+              extraQueriesCredits: (subDetails.extraQueriesCredits || 0) - 1
+            } as any
+          });
+        } else {
+          updateUserProfile({
+            subscription: {
+              ...subDetails,
+              dailyQueriesUsed: subDetails.dailyQueriesUsed + 1
+            } as any
+          });
+        }
+      }
     } catch (error: any) {
         let errorMsg = error.message || JSON.stringify(error) || t.error;
         console.error("Chat Error UI:", error);
@@ -2828,16 +3058,18 @@ export default function App() {
             <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.CHAT); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.CHAT ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.MessageSquare className="w-5 h-5" />{t.chatMode}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.VOICE); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.VOICE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Microphone className="w-5 h-5" />{t.voiceMode}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.TRENDING); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.TRENDING ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Flame className="w-5 h-5" />{t.trendingCareers}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.QUIZ); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.QUIZ ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Zap className="w-5 h-5" />{t.careerQuizTitle}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.CAREER_LIFECYCLE); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.CAREER_LIFECYCLE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Compass className="w-5 h-5 text-teal-500" />{t.careerLifecycle || 'Vòng đời sự nghiệp'}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.PROGRESS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.PROGRESS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Target className="w-5 h-5" />{t.progress}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.PROMPT_BUILDER); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.PROMPT_BUILDER ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Sparkles className="w-5 h-5 text-indigo-500" />{t.promptBuilder || 'Mẫu & Tạo Prompt AI'}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.CAREER_LIFECYCLE); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.CAREER_LIFECYCLE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Compass className="w-5 h-5 text-teal-500" />{t.careerLifecycle || 'Vòng đời sự nghiệp'}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.MONETIZATION_PARTNERS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.MONETIZATION_PARTNERS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.CreditCard className="w-5 h-5 text-emerald-500" />{t.monetizationPartners || 'Gói cước & Đối tác'}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.PORTFOLIO); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.PORTFOLIO ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Briefcase className="w-5 h-5" />{t.portfolio}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.SCHOLARSHIPS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.SCHOLARSHIPS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Search className="w-5 h-5" />{t.scholarships}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.SCORES); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.SCORES ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.BookOpen className="w-5 h-5" />{t.universityScores}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.MOCK_INTERVIEW); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.MOCK_INTERVIEW ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Cpu className="w-5 h-5" />{t.mockInterview}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.TRENDING); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.TRENDING ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Flame className="w-5 h-5" />{t.trendingCareers}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.COMPARE); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.COMPARE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Activity className="w-5 h-5" />{t.careerCompare}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.SCORES); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.SCORES ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.BookOpen className="w-5 h-5" />{t.universityScores}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.SCHOLARSHIPS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.SCHOLARSHIPS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Search className="w-5 h-5" />{t.scholarships}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.PORTFOLIO); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.PORTFOLIO ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Briefcase className="w-5 h-5" />{t.portfolio}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.CV_BUILDER); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.CV_BUILDER ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.FileText className="w-5 h-5 text-indigo-500" />{lang === Language.VI ? 'Tạo CV Tự Động AI' : 'AI CV Builder'}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.MONETIZATION_PARTNERS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.MONETIZATION_PARTNERS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.CreditCard className="w-5 h-5 text-emerald-500" />{t.monetizationPartners || 'Gói cước & Đối tác'}</motion.button>
                 
                 {chatHistory.length > 0 ? (
                     <div className="mt-8">
@@ -2939,17 +3171,18 @@ export default function App() {
             <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto overflow-x-hidden">
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.CHAT)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.CHAT ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.chatMode}><Icons.MessageSquare className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.chatMode}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.VOICE)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.VOICE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.voiceMode}><Icons.Microphone className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.voiceMode}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.TRENDING)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.TRENDING ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.trendingCareers}><Icons.Flame className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.trendingCareers}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.QUIZ)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.QUIZ ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerQuizTitle}><Icons.Zap className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerQuizTitle}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.CAREER_LIFECYCLE)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.CAREER_LIFECYCLE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerLifecycle || 'Vòng đời sự nghiệp'}><Icons.Compass className="w-5 h-5 flex-shrink-0 text-teal-500 transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerLifecycle || 'Vòng đời sự nghiệp'}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PROGRESS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PROGRESS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.progress}><Icons.Target className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.progress}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PROMPT_BUILDER)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PROMPT_BUILDER ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.promptBuilder || 'Mẫu & Tạo Prompt AI'}><Icons.Sparkles className="w-5 h-5 flex-shrink-0 text-indigo-500 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.promptBuilder || 'Mẫu & Tạo Prompt AI'}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.CAREER_LIFECYCLE)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.CAREER_LIFECYCLE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerLifecycle || 'Vòng đời sự nghiệp'}><Icons.Compass className="w-5 h-5 flex-shrink-0 text-teal-500 transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerLifecycle || 'Vòng đời sự nghiệp'}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.MONETIZATION_PARTNERS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.MONETIZATION_PARTNERS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.monetizationPartners || 'Gói cước & Đối tác'}><Icons.CreditCard className="w-5 h-5 flex-shrink-0 text-emerald-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.monetizationPartners || 'Gói cước & Đối tác'}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.MOCK_INTERVIEW)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.MOCK_INTERVIEW ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.mockInterview}><Icons.Cpu className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.mockInterview}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PORTFOLIO)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PORTFOLIO ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.portfolio}><Icons.Briefcase className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.portfolio}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.SCHOLARSHIPS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.SCHOLARSHIPS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.scholarships}><Icons.Search className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.scholarships}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.SCORES)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.SCORES ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.universityScores}><Icons.BookOpen className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.universityScores}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.TRENDING)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.TRENDING ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.trendingCareers}><Icons.Flame className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.trendingCareers}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.COMPARE)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.COMPARE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerCompare}><Icons.Activity className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerCompare}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.SCORES)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.SCORES ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.universityScores}><Icons.BookOpen className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.universityScores}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.SCHOLARSHIPS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.SCHOLARSHIPS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.scholarships}><Icons.Search className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.scholarships}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PORTFOLIO)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PORTFOLIO ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.portfolio}><Icons.Briefcase className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.portfolio}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.CV_BUILDER)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.CV_BUILDER ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={lang === Language.VI ? 'Tạo CV Tự Động AI' : 'AI CV Builder'}><Icons.FileText className="w-5 h-5 flex-shrink-0 text-indigo-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{lang === Language.VI ? 'Tạo CV Tự Động AI' : 'AI CV Builder'}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.MONETIZATION_PARTNERS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.MONETIZATION_PARTNERS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.monetizationPartners || 'Gói cước & Đối tác'}><Icons.CreditCard className="w-5 h-5 flex-shrink-0 text-emerald-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.monetizationPartners || 'Gói cước & Đối tác'}</span>}</motion.button>
                 
                 {chatHistory.length > 0 && isSidebarOpen ? (
                 <div className="mt-8 animate-fade-in">
@@ -2988,41 +3221,64 @@ export default function App() {
             ) : null}
         </nav>
         
-        <div className="p-4 border-t border-gray-200 dark:border-white/5 bg-white/50 dark:bg-white/5 backdrop-blur-sm flex flex-col gap-2">
+        <div className="p-3 border-t border-gray-200 dark:border-white/5 bg-white/50 dark:bg-white/5 backdrop-blur-sm flex flex-col gap-2">
             {isSidebarOpen ? (
                 <>
                     <motion.div 
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="flex items-center justify-between mb-2 px-2 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group cursor-pointer" 
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        className="p-3 rounded-2xl bg-gray-50/80 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 hover:border-indigo-500/40 transition-all cursor-pointer group space-y-2.5 shadow-2xs" 
                         onClick={() => setIsProfileModalOpen(true)}
                     >
-                        <div title={t.profile} className="flex items-center gap-3 overflow-hidden flex-1">
-                            <img src={auth.user?.avatar || AVATARS[0]} alt="Avatar" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://ui-avatars.com/api/?name=User&background=random'; }} className="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm"/>
-                            <div className="overflow-hidden flex-1">
-                                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{auth.user?.name}</p>
-                                <p className="text-[10px] text-gray-500 truncate">{auth.user?.isGuest ? t.guestSession : auth.user?.email}</p>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="text-[9px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 font-extrabold px-1.5 py-0.5 rounded">
-                                        LV {auth.user?.level || 1}
-                                    </span>
-                                    <span className="text-[9px] font-mono text-gray-400 font-bold">
-                                        {auth.user?.points || 0} XP
-                                    </span>
-                                    {auth.user?.badges && auth.user.badges.length > 0 && (
-                                        <span className="text-[9px] text-amber-500 font-bold" title={`${auth.user.badges.join(', ').toUpperCase()}`}>
-                                            🏆 {auth.user.badges.length}
-                                        </span>
-                                    )}
+                        {/* Avatar & User Name Header */}
+                        <div className="flex items-center gap-3">
+                            <img 
+                                src={auth.user?.avatar || AVATARS[0]} 
+                                alt="Avatar" 
+                                referrerPolicy="no-referrer" 
+                                onError={(e) => { e.currentTarget.src = 'https://ui-avatars.com/api/?name=User&background=random'; }} 
+                                className="w-11 h-11 rounded-full object-cover border-2 border-indigo-500/20 group-hover:border-indigo-500/60 transition-colors shadow-xs flex-shrink-0"
+                            />
+                            <div className="overflow-hidden flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1">
+                                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                        {auth.user?.name}
+                                    </p>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setIsUpgradeModalOpen(true); }}
+                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase border transition-all flex items-center gap-0.5 flex-shrink-0 cursor-pointer ${
+                                            auth.user?.subscription?.tier === 'free'
+                                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+                                                : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                        }`}
+                                        title="Bấm để xem/nâng cấp gói"
+                                    >
+                                        <Icons.Zap className="w-2.5 h-2.5 fill-current" />
+                                        {auth.user?.subscription?.tier === 'free' ? 'FREE' : (auth.user?.subscription?.tierNameVi || 'PRO')}
+                                    </button>
                                 </div>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{auth.user?.isGuest ? t.guestSession : auth.user?.email}</p>
                             </div>
                         </div>
-                        {auth.user?.streak !== undefined && auth.user.streak > 0 && (
-                            <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-[#1a1a1a] rounded-lg shadow-inner" title={t.streakTooltip.replace('{{streak}}', auth.user.streak.toString())}>
-                                <Icons.Flame className={`w-4 h-4 ${getStreakColor(auth.user.streak)}`} />
-                                <span className={`text-xs font-bold ${getStreakColor(auth.user.streak)}`}>{auth.user.streak}</span>
+
+                        {/* Level, Points & Streak Row */}
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-200/60 dark:border-white/5 text-[10px] font-bold">
+                            <div className="flex items-center gap-1.5">
+                                <span className="bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-md">
+                                    LV {auth.user?.level || 1}
+                                </span>
+                                <span className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md font-mono">
+                                    {auth.user?.points || 0} CP
+                                </span>
                             </div>
-                        )}
+
+                            {auth.user?.streak !== undefined && auth.user.streak > 0 && (
+                                <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-md border border-amber-500/20" title={t.streakTooltip.replace('{{streak}}', auth.user.streak.toString())}>
+                                    <Icons.Flame className={`w-3.5 h-3.5 ${getStreakColor(auth.user.streak)}`} />
+                                    <span>{auth.user.streak}d</span>
+                                </div>
+                            )}
+                        </div>
                     </motion.div>
                     <motion.button 
                         whileHover={{ scale: 1.02 }}
@@ -3127,6 +3383,13 @@ export default function App() {
             <div className="flex items-center gap-1.5">
                 <CareerGuideLogo className="w-5 h-5" />
                 <span className="font-bold text-xs tracking-tight text-gray-900 dark:text-white uppercase">{t.appName}</span>
+                <button
+                    onClick={() => setIsUpgradeModalOpen(true)}
+                    className="text-[9px] font-black px-2 py-0.5 rounded-full uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 cursor-pointer"
+                >
+                    <Icons.Zap className="w-2.5 h-2.5 fill-current text-amber-500" />
+                    {auth.user?.subscription?.tier === 'free' ? 'FREE' : (auth.user?.subscription?.tierNameVi || 'PRO')}
+                </button>
             </div>
             <motion.button 
                 whileHover={{ scale: 1.1 }}
@@ -3680,6 +3943,7 @@ export default function App() {
                     user={auth.user}
                     showToast={showToast}
                     onNavigateToChat={() => setTab(DashboardTab.CHAT)}
+                    onUpdateUser={updateUserProfile}
                 />
             </div>
         )}
@@ -3727,6 +3991,18 @@ export default function App() {
                             : `I would like structured counseling about the "${jobTitle}" career in Vietnam.`);
                       }, 50);
                   }} 
+              />
+            </div>
+        )}
+        {tab === DashboardTab.CV_BUILDER && (
+            <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#050505] overflow-y-auto p-4 md:p-8">
+              <CvBuilder 
+                  language={lang} 
+                  theme={theme} 
+                  user={auth.user} 
+                  showToast={showToast} 
+                  onNavigateToChat={() => setTab(DashboardTab.CHAT)} 
+                  onRequestUpgrade={triggerUpgradeModal}
               />
             </div>
         )}
@@ -4012,6 +4288,17 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        language={lang}
+        user={auth.user}
+        onUpdateUser={updateUserProfile}
+        showToast={showToast}
+        featureName={upgradeFeatureName}
+      />
+
       {/* Toast Notification */}
       <AnimatePresence>
         {toast && (

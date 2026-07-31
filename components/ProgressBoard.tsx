@@ -7,9 +7,6 @@ import { ChatSession, UserProfile, Language, ChatMessage, Milestone, Theme } fro
 import { generateRoadmap } from '../services/geminiService';
 import emailjs from '@emailjs/browser';
 import { InlineGuide } from './InlineGuide';
-import { RoadmapPromptBuilder } from './RoadmapPromptBuilder';
-import { MonetizationRewardsHub } from './MonetizationRewardsHub';
-import { CareerLifecycleManager } from './CareerLifecycleManager';
 
 interface ProgressBoardProps {
   chatHistory: ChatSession[];
@@ -247,7 +244,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
   onNavigateToChat,
   onSendPromptToChat 
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'roadmap' | 'prompt_builder' | 'career_lifecycle' | 'monetization_partners' | 'skills_jobs'>('roadmap');
+  const [activeSubTab, setActiveSubTab] = useState<'roadmap' | 'skills_jobs'>('roadmap');
   
   // Roadmap States
   const [isExporting, setIsExporting] = useState(false);
@@ -771,38 +768,17 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
         <div className="flex flex-wrap gap-1.5 p-1 bg-gray-100 dark:bg-white/5 rounded-2xl w-full lg:w-auto">
             <button 
               onClick={() => setActiveSubTab('roadmap')} 
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'roadmap' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'roadmap' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
             >
               <Icons.Target className="w-4 h-4" />
-              <span>{language === Language.VI ? "Lộ trình học tập" : "Roadmap"}</span>
-            </button>
-            <button 
-              onClick={() => setActiveSubTab('prompt_builder')} 
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'prompt_builder' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
-            >
-              <Icons.Sparkles className="w-4 h-4 text-amber-400" />
-              <span>{language === Language.VI ? "Mẫu & Tạo Prompt AI" : "AI Prompts"}</span>
-            </button>
-            <button 
-              onClick={() => setActiveSubTab('career_lifecycle')} 
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'career_lifecycle' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
-            >
-              <Icons.Infinity className="w-4 h-4 text-cyan-400" />
-              <span>{language === Language.VI ? "Vòng Đời Sự Nghiệp" : "Career Life"}</span>
-            </button>
-            <button 
-              onClick={() => setActiveSubTab('monetization_partners')} 
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'monetization_partners' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
-            >
-              <Icons.Gift className="w-4 h-4 text-emerald-400" />
-              <span>{language === Language.VI ? "Gói Cước & Đội Tác" : "Pricing & Offers"}</span>
+              <span>{language === Language.VI ? "Lộ Trình Học Tập" : "My Roadmap"}</span>
             </button>
             <button 
               onClick={() => setActiveSubTab('skills_jobs')} 
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'skills_jobs' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'skills_jobs' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
             >
               <Icons.Compass className="w-4 h-4" />
-              <span>{language === Language.VI ? "Bản Đồ Kỹ Năng" : "Skill Map"}</span>
+              <span>{language === Language.VI ? "Bản Đồ Kỹ Năng & Việc Làm" : "Skill Map & Job Matching"}</span>
             </button>
         </div>
 
@@ -839,12 +815,6 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
           title={
             activeSubTab === 'roadmap' 
               ? (language === Language.VI ? "💡 Hướng dẫn Lộ trình Học 3 tháng" : "💡 3-Month Study Roadmap Guide")
-              : activeSubTab === 'prompt_builder'
-              ? (language === Language.VI ? "💡 Trình huấn luyện & Mẫu đặt câu hỏi AI" : "💡 AI Prompt Training Guide")
-              : activeSubTab === 'career_lifecycle'
-              ? (language === Language.VI ? "💡 Vòng đời sự nghiệp từ trường học đến quản lý" : "💡 Career Lifecycle Guide")
-              : activeSubTab === 'monetization_partners'
-              ? (language === Language.VI ? "💡 Gói cước vi mô, điểm thưởng & ưu đãi đối tác" : "💡 Micro-subscriptions & Rewards Guide")
               : (language === Language.VI ? "💡 Hướng dẫn Bản đồ kỹ năng & Việc làm" : "💡 Competencies & Careers Guide")
           }
           steps={
@@ -857,36 +827,6 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
                   "Your 3-month action roadmap is custom compiled by AI integrating your RIASEC score and chat history.",
                   "Sync with Google Calendar to automatically map out milestones and weekly study schedules into your personal agenda.",
                   "Export as detailed images or vectors (PDF) to build your personal offline roadmap guide."
-                ])
-              : activeSubTab === 'prompt_builder'
-              ? (language === Language.VI ? [
-                  "Chọn các mẫu câu hỏi gợi ý được thiết kế sẵn cho việc định hướng ngành, phỏng vấn thử hoặc tạo lộ trình học.",
-                  "Sử dụng công cụ kéo chọn thông số để tự động đóng gói prompt chuẩn kỹ thuật chất lượng cao.",
-                  "Gửi trực tiếp câu hỏi vừa hoàn thiện sang khung Chat với AI chỉ bằng một cú nhấp chuột."
-                ] : [
-                  "Choose curated prompt templates for major selection, interview prep, or custom roadmap building.",
-                  "Use the step-by-step wizard to package structured high-quality prompts.",
-                  "Send your created prompt directly into AI chat with a single click."
-                ])
-              : activeSubTab === 'career_lifecycle'
-              ? (language === Language.VI ? [
-                  "Khám phá 4 giai đoạn phát triển: Sinh viên, Mới ra trường (0-2 năm), Đi làm (2-5 năm) và Cựu sinh viên Mentor.",
-                  "Ứng dụng AI giúp bạn đàm phán tăng lương 30-50%, vượt thử việc 2 tháng và thăng tiến lên Team Lead.",
-                  "Kết nối lại với mạng lưới cựu sinh viên và quay trở lại hỗ trợ các khóa sinh viên đàn em."
-                ] : [
-                  "Explore 4 career phases: Undergrad, Fresh Grad (0-2 yrs), Mid/Senior (2-5 yrs), and Alumni Mentors.",
-                  "Use AI strategies for 30-50% salary negotiations, passing 2-month probation, and advancing to Team Lead.",
-                  "Reconnect with alumni networks and mentor junior students."
-                ])
-              : activeSubTab === 'monetization_partners'
-              ? (language === Language.VI ? [
-                  "Điểm danh hàng ngày để tích lũy điểm thưởng CP và nhận lượt sử dụng AI miễn phí mỗi tháng.",
-                  "Gói cước linh hoạt micro-pass từ 20.000 VNĐ phù hợp túi tiền sinh viên và tự động bù giá vùng miền theo IP.",
-                  "Nhận voucher giảm giá khóa học tiếng Anh, tin học, lập trình từ hệ thống đối tác liên kết."
-                ] : [
-                  "Check in daily to earn CP reward points and unlock free monthly AI uses.",
-                  "Micro-subscription passes starting at $0.99 with automatic purchasing-power parity (PPP) regional discounts.",
-                  "Redeem exclusive vouchers for English, coding, and soft skill partner bootcamps."
                 ])
               : (language === Language.VI ? [
                   "Bản đồ kỹ năng phân loại chuyên môn theo các cấp độ tuyển dụng trực quan: Cơ bản (Junior), Trung cấp (Midweight), Chuyên gia (Senior).",
@@ -901,64 +841,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
         />
 
         <AnimatePresence mode="wait">
-          {activeSubTab === 'prompt_builder' ? (
-            <motion.div
-              key="prompt-builder-view"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-            >
-              <RoadmapPromptBuilder
-                language={language}
-                user={user}
-                onSendPromptToChat={(prompt) => {
-                  if (onSendPromptToChat) {
-                    onSendPromptToChat(prompt);
-                  } else {
-                    onNavigateToChat();
-                  }
-                }}
-                showToast={showToast}
-              />
-            </motion.div>
-          ) : activeSubTab === 'career_lifecycle' ? (
-            <motion.div
-              key="career-lifecycle-view"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-            >
-              <CareerLifecycleManager
-                language={language}
-                user={user}
-                onSendPromptToChat={(prompt) => {
-                  if (onSendPromptToChat) {
-                    onSendPromptToChat(prompt);
-                  } else {
-                    onNavigateToChat();
-                  }
-                }}
-                showToast={showToast}
-              />
-            </motion.div>
-          ) : activeSubTab === 'monetization_partners' ? (
-            <motion.div
-              key="monetization-rewards-view"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-            >
-              <MonetizationRewardsHub
-                language={language}
-                user={user}
-                showToast={showToast}
-                onNavigateToChat={onNavigateToChat}
-              />
-            </motion.div>
-          ) : activeSubTab === 'roadmap' ? (
+          {activeSubTab === 'roadmap' ? (
             milestones.length === 0 ? (
               <motion.div 
                 key="empty-roadmap-view"
@@ -975,8 +858,8 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto text-sm leading-relaxed">
                   {language === Language.EN 
-                    ? "Chat with the AI Assistant or use our AI Prompt Builder to generate a step-by-step personalized career roadmap." 
-                    : "Hãy trò chuyện với AI hoặc dùng Trình Tạo Prompt AI để thiết kế lộ trình học tập 3 tháng hoàn chỉnh."}
+                    ? "Chat with the AI Assistant to generate a step-by-step personalized career roadmap." 
+                    : "Hãy trò chuyện với AI để thiết kế lộ trình học tập 3 tháng hoàn chỉnh."}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
                   <button
@@ -985,13 +868,6 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
                   >
                     <Icons.MessageSquare className="w-4 h-4" />
                     {language === Language.VI ? "Trò Chuyện Trực Tiếp Với AI" : "Chat With AI Agent"}
-                  </button>
-                  <button
-                    onClick={() => setActiveSubTab('prompt_builder')}
-                    className="px-6 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2"
-                  >
-                    <Icons.Sparkles className="w-4 h-4 text-amber-500" />
-                    {language === Language.VI ? "Xem Mẫu Prompt Tạo Lộ Trình" : "Use Prompt Builder"}
                   </button>
                 </div>
               </motion.div>

@@ -19,6 +19,7 @@ export enum DashboardTab {
   VOICE = 'VOICE',
   QUIZ = 'QUIZ',
   PROGRESS = 'PROGRESS',
+  CV_BUILDER = 'CV_BUILDER',
   PROMPT_BUILDER = 'PROMPT_BUILDER',
   CAREER_LIFECYCLE = 'CAREER_LIFECYCLE',
   MONETIZATION_PARTNERS = 'MONETIZATION_PARTNERS',
@@ -70,6 +71,31 @@ export interface PortfolioItem {
   link?: string;
 }
 
+export type SubscriptionTier = 'free' | 'micro5' | 'micro10' | 'monthly' | 'season' | 'annual' | 'reskilling' | 'trial24h';
+
+export interface UserSubscription {
+  tier: SubscriptionTier;
+  tierNameVi: string;
+  tierNameEn: string;
+  expiresAt?: string;
+  dailyQueriesUsed: number;
+  dailyQueriesLimit: number;
+  extraQueriesCredits: number;
+  mockInterviewCredits: number;
+  cvAuditCredits: number;
+  unlockedFeatures: {
+    aiChat5PerDay: boolean;
+    personalityQuiz: boolean;
+    aiDeepDive: boolean;
+    scholarshipEssayEditor: boolean;
+    mentorMatch: boolean;
+    reskillingSkillBridge: boolean;
+    unlimitedChat: boolean;
+    fullMockInterview: boolean;
+    fullTranscriptAudit: boolean;
+  };
+}
+
 export interface UserProfile {
   name: string;
   email: string;
@@ -89,6 +115,7 @@ export interface UserProfile {
   level?: number;
   badges?: string[];
   hasCompletedOnboarding?: boolean;
+  subscription?: UserSubscription;
 }
 
 export interface AuthState {

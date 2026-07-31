@@ -505,74 +505,101 @@ export class LiveSessionManager {
       
       const ai = new GoogleGenAI({ apiKey: key });
 
-      const connectToGemini = async (model: string) => {
-          console.log(`Attempting to connect to Gemini Live with model: ${model}`);
-          const sessionPromise = ai.live.connect({
-              model,
-              callbacks: {
-                onopen: () => {
-                  console.log(`Gemini Live Session Opened (${model})`);
-                  this.isConnected = true;
-                  this.startAudioStreaming(createBlobFn, sessionPromise);
-                  // AI will wait for user input
-                  if (this.onConnect) this.onConnect();
-                },
-                onmessage: async (message: LiveServerMessage) => {
-                  const serverContent = message.serverContent;
-                  if (serverContent) {
-                      if (serverContent.outputTranscription) {
-                          const text = serverContent.outputTranscription.text;
-                          if (text && this.onTranscript) this.onTranscript(text, false);
-                      } else if (serverContent.inputTranscription) {
-                          const text = serverContent.inputTranscription.text;
-                          if (text && this.onTranscript) this.onTranscript(text, true);
-                      }
-                      
-                      const base64Audio = serverContent.modelTurn?.parts?.[0]?.inlineData?.data;
-                      if (base64Audio && this.outputContext) {
-                        const audioBuffer = await decodeAudioDataFn(decodeFn(base64Audio), this.outputContext, 24000, 1);
-                        this.playAudio(audioBuffer);
-                      }
-                      
-                      if (serverContent.interrupted) this.stopCurrentAudio();
+      const liveModels = ['gemini-2.0-flash-exp', 'gemini-2.0-flash-realtime-exp', 'gemini-2.0-flash'];
+      let modelIndex = 0;
+
+      const attemptNextModel = async (): Promise<any> => {
+        if (modelIndex >= liveModels.length) {
+          const errMessage = t.connectionFailed;
+          if (this.onError) this.onError(errMessage);
+          this.cleanup();
+          if (this.onDisconnect) this.onDisconnect();
+          return;
+        }
+
+        const model = liveModels[modelIndex];
+        modelIndex++;
+        console.log(`[Live Session] Attempting connection with model: ${model}...`);
+
+        let hasOpened = false;
+        let sessionPromise: Promise<any>;
+
+        try {
+          sessionPromise = ai.live.connect({
+            model,
+            callbacks: {
+              onopen: () => {
+                console.log(`[Live Session] Opened successfully with model: ${model}`);
+                hasOpened = true;
+                this.isConnected = true;
+                this.startAudioStreaming(createBlobFn, sessionPromise);
+                if (this.onConnect) this.onConnect();
+              },
+              onmessage: async (message: LiveServerMessage) => {
+                const serverContent = message.serverContent;
+                if (serverContent) {
+                  if (serverContent.outputTranscription) {
+                    const text = serverContent.outputTranscription.text;
+                    if (text && this.onTranscript) this.onTranscript(text, false);
+                  } else if (serverContent.inputTranscription) {
+                    const text = serverContent.inputTranscription.text;
+                    if (text && this.onTranscript) this.onTranscript(text, true);
                   }
-                },
-                onclose: () => {
-                  console.log("Gemini Live Session Closed");
-                  if (!this.isConnected && this.onError) {
-                      this.onError(t.connectionFailed);
+                  
+                  const base64Audio = serverContent.modelTurn?.parts?.[0]?.inlineData?.data;
+                  if (base64Audio && this.outputContext) {
+                    const audioBuffer = await decodeAudioDataFn(decodeFn(base64Audio), this.outputContext, 24000, 1);
+                    this.playAudio(audioBuffer);
                   }
-                  this.cleanup(); 
-                  if (this.onDisconnect) this.onDisconnect(); 
-                },
-                onerror: (err: any) => {
-                  console.error("Gemini Live Session Error:", err);
+                  
+                  if (serverContent.interrupted) this.stopCurrentAudio();
+                }
+              },
+              onclose: () => {
+                console.log(`[Live Session] Closed for model: ${model}`);
+                if (!hasOpened && !this.isConnected) {
+                  console.warn(`[Live Session] Model ${model} failed to open before close. Trying next model...`);
+                  attemptNextModel();
+                } else {
+                  this.cleanup();
+                  if (this.onDisconnect) this.onDisconnect();
+                }
+              },
+              onerror: (err: any) => {
+                console.error(`[Live Session] Error with model ${model}:`, err);
+                if (!hasOpened && !this.isConnected) {
+                  console.warn(`[Live Session] Model ${model} errored before opening. Trying next model...`);
+                  attemptNextModel();
+                } else {
                   if (this.onError) this.onError(err.message || err);
                   this.cleanup();
                 }
-              },
-              config: {
-                responseModalities: [Modality.AUDIO],
-                outputAudioTranscription: {},
-                inputAudioTranscription: {},
-                systemInstruction: systemInstruction,
-                speechConfig: { 
-                  voiceConfig: { 
-                    prebuiltVoiceConfig: { 
-                      voiceName: 'Kore' 
-                    } 
-                  } 
-                }
               }
+            },
+            config: {
+              responseModalities: [Modality.AUDIO],
+              outputAudioTranscription: {},
+              inputAudioTranscription: {},
+              systemInstruction: systemInstruction,
+              speechConfig: { 
+                voiceConfig: { 
+                  prebuiltVoiceConfig: { 
+                    voiceName: 'Kore' 
+                  } 
+                } 
+              }
+            }
           });
-          return sessionPromise;
+          this.session = await sessionPromise;
+        } catch (err) {
+          console.warn(`[Live Session] Exception creating connect for ${model}:`, err);
+          if (!hasOpened && !this.isConnected) {
+            await attemptNextModel();
+          }
+        }
       };
 
-      try {
-          this.session = await connectToGemini('gemini-3.1-flash-live-preview');
-      } catch (err) {
-          console.warn("Failed with primary model, trying fallback.");
-      }
+      await attemptNextModel();
 
     } catch (e) { 
         if (this.onError) this.onError(e); 
