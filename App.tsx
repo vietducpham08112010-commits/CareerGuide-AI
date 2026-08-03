@@ -24,6 +24,7 @@ import { CareerLifecycleManager } from './components/CareerLifecycleManager';
 import { MonetizationRewardsHub } from './components/MonetizationRewardsHub';
 import { CvBuilder } from './components/CvBuilder';
 import { UpgradeModal } from './components/UpgradeModal';
+import { PromptBuilderModal } from './components/PromptBuilderModal';
 import { getSubscriptionDetails } from './utils/subscriptionUtils';
 import { 
   syncUserProfileToCloud, 
@@ -1000,6 +1001,7 @@ export default function App() {
   };
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [upgradeFeatureName, setUpgradeFeatureName] = useState<string | undefined>(undefined);
 
   const triggerUpgradeModal = useCallback((featureName?: string) => {
@@ -3169,20 +3171,17 @@ export default function App() {
         </div>
         
             <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto overflow-x-hidden">
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.CHAT)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.CHAT ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.chatMode}><Icons.MessageSquare className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.chatMode}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.VOICE)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.VOICE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.voiceMode}><Icons.Microphone className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.voiceMode}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.QUIZ)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.QUIZ ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerQuizTitle}><Icons.Zap className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerQuizTitle}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.CAREER_LIFECYCLE)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.CAREER_LIFECYCLE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerLifecycle || 'Vòng đời sự nghiệp'}><Icons.Compass className="w-5 h-5 flex-shrink-0 text-teal-500 transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerLifecycle || 'Vòng đời sự nghiệp'}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PROGRESS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PROGRESS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.progress}><Icons.Target className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.progress}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PROMPT_BUILDER)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PROMPT_BUILDER ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.promptBuilder || 'Mẫu & Tạo Prompt AI'}><Icons.Sparkles className="w-5 h-5 flex-shrink-0 text-indigo-500 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.promptBuilder || 'Mẫu & Tạo Prompt AI'}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.MOCK_INTERVIEW)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.MOCK_INTERVIEW ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.mockInterview}><Icons.Cpu className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.mockInterview}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.TRENDING)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.TRENDING ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.trendingCareers}><Icons.Flame className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.trendingCareers}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.COMPARE)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.COMPARE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerCompare}><Icons.Activity className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerCompare}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.SCORES)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.SCORES ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.universityScores}><Icons.BookOpen className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.universityScores}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.SCHOLARSHIPS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.SCHOLARSHIPS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.scholarships}><Icons.Search className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.scholarships}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PORTFOLIO)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PORTFOLIO ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.portfolio}><Icons.Briefcase className="w-5 h-5 flex-shrink-0 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.portfolio}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.CHAT)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.CHAT ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.chatMode}><Icons.MessageSquare className="w-5 h-5 flex-shrink-0 text-indigo-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.chatMode}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.VOICE)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.VOICE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.voiceMode}><Icons.Microphone className="w-5 h-5 flex-shrink-0 text-rose-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.voiceMode}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.QUIZ)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.QUIZ ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerQuizTitle}><Icons.Zap className="w-5 h-5 flex-shrink-0 text-amber-500 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerQuizTitle}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PROGRESS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PROGRESS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={lang === Language.VI ? 'Tiến Độ & Vòng Đời AI' : 'Progress & Career Lifecycle'}><Icons.Target className="w-5 h-5 flex-shrink-0 text-emerald-500 transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{lang === Language.VI ? 'Tiến Độ & Vòng Đời AI' : 'Progress & Career Lifecycle'}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.MOCK_INTERVIEW)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.MOCK_INTERVIEW ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.mockInterview}><Icons.Cpu className="w-5 h-5 flex-shrink-0 text-cyan-500 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.mockInterview}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.TRENDING)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.TRENDING ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.trendingCareers}><Icons.Flame className="w-5 h-5 flex-shrink-0 text-orange-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.trendingCareers}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.COMPARE)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.COMPARE ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.careerCompare}><Icons.Activity className="w-5 h-5 flex-shrink-0 text-teal-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.careerCompare}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.SCORES)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.SCORES ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.universityScores}><Icons.BookOpen className="w-5 h-5 flex-shrink-0 text-blue-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.universityScores}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.SCHOLARSHIPS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.SCHOLARSHIPS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.scholarships}><Icons.Search className="w-5 h-5 flex-shrink-0 text-sky-500 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.scholarships}</span>}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.PORTFOLIO)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.PORTFOLIO ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.portfolio}><Icons.Briefcase className="w-5 h-5 flex-shrink-0 text-purple-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.portfolio}</span>}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.CV_BUILDER)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.CV_BUILDER ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={lang === Language.VI ? 'Tạo CV Tự Động AI' : 'AI CV Builder'}><Icons.FileText className="w-5 h-5 flex-shrink-0 text-indigo-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{lang === Language.VI ? 'Tạo CV Tự Động AI' : 'AI CV Builder'}</span>}</motion.button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setTab(DashboardTab.MONETIZATION_PARTNERS)} className={`group w-full flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${tab === DashboardTab.MONETIZATION_PARTNERS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'} ${isSidebarOpen ? 'px-4' : 'justify-center px-0'}`} title={t.monetizationPartners || 'Gói cước & Đối tác'}><Icons.CreditCard className="w-5 h-5 flex-shrink-0 text-emerald-500 transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />{isSidebarOpen && <span className="truncate">{t.monetizationPartners || 'Gói cước & Đối tác'}</span>}</motion.button>
                 
                 {chatHistory.length > 0 && isSidebarOpen ? (
                 <div className="mt-8 animate-fade-in">
@@ -3280,6 +3279,18 @@ export default function App() {
                             )}
                         </div>
                     </motion.div>
+                    <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setIsUpgradeModalOpen(true)} 
+                        className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-bold text-gray-800 dark:text-gray-100 bg-gradient-to-r from-amber-500/15 via-indigo-500/15 to-purple-500/15 border border-amber-500/30 dark:border-indigo-500/30 rounded-xl hover:from-amber-500/25 hover:to-purple-500/25 transition-all cursor-pointer shadow-2xs"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Icons.Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                            <span>{lang === Language.VI ? 'Nâng cấp Gói Pro & Đổi thưởng' : 'Upgrade Plan & Rewards'}</span>
+                        </div>
+                        <Icons.ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                    </motion.button>
                     <motion.button 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -3690,7 +3701,19 @@ export default function App() {
                                 </AnimatePresence>
                             </div>
 
-                            <div className="flex items-center gap-1 md:gap-2">
+                            <div className="flex items-center gap-1.5 md:gap-2">
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    type="button"
+                                    onClick={() => setIsPromptModalOpen(true)}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors shadow-xs"
+                                    title={lang === Language.VI ? "Thư viện & Tạo Prompt AI" : "AI Prompt Templates"}
+                                >
+                                    <Icons.Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                    <span className="hidden sm:inline">{lang === Language.VI ? "Mẫu Prompt AI" : "AI Prompts"}</span>
+                                </motion.button>
+
                                 <div className="relative group">
                                     <motion.button 
                                         whileHover={{ scale: 1.05 }} 
@@ -4288,16 +4311,79 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* Upgrade Modal */}
-      <UpgradeModal
-        isOpen={isUpgradeModalOpen}
-        onClose={() => setIsUpgradeModalOpen(false)}
+      {/* Upgrade & Monetization Hub Modal Window */}
+      {isUpgradeModalOpen && (
+        <MonetizationRewardsHub
+          isModal={true}
+          onClose={() => setIsUpgradeModalOpen(false)}
+          language={lang}
+          user={auth.user}
+          showToast={showToast}
+          onNavigateToChat={() => {
+            setIsUpgradeModalOpen(false);
+            setTab(DashboardTab.CHAT);
+          }}
+          onUpdateUser={updateUserProfile}
+        />
+      )}
+
+      {/* Prompt Builder Modal */}
+      <PromptBuilderModal
+        isOpen={isPromptModalOpen}
+        onClose={() => setIsPromptModalOpen(false)}
         language={lang}
         user={auth.user}
-        onUpdateUser={updateUserProfile}
+        onSendPromptToChat={(promptText) => {
+          setInputMsg(promptText);
+          setTab(DashboardTab.CHAT);
+        }}
         showToast={showToast}
-        featureName={upgradeFeatureName}
       />
+
+      {/* Mobile Bottom Navigation Bar (Optimized for Mobile Judge Experience) */}
+      {mode === AppMode.DASHBOARD && (
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0a0a0a]/95 border-t border-gray-200 dark:border-white/10 flex items-center justify-around py-2 px-1 backdrop-blur-xl shadow-2xl">
+          <button 
+            onClick={() => setTab(DashboardTab.CHAT)} 
+            className={`flex flex-col items-center gap-1 min-w-[56px] py-1 px-2 rounded-xl transition-all cursor-pointer ${tab === DashboardTab.CHAT ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40' : 'text-gray-500 dark:text-gray-400'}`}
+          >
+            <Icons.MessageSquare className="w-5 h-5" />
+            <span className="text-[10px]">{lang === Language.VI ? 'Trò chuyện' : 'Chat'}</span>
+          </button>
+
+          <button 
+            onClick={() => setTab(DashboardTab.PROGRESS)} 
+            className={`flex flex-col items-center gap-1 min-w-[56px] py-1 px-2 rounded-xl transition-all cursor-pointer ${tab === DashboardTab.PROGRESS || tab === DashboardTab.CAREER_LIFECYCLE ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40' : 'text-gray-500 dark:text-gray-400'}`}
+          >
+            <Icons.Target className="w-5 h-5" />
+            <span className="text-[10px]">{lang === Language.VI ? 'Tiến độ AI' : 'Progress'}</span>
+          </button>
+
+          <button 
+            onClick={() => setTab(DashboardTab.CV_BUILDER)} 
+            className={`flex flex-col items-center gap-1 min-w-[56px] py-1 px-2 rounded-xl transition-all cursor-pointer ${tab === DashboardTab.CV_BUILDER ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40' : 'text-gray-500 dark:text-gray-400'}`}
+          >
+            <Icons.FileText className="w-5 h-5" />
+            <span className="text-[10px]">{lang === Language.VI ? 'Tạo CV' : 'CV Builder'}</span>
+          </button>
+
+          <button 
+            onClick={() => setTab(DashboardTab.MOCK_INTERVIEW)} 
+            className={`flex flex-col items-center gap-1 min-w-[56px] py-1 px-2 rounded-xl transition-all cursor-pointer ${tab === DashboardTab.MOCK_INTERVIEW ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40' : 'text-gray-500 dark:text-gray-400'}`}
+          >
+            <Icons.Cpu className="w-5 h-5" />
+            <span className="text-[10px]">{lang === Language.VI ? 'Phỏng vấn' : 'Interview'}</span>
+          </button>
+
+          <button 
+            onClick={() => setIsUpgradeModalOpen(true)} 
+            className="flex flex-col items-center gap-1 min-w-[56px] py-1 px-2 rounded-xl text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/30 border border-amber-500/20 cursor-pointer"
+          >
+            <Icons.Zap className="w-5 h-5 fill-current text-amber-500" />
+            <span className="text-[10px]">{lang === Language.VI ? 'Gói cước' : 'Upgrade'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Toast Notification */}
       <AnimatePresence>

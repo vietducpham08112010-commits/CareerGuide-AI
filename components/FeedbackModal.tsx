@@ -11,11 +11,15 @@ interface Props {
 }
 
 export const FeedbackModal: React.FC<Props> = ({ isOpen, onClose, userId, lang, onAddEarnedPoints }) => {
+  const [activeTab, setActiveTab] = useState<'app' | 'google_form'>('google_form');
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [comment, setComment] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
+
+  const googleFormUrl = "https://forms.gle/Sza1jSmxRFf7A2q47";
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -38,32 +42,197 @@ export const FeedbackModal: React.FC<Props> = ({ isOpen, onClose, userId, lang, 
     }
   };
 
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(googleFormUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-md bg-white dark:bg-[#0c0c0c] border border-gray-150 dark:border-white/5 rounded-3xl p-6 shadow-2xl overflow-hidden relative"
+        className="w-full max-w-2xl bg-white dark:bg-[#090d16] border border-purple-500/30 rounded-3xl p-6 shadow-2xl overflow-hidden relative"
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-white/10"
+          className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors z-20"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
+        {/* Header Title Bar */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-3 bg-gradient-to-tr from-purple-600 to-indigo-600 text-white rounded-2xl shadow-lg shadow-purple-500/20">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-black text-gray-900 dark:text-white">
+                {lang === 'vi' ? 'Khảo Sát & Góp Ý Ứng Dụng' : 'User Survey & Feedback'}
+              </h3>
+              <span className="px-2 py-0.5 text-[10px] bg-purple-500/20 border border-purple-500/30 text-purple-600 dark:text-purple-300 font-bold rounded-full">
+                Google Forms
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {lang === 'vi' ? 'Đóng góp ý kiến để nhận ngay điểm thưởng +30 CP vào tài khoản!' : 'Provide feedback to earn +30 CP instantly!'}
+            </p>
+          </div>
+        </div>
+
+        {/* Tab Selection */}
+        <div className="flex bg-gray-100 dark:bg-slate-800/80 p-1 rounded-2xl mb-5 border border-gray-200 dark:border-slate-700/60">
+          <button
+            onClick={() => setActiveTab('google_form')}
+            className={`flex-1 py-2.5 px-3 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'google_form'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" />
+            {lang === 'vi' ? '📝 Google Form Khảo Sát (Chính Thức)' : '📝 Official Google Form'}
+          </button>
+          <button
+            onClick={() => setActiveTab('app')}
+            className={`flex-1 py-2.5 px-3 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'app'
+                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            {lang === 'vi' ? '⭐ Đánh Giá Nhanh (+50 XP)' : '⭐ Quick Rating (+50 XP)'}
+          </button>
+        </div>
+
         <AnimatePresence mode="wait">
-          {!isSubmitted ? (
+          {activeTab === 'google_form' ? (
+            <motion.div
+              key="google_form"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-4"
+            >
+              {/* Premium Google Form Callout Banner */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-950/80 via-slate-900 to-indigo-950/80 border border-purple-500/40 text-white shadow-xl relative overflow-hidden space-y-4">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+                
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-purple-500/20 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 bg-purple-500/30 border border-purple-400/40 text-purple-300 text-[11px] font-black rounded-lg">
+                      FORM KHẢO SÁT CHÍNH THỨC
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Verified Google Link
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-0.5 bg-amber-400/20 text-amber-300 text-xs font-mono font-black rounded-md border border-amber-400/30">
+                    +30 CP REWARD
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <h4 className="text-base font-extrabold text-purple-100">
+                    {lang === 'vi' ? 'Form Khảo Sát Nâng Cấp Chất Lượng Trải Nghiệm AI' : 'AI Quality & Career Guidance Survey'}
+                  </h4>
+                  <p className="text-xs text-purple-200/80 leading-relaxed">
+                    {lang === 'vi'
+                      ? 'Ý kiến đóng góp của bạn giúp nhóm phát triển tối ưu hóa thuật toán AI tư vấn hướng nghiệp, cập nhật điểm chuẩn đại học và giao diện.'
+                      : 'Your insights directly empower us to improve career prompts, university scores matching, and UI experience.'}
+                  </p>
+                </div>
+
+                {/* Primary Action Button Bar */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
+                  <a
+                    href={googleFormUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      onAddEarnedPoints(30);
+                    }}
+                    className="w-full sm:flex-1 py-3 px-5 bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 hover:from-purple-600 hover:to-indigo-700 text-white font-black text-xs rounded-xl shadow-lg shadow-purple-500/25 transition-all flex items-center justify-center gap-2 group"
+                  >
+                    <span>{lang === 'vi' ? '🚀 Mở Google Form Trên Tab Mới' : '🚀 Open Google Form'}</span>
+                    <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </a>
+
+                  <button
+                    onClick={handleCopyLink}
+                    className="w-full sm:w-auto py-3 px-4 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    {copiedLink ? (
+                      <span className="text-emerald-400 font-bold">{lang === 'vi' ? '✓ Đã sao chép Link' : '✓ Link Copied'}</span>
+                    ) : (
+                      <span>{lang === 'vi' ? '📋 Chép Đường Link' : '📋 Copy Link'}</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Embedded Google Form Container with fallback iframe */}
+              <div className="border border-purple-500/30 rounded-2xl overflow-hidden bg-slate-900 shadow-inner">
+                <div className="bg-slate-950 px-4 py-2 border-b border-slate-800 flex items-center justify-between text-xs text-gray-400">
+                  <span className="flex items-center gap-2 font-mono text-[11px] text-purple-300">
+                    <span className="w-2 h-2 rounded-full bg-purple-500" />
+                    https://forms.gle/Sza1jSmxRFf7A2q47
+                  </span>
+                  <a
+                    href={googleFormUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-400 hover:text-purple-300 text-[11px] font-bold underline"
+                  >
+                    {lang === 'vi' ? 'Toàn màn hình ↗' : 'Fullscreen ↗'}
+                  </a>
+                </div>
+                
+                {/* Embedded Form Preview / Iframe */}
+                <div className="relative w-full h-[280px] bg-slate-900 flex flex-col items-center justify-center p-4 text-center">
+                  <iframe
+                    src="https://docs.google.com/forms/d/e/1FAIpQLSe-0_placeholder/viewform?embedded=true"
+                    title="Google Form Feedback"
+                    className="w-full h-full rounded-xl border-0 opacity-90 hover:opacity-100 transition-opacity"
+                    onError={(e) => console.log(e)}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/90 to-transparent flex flex-col items-center justify-end p-6 pointer-events-auto">
+                    <div className="p-3 bg-purple-500/20 border border-purple-400/30 rounded-2xl mb-3 text-purple-200 text-xs max-w-md">
+                      {lang === 'vi'
+                        ? 'Bấm nút bên dưới để mở Form Google Forms chính thức hoàn thành khảo sát và nhận thưởng ngay!'
+                        : 'Click below to open official Google Forms survey in a new tab!'}
+                    </div>
+                    <a
+                      href={googleFormUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => onAddEarnedPoints(30)}
+                      className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs rounded-xl shadow-lg transition-all"
+                    >
+                      {lang === 'vi' ? 'Điền Google Form Ngay (+30 CP) ↗' : 'Fill Google Form (+30 CP) ↗'}
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ) : !isSubmitted ? (
             <motion.div
               key="form"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
               className="space-y-4"
             >
               <div className="text-center">
@@ -73,7 +242,7 @@ export const FeedbackModal: React.FC<Props> = ({ isOpen, onClose, userId, lang, 
                   </svg>
                 </div>
                 <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">
-                  {lang === 'vi' ? 'Đánh Giá Cuộc Tư Vấn AI' : 'Rate Your Consultation'}
+                  {lang === 'vi' ? 'Đánh Giá Trực Tiếp Nhanh' : 'Rate Your Experience'}
                 </h3>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                   {lang === 'vi' 
@@ -97,7 +266,7 @@ export const FeedbackModal: React.FC<Props> = ({ isOpen, onClose, userId, lang, 
                       className={`w-8 h-8 transition-colors ${
                         star <= (hoverRating || rating)
                           ? 'text-yellow-400 fill-yellow-400'
-                          : 'text-gray-200 dark:text-white/10'
+                          : 'text-gray-200 dark:text-slate-700'
                       }`}
                       viewBox="0 0 20 20"
                       fill="currentColor"
@@ -122,7 +291,7 @@ export const FeedbackModal: React.FC<Props> = ({ isOpen, onClose, userId, lang, 
                       : 'E.g. AI prompts could be more customized...'
                   }
                   rows={3}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-150 dark:border-white/10 rounded-2xl text-xs sm:text-sm focus:outline-none focus:border-indigo-500 dark:text-white resize-none"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm focus:outline-none focus:border-indigo-500 dark:text-white resize-none"
                 />
               </div>
 
@@ -135,7 +304,7 @@ export const FeedbackModal: React.FC<Props> = ({ isOpen, onClose, userId, lang, 
                 {isSubmitting ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <span>{lang === 'vi' ? 'Gửi Điểm & Đánh Giá' : 'Submit Review'}</span>
+                  <span>{lang === 'vi' ? 'Gửi Điểm & Đánh Giá (+50 XP)' : 'Submit Review (+50 XP)'}</span>
                 )}
               </button>
             </motion.div>
@@ -145,20 +314,20 @@ export const FeedbackModal: React.FC<Props> = ({ isOpen, onClose, userId, lang, 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="py-12 flex flex-col items-center justify-center text-center space-y-4"
+              className="py-8 flex flex-col items-center justify-center text-center space-y-3"
             >
-              <div className="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center animate-bounce shadow-lg">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-14 h-14 bg-emerald-500 text-white rounded-full flex items-center justify-center animate-bounce shadow-lg">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-xl font-extrabold text-gray-900 dark:text-white">
+              <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">
                 {lang === 'vi' ? 'Gửi thành công! +50 XP' : 'Thank You! +50 XP'}
               </h3>
               <p className="text-xs text-gray-400 dark:text-gray-500">
                 {lang === 'vi' 
-                  ? 'Góp ý vàng của bạn đã được ghi nhận trực tiếp vào hòm thư cải tiến.' 
-                  : 'Your feedback was synced to the cloud database successfully.'}
+                  ? 'Góp ý vàng của bạn đã được ghi nhận trực tiếp vào hệ thống.' 
+                  : 'Your feedback was saved successfully.'}
               </p>
             </motion.div>
           )}
@@ -167,3 +336,4 @@ export const FeedbackModal: React.FC<Props> = ({ isOpen, onClose, userId, lang, 
     </div>
   );
 };
+

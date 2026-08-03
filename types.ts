@@ -71,7 +71,20 @@ export interface PortfolioItem {
   link?: string;
 }
 
-export type SubscriptionTier = 'free' | 'micro5' | 'micro10' | 'monthly' | 'season' | 'annual' | 'reskilling' | 'trial24h';
+export type SubscriptionTier = 
+  | 'free' 
+  | 'micro5' 
+  | 'micro10' 
+  | 'micro_interview' 
+  | 'micro_transcript' 
+  | 'premium_monthly' 
+  | 'premium_yearly' 
+  | 'max_monthly' 
+  | 'max_yearly' 
+  | 'monthly' 
+  | 'annual' 
+  | 'season' 
+  | 'reskilling';
 
 export interface UserSubscription {
   tier: SubscriptionTier;
@@ -93,6 +106,21 @@ export interface UserSubscription {
     unlimitedChat: boolean;
     fullMockInterview: boolean;
     fullTranscriptAudit: boolean;
+    // New structured permissions
+    aiChat3First?: boolean;
+    personalityQuizRiasec?: boolean;
+    basicCareerSuggestions?: boolean;
+    sampleRoadmap?: boolean;
+    unlimitedChatFUP?: boolean;
+    careerDnaFull?: boolean;
+    detailedRoadmap?: boolean;
+    cvReview?: boolean;
+    googleCalendarSync?: boolean;
+    cvJdAnalysis?: boolean;
+    positionInterviewAI?: boolean;
+    upskillReskilling?: boolean;
+    careerPathSalaryInsight?: boolean;
+    monthlyGoalTracking?: boolean;
   };
 }
 

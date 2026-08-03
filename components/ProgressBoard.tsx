@@ -7,6 +7,7 @@ import { ChatSession, UserProfile, Language, ChatMessage, Milestone, Theme } fro
 import { generateRoadmap } from '../services/geminiService';
 import emailjs from '@emailjs/browser';
 import { InlineGuide } from './InlineGuide';
+import { CareerLifecycleManager } from './CareerLifecycleManager';
 
 interface ProgressBoardProps {
   chatHistory: ChatSession[];
@@ -244,7 +245,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
   onNavigateToChat,
   onSendPromptToChat 
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'roadmap' | 'skills_jobs'>('roadmap');
+  const [activeSubTab, setActiveSubTab] = useState<'lifecycle' | 'roadmap' | 'skills_jobs'>('lifecycle');
   
   // Roadmap States
   const [isExporting, setIsExporting] = useState(false);
@@ -713,71 +714,30 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
     return Math.min(100, Math.round(totalProgress / matchedMapSkills.length));
   };
 
-  if (activeSubTab === 'roadmap' && milestones.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center h-full bg-gray-50 dark:bg-[#050505] p-8 text-center animate-fade-in">
-        <div className="flex gap-4 p-1.5 bg-gray-100 dark:bg-white/5 rounded-2xl mb-8">
-            <button onClick={() => setActiveSubTab('roadmap')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${activeSubTab === 'roadmap' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-              {language === Language.VI ? "Lộ Trình Bản Thân" : "My Roadmap"}
-            </button>
-            <button onClick={() => setActiveSubTab('skills_jobs')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${(activeSubTab as string) === 'skills_jobs' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>
-              {language === Language.VI ? "Bản Đồ Kỹ Năng & Việc Làm" : "Skill Map & Job Matching"}
-            </button>
-        </div>
-
-        <div className="w-24 h-24 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 rounded-full flex items-center justify-center mb-6 shadow-xl">
-          <Icons.Map className="w-12 h-12" />
-        </div>
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-          {language === Language.EN ? "Your Roadmap is Empty" : "Bảng Tiến Độ Đang Trống"}
-        </h2>
-        <p className="text-gray-500 dark:text-gray-400 max-w-md mb-8">
-          {language === Language.EN 
-            ? "Chat with the AI first so it can understand your goals and generate a personalized step-by-step career roadmap for you." 
-            : "Hãy trò chuyện với AI trước để hệ thống hiểu rõ mục tiêu bản thân, hoặc đi tới mục Bản Đồ Kỹ Năng để xem ngay."}
-        </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4">
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onNavigateToChat}
-            className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold text-base transition-shadow shadow-lg hover:shadow-indigo-500/30 flex items-center justify-center gap-3"
-          >
-            <Icons.MessageSquare className="w-5 h-5" />
-            {language === Language.EN ? "Start Chatting" : "Bắt đầu trò chuyện"}
-          </motion.button>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setActiveSubTab('skills_jobs')}
-            className="px-6 py-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-white border border-gray-200 dark:border-gray-700 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-3"
-          >
-            <Icons.Compass className="w-5 h-5 text-indigo-500" />
-            {language === Language.VI ? "Bản Đồ Kỹ Năng Ngành" : "Explore Skill Map"}
-          </motion.button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-[#050505] overflow-y-auto">
       {/* Sub-tab Switcher Header */}
       <div className="w-full border-b border-gray-200 dark:border-white/5 bg-white dark:bg-[#0e0e0e] py-3.5 px-4 md:px-6 sticky top-0 z-20 flex flex-col lg:flex-row justify-between items-center gap-3 shadow-sm">
-        <div className="flex flex-wrap gap-1.5 p-1 bg-gray-100 dark:bg-white/5 rounded-2xl w-full lg:w-auto">
+        <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-1 bg-gray-100 dark:bg-white/5 rounded-2xl w-full lg:w-auto">
+            <button 
+              onClick={() => setActiveSubTab('lifecycle')} 
+              className={`shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'lifecycle' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
+            >
+              <Icons.Compass className="w-4 h-4 text-amber-400" />
+              <span>{language === Language.VI ? "Vòng Đời Sự Nghiệp" : "Career Lifecycle"}</span>
+            </button>
             <button 
               onClick={() => setActiveSubTab('roadmap')} 
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'roadmap' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
+              className={`shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'roadmap' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
             >
               <Icons.Target className="w-4 h-4" />
-              <span>{language === Language.VI ? "Lộ Trình Học Tập" : "My Roadmap"}</span>
+              <span>{language === Language.VI ? "Lộ Trình Học Tập" : "Action Plan"}</span>
             </button>
             <button 
               onClick={() => setActiveSubTab('skills_jobs')} 
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'skills_jobs' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
+              className={`shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'skills_jobs' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
             >
-              <Icons.Compass className="w-4 h-4" />
+              <Icons.Map className="w-4 h-4" />
               <span>{language === Language.VI ? "Bản Đồ Kỹ Năng & Việc Làm" : "Skill Map & Job Matching"}</span>
             </button>
         </div>
@@ -808,6 +768,18 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
         )}
       </div>
 
+      {activeSubTab === 'lifecycle' && (
+        <div className="flex-1 p-2 sm:p-4 md:p-6 animate-fade-in">
+          <CareerLifecycleManager
+            language={language}
+            user={user}
+            onSendPromptToChat={onSendPromptToChat || (() => {})}
+            showToast={showToast}
+          />
+        </div>
+      )}
+
+      {activeSubTab !== 'lifecycle' && (
       <div className="w-full p-4 md:p-8 max-w-5xl mx-auto">
         <InlineGuide 
           sectionKey={`progress-${activeSubTab}`}
@@ -1704,6 +1676,7 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
           )}
         </AnimatePresence>
       </div>
+      )}
 
       {/* Loading Document Exporting Overlay */}
       <AnimatePresence>

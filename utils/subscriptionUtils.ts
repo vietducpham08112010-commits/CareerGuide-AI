@@ -3,10 +3,10 @@ export type { SubscriptionTier };
 
 export const DEFAULT_FREE_SUBSCRIPTION: UserSubscription = {
   tier: 'free',
-  tierNameVi: 'Gói Miễn Phí (Free Tier)',
-  tierNameEn: 'Free Tier',
-  dailyQueriesUsed: 2, // 2/5 used today
-  dailyQueriesLimit: 5,
+  tierNameVi: 'CareerGuide Free',
+  tierNameEn: 'CareerGuide Free',
+  dailyQueriesUsed: 0,
+  dailyQueriesLimit: 3,
   extraQueriesCredits: 0,
   mockInterviewCredits: 0,
   cvAuditCredits: 0,
@@ -20,6 +20,20 @@ export const DEFAULT_FREE_SUBSCRIPTION: UserSubscription = {
     unlimitedChat: false,
     fullMockInterview: false,
     fullTranscriptAudit: false,
+    aiChat3First: true,
+    personalityQuizRiasec: true,
+    basicCareerSuggestions: true,
+    sampleRoadmap: true,
+    unlimitedChatFUP: false,
+    careerDnaFull: false,
+    detailedRoadmap: false,
+    cvReview: false,
+    googleCalendarSync: false,
+    cvJdAnalysis: false,
+    positionInterviewAI: false,
+    upskillReskilling: false,
+    careerPathSalaryInsight: false,
+    monthlyGoalTracking: false,
   }
 };
 
@@ -51,37 +65,26 @@ export function createUpdatedSubscription(
     };
   }
 
-  if (tier === 'monthly') {
+  if (tier === 'micro_interview') {
     return {
-      tier: 'monthly',
-      tierNameVi: 'Gói Tháng Premium',
-      tierNameEn: 'Monthly Premium Tier',
-      expiresAt: customExpiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      dailyQueriesUsed: current.dailyQueriesUsed,
-      dailyQueriesLimit: 9999,
-      extraQueriesCredits: current.extraQueriesCredits,
-      mockInterviewCredits: Math.max(5, current.mockInterviewCredits),
-      cvAuditCredits: Math.max(5, current.cvAuditCredits),
-      unlockedFeatures: {
-        aiChat5PerDay: true,
-        personalityQuiz: true,
-        aiDeepDive: true,
-        scholarshipEssayEditor: true,
-        mentorMatch: true,
-        reskillingSkillBridge: true,
-        unlimitedChat: true,
-        fullMockInterview: true,
-        fullTranscriptAudit: true,
-      }
+      ...current,
+      mockInterviewCredits: current.mockInterviewCredits + 1
     };
   }
 
-  if (tier === 'season') {
+  if (tier === 'micro_transcript') {
     return {
-      tier: 'season',
-      tierNameVi: 'Gói Mùa Thi Premium',
-      tierNameEn: 'Exam Season Pass',
-      expiresAt: customExpiresAt || new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString(),
+      ...current,
+      cvAuditCredits: current.cvAuditCredits + 1
+    };
+  }
+
+  if (tier === 'premium_monthly' || tier === 'monthly') {
+    return {
+      tier: 'premium_monthly',
+      tierNameVi: 'CareerGuide Premium (Tháng)',
+      tierNameEn: 'CareerGuide Premium (Monthly)',
+      expiresAt: customExpiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       dailyQueriesUsed: current.dailyQueriesUsed,
       dailyQueriesLimit: 9999,
       extraQueriesCredits: current.extraQueriesCredits,
@@ -97,21 +100,35 @@ export function createUpdatedSubscription(
         unlimitedChat: true,
         fullMockInterview: true,
         fullTranscriptAudit: true,
+        aiChat3First: true,
+        personalityQuizRiasec: true,
+        basicCareerSuggestions: true,
+        sampleRoadmap: true,
+        unlimitedChatFUP: true,
+        careerDnaFull: true,
+        detailedRoadmap: true,
+        cvReview: true,
+        googleCalendarSync: true,
+        cvJdAnalysis: false,
+        positionInterviewAI: false,
+        upskillReskilling: false,
+        careerPathSalaryInsight: false,
+        monthlyGoalTracking: false,
       }
     };
   }
 
-  if (tier === 'annual') {
+  if (tier === 'premium_yearly' || tier === 'annual') {
     return {
-      tier: 'annual',
-      tierNameVi: 'Gói Năm Saver',
-      tierNameEn: 'Annual Saver Pass',
+      tier: 'premium_yearly',
+      tierNameVi: 'CareerGuide Premium (Năm)',
+      tierNameEn: 'CareerGuide Premium (Yearly)',
       expiresAt: customExpiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       dailyQueriesUsed: current.dailyQueriesUsed,
       dailyQueriesLimit: 9999,
       extraQueriesCredits: current.extraQueriesCredits,
-      mockInterviewCredits: Math.max(20, current.mockInterviewCredits),
-      cvAuditCredits: Math.max(20, current.cvAuditCredits),
+      mockInterviewCredits: Math.max(50, current.mockInterviewCredits),
+      cvAuditCredits: Math.max(50, current.cvAuditCredits),
       unlockedFeatures: {
         aiChat5PerDay: true,
         personalityQuiz: true,
@@ -122,21 +139,35 @@ export function createUpdatedSubscription(
         unlimitedChat: true,
         fullMockInterview: true,
         fullTranscriptAudit: true,
+        aiChat3First: true,
+        personalityQuizRiasec: true,
+        basicCareerSuggestions: true,
+        sampleRoadmap: true,
+        unlimitedChatFUP: true,
+        careerDnaFull: true,
+        detailedRoadmap: true,
+        cvReview: true,
+        googleCalendarSync: true,
+        cvJdAnalysis: false,
+        positionInterviewAI: false,
+        upskillReskilling: false,
+        careerPathSalaryInsight: false,
+        monthlyGoalTracking: false,
       }
     };
   }
 
-  if (tier === 'reskilling') {
+  if (tier === 'max_monthly') {
     return {
-      tier: 'reskilling',
-      tierNameVi: 'Gói Chuyển Ngành Lao Động',
-      tierNameEn: 'Working Professional Reskilling Pass',
+      tier: 'max_monthly',
+      tierNameVi: 'CareerGuide Max (Tháng)',
+      tierNameEn: 'CareerGuide Max (Monthly)',
       expiresAt: customExpiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       dailyQueriesUsed: current.dailyQueriesUsed,
       dailyQueriesLimit: 9999,
       extraQueriesCredits: current.extraQueriesCredits,
-      mockInterviewCredits: Math.max(10, current.mockInterviewCredits),
-      cvAuditCredits: Math.max(10, current.cvAuditCredits),
+      mockInterviewCredits: 9999,
+      cvAuditCredits: 9999,
       unlockedFeatures: {
         aiChat5PerDay: true,
         personalityQuiz: true,
@@ -147,21 +178,35 @@ export function createUpdatedSubscription(
         unlimitedChat: true,
         fullMockInterview: true,
         fullTranscriptAudit: true,
+        aiChat3First: true,
+        personalityQuizRiasec: true,
+        basicCareerSuggestions: true,
+        sampleRoadmap: true,
+        unlimitedChatFUP: true,
+        careerDnaFull: true,
+        detailedRoadmap: true,
+        cvReview: true,
+        googleCalendarSync: true,
+        cvJdAnalysis: true,
+        positionInterviewAI: true,
+        upskillReskilling: true,
+        careerPathSalaryInsight: true,
+        monthlyGoalTracking: true,
       }
     };
   }
 
-  if (tier === 'trial24h') {
+  if (tier === 'max_yearly') {
     return {
-      tier: 'trial24h',
-      tierNameVi: 'Gói Trial 24H Full Pass',
-      tierNameEn: '24-Hour Premium Trial Pass',
-      expiresAt: customExpiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      tier: 'max_yearly',
+      tierNameVi: 'CareerGuide Max (Năm)',
+      tierNameEn: 'CareerGuide Max (Yearly)',
+      expiresAt: customExpiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       dailyQueriesUsed: current.dailyQueriesUsed,
       dailyQueriesLimit: 9999,
       extraQueriesCredits: current.extraQueriesCredits,
-      mockInterviewCredits: Math.max(3, current.mockInterviewCredits),
-      cvAuditCredits: Math.max(3, current.cvAuditCredits),
+      mockInterviewCredits: 9999,
+      cvAuditCredits: 9999,
       unlockedFeatures: {
         aiChat5PerDay: true,
         personalityQuiz: true,
@@ -172,6 +217,20 @@ export function createUpdatedSubscription(
         unlimitedChat: true,
         fullMockInterview: true,
         fullTranscriptAudit: true,
+        aiChat3First: true,
+        personalityQuizRiasec: true,
+        basicCareerSuggestions: true,
+        sampleRoadmap: true,
+        unlimitedChatFUP: true,
+        careerDnaFull: true,
+        detailedRoadmap: true,
+        cvReview: true,
+        googleCalendarSync: true,
+        cvJdAnalysis: true,
+        positionInterviewAI: true,
+        upskillReskilling: true,
+        careerPathSalaryInsight: true,
+        monthlyGoalTracking: true,
       }
     };
   }

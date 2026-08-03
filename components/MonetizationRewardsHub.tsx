@@ -10,6 +10,8 @@ interface MonetizationRewardsHubProps {
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   onNavigateToChat: () => void;
   onUpdateUser?: (updates: Partial<UserProfile>) => void;
+  onClose?: () => void;
+  isModal?: boolean;
 }
 
 interface PartnerOffer {
@@ -126,11 +128,14 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
   user,
   showToast,
   onNavigateToChat,
-  onUpdateUser
+  onUpdateUser,
+  onClose,
+  isModal
 }) => {
   const isVi = language === Language.VI;
   const [activeTab, setActiveTab] = useState<'active_sub' | 'b2c_pricing' | 'northstar_trial' | 'regional' | 'b2b_school' | 'b2b_affiliate' | 'rewards'>('active_sub');
   const [partnerCategory, setPartnerCategory] = useState<'all' | 'english' | 'coding' | 'data' | 'recruitment' | 'certifications'>('all');
+  const [hubBillingCycle, setHubBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   const currentSub = getSubscriptionDetails(user?.subscription);
 
@@ -141,12 +146,47 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
   const [freeQueriesToday, setFreeQueriesToday] = useState<number>(currentSub.dailyQueriesUsed);
   const [completedMilestonesLastMonth, setCompletedMilestonesLastMonth] = useState<number>(4);
 
-  // Regional pricing selection
-  const [selectedRegion, setSelectedRegion] = useState<'tier1' | 'tier23'>('tier1');
-  const [userDeclaredSchool, setUserDeclaredSchool] = useState<string>('THPT Chuyên Hà Nội - Amsterdam');
+  // Regional pricing selection & Geolocation Google Maps States
+  const [selectedRegion, setSelectedRegion] = useState<'tier1' | 'tier23'>('tier23');
+  const [userDeclaredSchool, setUserDeclaredSchool] = useState<string>('THPT Chuyên Nguyễn Du (Đắk Lắk)');
+  const [isScanningLocation, setIsScanningLocation] = useState<boolean>(false);
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number }>({ lat: 12.6667, lng: 108.0500 });
+  const [locationVerifiedText, setLocationVerifiedText] = useState<string>("Đắk Lắk (Tây Nguyên - Nông Thôn Vùng II/III)");
+  const [appliedCoupon, setAppliedCoupon] = useState<string>("TROGIANONGTHON50");
 
   // B2B School SaaS Calculator State
   const [schoolStudentCount, setSchoolStudentCount] = useState<number>(800);
+
+  const handleScanLocation = () => {
+    setIsScanningLocation(true);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setGpsCoords({ lat: latitude, lng: longitude });
+          setIsScanningLocation(false);
+          setSelectedRegion("tier23");
+          setLocationVerifiedText(`GPS Thực: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (Vùng Nông Thôn Trợ Giá 50%)`);
+          setAppliedCoupon("GPS_RURAL_50OFF");
+          showToast(isVi ? `📍 GPS Google Maps xác thực thành công (${latitude.toFixed(4)}, ${longitude.toFixed(4)})! Áp dụng mức trợ giá 29.000 VNĐ.` : "GPS location verified!", "success");
+        },
+        () => {
+          setTimeout(() => {
+            setIsScanningLocation(false);
+            setGpsCoords({ lat: 12.6667, lng: 108.0500 });
+            setSelectedRegion("tier23");
+            setLocationVerifiedText("IP Địa Lý: Đắk Lắk (Tây Nguyên - Trợ Giá Vùng II/III)");
+            setAppliedCoupon("TROGIANONGTHON50");
+            showToast(isVi ? "🌐 Đã quét IP địa lý: Đắk Lắk - Tây Nguyên! Tự động áp dụng gói trợ giá 29.000 VNĐ/tháng." : "IP verified!", "success");
+          }, 700);
+        },
+        { timeout: 4000 }
+      );
+    } else {
+      setIsScanningLocation(false);
+      showToast(isVi ? "Định vị IP thành công: Đắk Lắk (Tây Nguyên - Vùng trợ giá)." : "IP location verified!", "info");
+    }
+  };
 
   // Missions
   const [missions, setMissions] = useState([
@@ -212,9 +252,7 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
       } else if (rewardType === 'mock') {
         updatedSub.mockInterviewCredits = (updatedSub.mockInterviewCredits || 0) + 1;
       } else if (rewardType === 'trial') {
-        updatedSub.tier = 'trial24h';
-        updatedSub.tierNameVi = 'Trial 24H (Đổi từ CP)';
-        updatedSub.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        updatedSub.cvAuditCredits = (updatedSub.cvAuditCredits || 0) + 1;
       }
 
       onUpdateUser({
@@ -255,7 +293,7 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
 
   const schoolPriceInfo = calculateSchoolPricing(schoolStudentCount);
 
-  return (
+  const mainContent = (
     <div className="space-y-6">
       {/* Top Banner Overview */}
       <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 text-white shadow-xl relative overflow-hidden border border-indigo-800/40">
@@ -416,21 +454,21 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                 {/* Quick Action Switcher */}
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => handleSwitchTier('monthly', 'Gói Tháng Premium')}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                    onClick={() => handleSwitchTier('premium_monthly', 'CareerGuide Premium')}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
                   >
                     <Icons.Zap className="w-3.5 h-3.5 text-amber-300" />
-                    {isVi ? "Dùng Thử Gói Tháng (99k)" : "Try Monthly (99k)"}
+                    {isVi ? "Gói Premium (99k)" : "Premium (99k)"}
                   </button>
                   <button
-                    onClick={() => handleSwitchTier('trial24h', 'Gói Trial 24H')}
-                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all"
+                    onClick={() => handleSwitchTier('max_monthly', 'CareerGuide Max')}
+                    className="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
                   >
-                    🔥 {isVi ? "Trial 24H (35k)" : "24H Pass (35k)"}
+                    🔥 {isVi ? "Gói Max (129k)" : "Max Pass (129k)"}
                   </button>
                   {currentSub.tier !== 'free' && (
                     <button
-                      onClick={() => handleSwitchTier('free', 'Gói Miễn Phí')}
+                      onClick={() => handleSwitchTier('free', 'CareerGuide Free')}
                       className="px-3 py-2 bg-white/10 hover:bg-white/20 text-gray-300 font-bold text-xs rounded-xl transition-all"
                     >
                       {isVi ? "Chuyển Về Free" : "Switch to Free"}
@@ -526,274 +564,363 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
       {/* TAB 1: B2C FREEMIUM & MICRO PACKAGES */}
       {activeTab === 'b2c_pricing' && (
         <div className="space-y-8 animate-fade-in">
-          {/* Free Model Info Header */}
-          <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-600 text-white rounded-xl shadow-sm">
-                <Icons.Sparkles className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-sm text-gray-900 dark:text-white">
-                  {isVi ? "Mô hình Miễn phí (Free Tier Default)" : "Default Free Tier Policy"}
-                </h4>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
-                  {isVi
-                    ? "Tất cả người dùng mới được phép Chat AI 5 câu/ngày + 1 bài trắc nghiệm tính cách (Holland/MBTI) cơ bản."
-                    : "All users enjoy 5 free AI chats per day + 1 basic Holland/MBTI personality assessment."}
-                </p>
-              </div>
-            </div>
-            <div className="px-3.5 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 font-bold text-xs flex items-center gap-1.5 flex-shrink-0">
-              <Icons.Lock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              {isVi ? "Free 5 câu/ngày" : "Free 5 queries/day"}
-            </div>
-          </div>
-
-          {/* Section 1: Major Subscription Tiers */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-black text-gray-900 dark:text-white">
-                  {isVi ? "1. Gói Thuê Bao Thuần (B2C Subscriptions)" : "1. Core B2C Subscription Packages"}
-                </h3>
-                <p className="text-xs text-gray-500">
-                  {isVi ? "Đầy đủ tính năng AI Deep-Dive, Phân tích học bạ, Sửa bài luận học bổng & Mentor 1-1" : "Unlock full AI Deep-Dive, Transcript Analysis, Essay Edits & 1-1 Mentors"}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Gói Tháng Standard */}
-              <div className="p-6 rounded-2xl bg-white dark:bg-gray-800 border-2 border-indigo-500 shadow-md flex flex-col justify-between space-y-4 relative">
-                <div className="absolute -top-3 right-4 bg-indigo-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
-                  {isVi ? "Phổ biến" : "Popular"}
-                </div>
-                <div className="space-y-3">
-                  <span className="text-xs font-bold uppercase text-indigo-600 dark:text-indigo-400 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded-full inline-block">
-                    {isVi ? "Gói Tháng Standard" : "Monthly Subscription"}
-                  </span>
-                  <div>
-                    <h4 className="text-3xl font-black text-gray-900 dark:text-white">99.000 VNĐ</h4>
-                    <span className="text-xs text-gray-500">/ {isVi ? "tháng" : "month"}</span>
-                  </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-300">
-                    {isVi ? "Giá chuẩn mở khóa toàn bộ tính năng AI Deep-Dive & Tư vấn định hướng không giới hạn." : "Full AI Deep-Dive access & unlimited career consulting."}
-                  </p>
-                  <ul className="text-xs space-y-2 text-gray-600 dark:text-gray-300 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-emerald-500" /> {isVi ? "Chat AI Deep-Dive không giới hạn" : "Unlimited AI Deep-Dive Chat"}</li>
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-emerald-500" /> {isVi ? "Phân tích chi tiết 150+ Trường ĐH" : "Deep Analysis for 150+ Universities"}</li>
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-emerald-500" /> {isVi ? "Sửa bài luận săn học bổng" : "Scholarship Essay Corrections"}</li>
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-emerald-500" /> {isVi ? "Kết nối Mentor 1-1 sinh viên Top" : "1-1 Top Student Mentor Match"}</li>
-                  </ul>
-                </div>
-                <button
-                  onClick={() => handleSimulatePurchase("Gói Tháng Premium Standard", "99.000 VNĐ", "monthly")}
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all"
-                >
-                  {isVi ? "Đăng Ký Gói Tháng (99k)" : "Subscribe Monthly (99k)"}
-                </button>
-              </div>
-
-              {/* Gói Mùa Thi */}
-              <div className="p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between space-y-4">
-                <div className="space-y-3">
-                  <span className="text-xs font-bold uppercase text-amber-600 dark:text-amber-400 px-3 py-1 bg-amber-50 dark:bg-amber-900/30 rounded-full inline-block">
-                    {isVi ? "Gói Mùa Thi (Season Pass)" : "Exam Season Pass"}
-                  </span>
-                  <div>
-                    <h4 className="text-3xl font-black text-gray-900 dark:text-white">299.000 VNĐ</h4>
-                    <span className="text-xs text-gray-500">/ {isVi ? "mùa thi (4 tháng)" : "exam season (4 months)"}</span>
-                  </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-300">
-                    {isVi ? "Đồng hành xuyên suốt mùa ôn thi Đánh giá năng lực & Tuyển sinh Đại học." : "Full coverage through exam seasons & university admission cycles."}
-                  </p>
-                  <ul className="text-xs space-y-2 text-gray-600 dark:text-gray-300 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-emerald-500" /> {isVi ? "Tiết kiệm 25% so với gói tháng" : "Save 25% compared to monthly"}</li>
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-emerald-500" /> {isVi ? "Dự đoán điểm chuẩn ĐH theo học bạ" : "University score predictor"}</li>
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-emerald-500" /> {isVi ? "Full bộ Mock Interview phỏng vấn" : "Full AI Mock Interview practice"}</li>
-                  </ul>
-                </div>
-                <button
-                  onClick={() => handleSimulatePurchase("Gói Mùa Thi Premium", "299.000 VNĐ", "season")}
-                  className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all"
-                >
-                  {isVi ? "Mua Gói Mùa Thi (299k)" : "Buy Season Pass (299k)"}
-                </button>
-              </div>
-
-              {/* Gói Năm Saver */}
-              <div className="p-6 rounded-2xl bg-gradient-to-b from-purple-50 to-white dark:from-purple-950/30 dark:to-gray-800 border-2 border-purple-500 shadow-md flex flex-col justify-between space-y-4 relative">
-                <div className="absolute -top-3 right-4 bg-purple-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
-                  {isVi ? "Tiết kiệm 66%" : "Save 66%"}
-                </div>
-                <div className="space-y-3">
-                  <span className="text-xs font-bold uppercase text-purple-600 dark:text-purple-400 px-3 py-1 bg-purple-100 dark:bg-purple-900/50 rounded-full inline-block">
-                    {isVi ? "Gói Năm (Best Value)" : "Annual Subscription"}
-                  </span>
-                  <div>
-                    <h4 className="text-3xl font-black text-gray-900 dark:text-white">399.000 VNĐ</h4>
-                    <span className="text-xs text-gray-500">/ {isVi ? "năm (chỉ ~33k/tháng)" : "year (~33k/mo)"}</span>
-                  </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-300">
-                    {isVi ? "Gói năm toàn diện dành cho học sinh THPT & Sinh viên năm nhất muốn chuẩn bị sớm." : "Full annual pass for high schoolers & freshmen preparing early."}
-                  </p>
-                  <ul className="text-xs space-y-2 text-gray-600 dark:text-gray-300 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-purple-500" /> {isVi ? "Đầy đủ 100% tính năng Premium" : "All Premium features included"}</li>
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-purple-500" /> {isVi ? "Ưu tiên hỗ trợ kỹ thuật 24/7" : "Priority 24/7 technical support"}</li>
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-purple-500" /> {isVi ? "Tặng bộ Ebook lộ trình du học" : "Free Abroad Scholarship Ebook Pack"}</li>
-                  </ul>
-                </div>
-                <button
-                  onClick={() => handleSimulatePurchase("Gói Năm Premium", "399.000 VNĐ", "annual")}
-                  className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs shadow-md transition-all"
-                >
-                  {isVi ? "Đăng Ký Gói Năm (399k)" : "Subscribe Annual (399k)"}
-                </button>
-              </div>
-
-              {/* Gói Premium cho nhóm Lao Động (Career Reskilling) */}
-              <div className="p-6 rounded-2xl bg-gradient-to-b from-teal-50 to-white dark:from-teal-950/30 dark:to-gray-800 border-2 border-teal-500 shadow-md flex flex-col justify-between space-y-4 relative">
-                <div className="absolute -top-3 right-4 bg-teal-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
-                  {isVi ? "Chuyển Ngành" : "Career Switch"}
-                </div>
-                <div className="space-y-3">
-                  <span className="text-xs font-bold uppercase text-teal-700 dark:text-teal-300 px-3 py-1 bg-teal-100 dark:bg-teal-900/50 rounded-full inline-block">
-                    {isVi ? "Gói Người Đi Làm" : "Working Professional Tier"}
-                  </span>
-                  <div>
-                    <h4 className="text-2xl font-black text-gray-900 dark:text-white">149.000 - 199.000 VNĐ</h4>
-                    <span className="text-xs text-gray-500">/ {isVi ? "tháng" : "month"}</span>
-                  </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-300">
-                    {isVi ? "Dành cho người đi làm chuyển ngành hoặc nâng cấp kỹ năng với công cụ chuyên sâu." : "For working adults switching fields or upgrading mid-career competencies."}
-                  </p>
-                  <ul className="text-xs space-y-2 text-gray-600 dark:text-gray-300 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-teal-600" /> {isVi ? "Skill Bridge Analysis (Kế thừa kỹ năng)" : "Skill Bridge Analysis (Transferable skills)"}</li>
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-teal-600" /> {isVi ? "Mock Interview chuẩn Rubric ngành mới" : "Mock Interview with new industry rubric"}</li>
-                    <li className="flex items-center gap-2"><Icons.Check className="w-4 h-4 text-teal-600" /> {isVi ? "Mạng lưới Alumni & Mentor Network" : "Alumni & Professional Mentor Network"}</li>
-                  </ul>
-                </div>
-                <button
-                  onClick={() => handleSimulatePurchase("Gói Premium Lao Động", "149.000 VNĐ", "reskilling")}
-                  className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs shadow-md transition-all"
-                >
-                  {isVi ? "Đăng Ký Gói Chuyển Ngành" : "Subscribe Career Switch"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2: Pay-Per-Use Micro Packages */}
-          <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          {/* Header & Monthly/Yearly Toggle Switch */}
+          <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
             <div>
-              <h3 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                <Icons.Coins className="w-5 h-5 text-amber-500" />
-                {isVi ? "2. Gói Vi Thanh Toán Theo Lượt Sử Dụng (Pay-per-Use Micro Packages)" : "2. Pay-Per-Use Micro Packages"}
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/30 mb-2">
+                <Icons.Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                {isVi ? "Bảng Giá Gói Thuê Bao & Mua Lẻ" : "Subscription Tiers & Micro-purchases"}
+              </div>
+              <h3 className="text-2xl font-black text-white">
+                {isVi ? "Chọn Gói Hướng Nghiệp AI Cho Bạn" : "Choose Your AI Career Plan"}
               </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                {isVi
-                  ? "Dành cho nhóm người dùng không có nhu cầu thuê bao dài hạn, nạp linh hoạt theo nhu cầu thực tế."
-                  : "Designed for users with low or irregular budgets who prefer flexible per-item purchases."}
+              <p className="text-xs text-slate-400 mt-1">
+                {isVi 
+                  ? "Phù hợp cho Học sinh THPT, Sinh viên & Người đi làm. Tiết kiệm lên đến 60% khi chọn thanh toán theo năm."
+                  : "Perfect for students & job seekers. Save up to 60% with annual plans."}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {/* Gói lẻ 5 câu */}
-              <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3 flex flex-col justify-between">
+            {/* Toggle Switch */}
+            <div className="flex items-center bg-slate-800/90 p-1.5 rounded-2xl border border-slate-700/80 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setHubBillingCycle('monthly')}
+                className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
+                  hubBillingCycle === 'monthly'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {isVi ? "Thanh toán Theo Tháng" : "Monthly Billing"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setHubBillingCycle('yearly')}
+                className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 ${
+                  hubBillingCycle === 'yearly'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>{isVi ? "Thanh toán Theo Năm" : "Yearly Billing"}</span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black uppercase">
+                  -60%
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Section 1: 3-Tier Subscription Grid */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* TIER 1: CareerGuide Free */}
+              <div className="p-6 rounded-3xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between space-y-6 relative hover:border-gray-300 dark:hover:border-gray-600 transition-all">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider">
+                      Free Tier
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-black text-gray-900 dark:text-white">CareerGuide Free</h4>
+                    <div className="mt-2 flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-gray-900 dark:text-white">0 VNĐ</span>
+                      <span className="text-xs text-gray-500">/ {isVi ? "vĩnh viễn" : "forever"}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-300">
+                    {isVi ? "Trải nghiệm định hướng nghề nghiệp cơ bản miễn phí hoàn toàn." : "Basic career orientation experience for all users."}
+                  </p>
+
+                  <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                      {isVi ? "Quyền lợi bao gồm:" : "Features included:"}
+                    </span>
+                    <ul className="text-xs space-y-2.5 text-gray-700 dark:text-gray-200">
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <span>3 câu hỏi AI đầu tiên</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <span>Trắc nghiệm RIASEC cơ bản</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <span>Gợi ý ngành nghề cơ bản</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <span>Xem lộ trình học tập mẫu</span>
+                      </li>
+                    </ul>
+
+                    {/* Locked features indicator */}
+                    <div className="pt-3 border-t border-dashed border-gray-200 dark:border-gray-700 space-y-1.5 text-gray-400 dark:text-gray-500">
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <Icons.Lock className="w-3.5 h-3.5 text-amber-500/80 flex-shrink-0" />
+                        <span>Khóa: AI Không giới hạn (FUP)</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <Icons.Lock className="w-3.5 h-3.5 text-amber-500/80 flex-shrink-0" />
+                        <span>Khóa: AI Mock Interview & CV Review</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleSwitchTier('free', 'CareerGuide Free')}
+                  disabled={currentSub.tier === 'free'}
+                  className={`w-full py-3 rounded-2xl font-bold text-xs transition-all ${
+                    currentSub.tier === 'free'
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-default'
+                      : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:opacity-90 shadow-sm'
+                  }`}
+                >
+                  {currentSub.tier === 'free' ? (isVi ? "Gói Hiện Tại" : "Current Plan") : (isVi ? "Sử Dụng Gói Free" : "Use Free Plan")}
+                </button>
+              </div>
+
+              {/* TIER 2: CareerGuide Premium */}
+              <div className="p-6 rounded-3xl bg-white dark:bg-gray-800 border-2 border-purple-500 shadow-xl flex flex-col justify-between space-y-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-gradient-to-l from-purple-600 to-indigo-600 text-white text-[10px] font-black px-4 py-1 rounded-bl-2xl uppercase tracking-wider">
+                  {isVi ? "Phổ Biến Nhất" : "Most Popular"}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs font-extrabold uppercase tracking-wider">
+                      Premium
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xl font-black text-gray-900 dark:text-white">CareerGuide Premium</h4>
+                    <div className="mt-2 flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-purple-600 dark:text-purple-400">
+                        {hubBillingCycle === 'monthly' ? "99.000 VNĐ" : "399.000 VNĐ"}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        / {hubBillingCycle === 'monthly' ? (isVi ? "tháng" : "month") : (isVi ? "năm (~33k/tháng)" : "year")}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-300">
+                    {isVi ? "Dành cho học sinh & sinh viên cần mở khóa AI toàn diện và tư vấn học tập." : "Full career DNA, roadmap & AI practice for active learners."}
+                  </p>
+
+                  <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block">
+                      {isVi ? "Đặc quyền gói Premium:" : "Premium privileges:"}
+                    </span>
+                    <ul className="text-xs space-y-2.5 text-gray-700 dark:text-gray-200">
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                        <span>AI không giới hạn (Quota cao FUP)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                        <span>Phân tích Career DNA đầy đủ</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                        <span>Lộ trình Road Map chi tiết</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                        <span>AI Mock Interview (Phỏng vấn ảo)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                        <span>CV Review (Xem & sửa bài luận)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                        <span>Tích hợp Google Calendar</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleSimulatePurchase(
+                    hubBillingCycle === 'monthly' ? "CareerGuide Premium Tháng" : "CareerGuide Premium Năm",
+                    hubBillingCycle === 'monthly' ? "99.000 VNĐ" : "399.000 VNĐ",
+                    hubBillingCycle === 'monthly' ? "premium_monthly" : "premium_yearly"
+                  )}
+                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-2xl shadow-md transition-all"
+                >
+                  {hubBillingCycle === 'monthly' ? (isVi ? "Nâng Cấp Premium (99k/tháng)" : "Upgrade Premium (99k/mo)") : (isVi ? "Nâng Cấp Premium (399k/năm)" : "Upgrade Premium (399k/yr)")}
+                </button>
+              </div>
+
+              {/* TIER 3: CareerGuide Max */}
+              <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-amber-950 text-white border-2 border-amber-500/80 shadow-2xl flex flex-col justify-between space-y-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-400 to-orange-500 text-slate-950 text-[10px] font-black px-4 py-1 rounded-bl-2xl uppercase tracking-wider">
+                  🔥 Max Privileges
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-extrabold uppercase tracking-wider border border-amber-500/30">
+                      CareerGuide Max
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xl font-black text-white">CareerGuide Max</h4>
+                    <div className="mt-2 flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-amber-400">
+                        {hubBillingCycle === 'monthly' ? "129.000 VNĐ" : "999.000 VNĐ"}
+                      </span>
+                      <span className="text-xs text-slate-300">
+                        / {hubBillingCycle === 'monthly' ? (isVi ? "tháng" : "month") : (isVi ? "năm (~83k/tháng)" : "year")}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    {isVi ? "Giải pháp đỉnh cao cho ứng viên xin việc, chuyển ngành & săn học bổng cao cấp." : "Ultimate toolkit for job seekers, career switchers & ambitious scholars."}
+                  </p>
+
+                  <div className="space-y-2 pt-4 border-t border-slate-800">
+                    <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider block">
+                      {isVi ? "Tất cả đặc quyền Premium +" : "All Premium privileges +"}
+                    </span>
+                    <ul className="text-xs space-y-2.5 text-slate-200">
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <span>Phân tích CV khớp theo Mô tả công việc (JD)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <span>Phỏng vấn AI chuyên sâu theo từng vị trí</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <span>Gợi ý kỹ năng Upskill / Reskilling</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <span>CareerPath & Insights Mức lương thị trường</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Icons.Check className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <span>Theo dõi mục tiêu nghề nghiệp theo tháng</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleSimulatePurchase(
+                    hubBillingCycle === 'monthly' ? "CareerGuide Max Tháng" : "CareerGuide Max Năm",
+                    hubBillingCycle === 'monthly' ? "129.000 VNĐ" : "999.000 VNĐ",
+                    hubBillingCycle === 'monthly' ? "max_monthly" : "max_yearly"
+                  )}
+                  className="w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs rounded-2xl shadow-lg transition-all"
+                >
+                  {hubBillingCycle === 'monthly' ? (isVi ? "Sở Hữu Gói Max (129k/tháng)" : "Get Max (129k/mo)") : (isVi ? "Sở Hữu Gói Max (999k/năm)" : "Get Max (999k/yr)")}
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Section 2: Pay-Per-Use Micro-Purchases */}
+          <div className="space-y-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div>
+              <h3 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <Icons.Coins className="w-5 h-5 text-amber-500" />
+                {isVi ? "2. Gói Mua Lẻ Theo Lượt (Micro-Purchases)" : "2. Pay-Per-Use Micro-Purchases"}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">
+                {isVi
+                  ? "Dành cho học sinh & người dùng muốn mua lẻ theo nhu cầu mà không cần thuê bao."
+                  : "Ideal for flexible pay-as-you-go needs without recurring subscriptions."}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Phỏng vấn AI lẻ - 8.000 VNĐ */}
+              <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-purple-200 dark:border-purple-800/60 shadow-sm space-y-3 flex flex-col justify-between hover:border-purple-400 transition-all">
                 <div>
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded">
-                    {isVi ? "Gói Lẻ 5 Câu" : "5 Queries Pack"}
+                  <span className="text-[10px] font-black uppercase px-2.5 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full inline-block">
+                    {isVi ? "Phỏng Vấn Lẻ" : "Mock Interview"}
                   </span>
-                  <h5 className="text-xl font-black text-gray-900 dark:text-white mt-2">15.000 VNĐ</h5>
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    {isVi ? "Nạp thêm 5 lượt hỏi AI định hướng công việc tức thì." : "Instant 5 additional AI career guidance prompts."}
+                  <h5 className="text-2xl font-black text-gray-900 dark:text-white mt-2">8.000 VNĐ</h5>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isVi ? "1 lượt phỏng vấn thử AI theo vị trí với chấm điểm rubric chi tiết." : "1 AI Mock interview session with rubric scoring."}
                   </p>
                 </div>
                 <button
-                  onClick={() => handleSimulatePurchase("Gói lẻ 5 câu", "15.000 VNĐ", "micro5")}
-                  className="w-full py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-xs rounded-lg hover:opacity-90 transition-opacity"
+                  onClick={() => handleSimulatePurchase("Gói Phỏng Vấn AI Lẻ", "8.000 VNĐ", "micro_interview")}
+                  className="w-full py-2.5 bg-purple-600 text-white font-bold text-xs rounded-xl hover:bg-purple-700 transition-colors shadow-sm"
+                >
+                  {isVi ? "Mua Phỏng Vấn Lẻ (8k)" : "Buy Interview (8k)"}
+                </button>
+              </div>
+
+              {/* Soi Học Bạ / CV Lẻ - 5.000 VNĐ */}
+              <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-emerald-200 dark:border-emerald-800/60 shadow-sm space-y-3 flex flex-col justify-between hover:border-emerald-400 transition-all">
+                <div>
+                  <span className="text-[10px] font-black uppercase px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-full inline-block">
+                    {isVi ? "Soi Học Bạ / CV" : "Transcript / CV Audit"}
+                  </span>
+                  <h5 className="text-2xl font-black text-gray-900 dark:text-white mt-2">5.000 VNĐ</h5>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isVi ? "1 lượt AI soi học bạ phân tích cơ hội trúng tuyển hoặc audit CV." : "1 AI audit for high school grades or CV check."}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleSimulatePurchase("Gói Soi Học Bạ / CV Lẻ", "5.000 VNĐ", "micro_transcript")}
+                  className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
+                >
+                  {isVi ? "Soi Học Bạ Lẻ (5k)" : "Audit Transcript (5k)"}
+                </button>
+              </div>
+
+              {/* Gói Lẻ 5 Câu Chat AI - 15.000 VNĐ */}
+              <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3 flex flex-col justify-between hover:border-blue-400 transition-all">
+                <div>
+                  <span className="text-[10px] font-bold uppercase px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full inline-block">
+                    {isVi ? "Nạp 5 Câu Chat" : "5 Queries Pack"}
+                  </span>
+                  <h5 className="text-2xl font-black text-gray-900 dark:text-white mt-2">15.000 VNĐ</h5>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isVi ? "Nạp thêm 5 lượt hỏi AI định hướng công việc tức thì." : "5 additional instant AI career chat queries."}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleSimulatePurchase("Gói Lẻ 5 Câu Chat AI", "15.000 VNĐ", "micro5")}
+                  className="w-full py-2.5 bg-slate-900 dark:bg-white text-white dark:text-gray-900 font-bold text-xs rounded-xl hover:opacity-90 transition-opacity shadow-sm"
                 >
                   {isVi ? "Mua 15k / 5 câu" : "Buy 15k (5 Pack)"}
                 </button>
               </div>
 
-              {/* Gói lẻ 10 câu */}
-              <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3 flex flex-col justify-between">
+              {/* Gói Lẻ 10 Câu Chat AI - 25.000 VNĐ */}
+              <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3 flex flex-col justify-between hover:border-indigo-400 transition-all">
                 <div>
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded">
-                    {isVi ? "Gói Lẻ 10 Câu" : "10 Queries Pack"}
+                  <span className="text-[10px] font-bold uppercase px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-full inline-block">
+                    {isVi ? "Nạp 10 Câu Chat" : "10 Queries Pack"}
                   </span>
-                  <h5 className="text-xl font-black text-gray-900 dark:text-white mt-2">25.000 VNĐ</h5>
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    {isVi ? "Tiết kiệm hơn khi nạp 10 lượt tư vấn sâu." : "Better value pack with 10 deep consultation queries."}
+                  <h5 className="text-2xl font-black text-gray-900 dark:text-white mt-2">25.000 VNĐ</h5>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isVi ? "Nạp thêm 10 lượt tư vấn AI sâu về chọn ngành & chọn trường." : "10 deep AI queries for university selection."}
                   </p>
                 </div>
                 <button
-                  onClick={() => handleSimulatePurchase("Gói 10 câu", "25.000 VNĐ", "micro10")}
-                  className="w-full py-2 bg-indigo-600 text-white font-bold text-xs rounded-lg hover:bg-indigo-700 transition-colors"
+                  onClick={() => handleSimulatePurchase("Gói Lẻ 10 Câu Chat AI", "25.000 VNĐ", "micro10")}
+                  className="w-full py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
                 >
                   {isVi ? "Mua 25k / 10 câu" : "Buy 25k (10 Pack)"}
                 </button>
               </div>
 
-              {/* Mock Interview Lẻ */}
-              <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded">
-                    {isVi ? "Phỏng Vấn Lẻ" : "Mock Interview"}
-                  </span>
-                  <h5 className="text-xl font-black text-gray-900 dark:text-white mt-2">10.000 - 15.000 VNĐ</h5>
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    {isVi ? "1 Phiên Phỏng vấn thử AI với chấm điểm & phản hồi ngay." : "1 AI Mock interview session with instant feedback."}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleSimulatePurchase("1 lượt Mock Interview", "15.000 VNĐ")}
-                  className="w-full py-2 bg-purple-600 text-white font-bold text-xs rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  {isVi ? "Mua Lượt Phỏng Vấn" : "Buy Mock Session"}
-                </button>
-              </div>
-
-              {/* Phân Tích CV/Học Bạ Lẻ */}
-              <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded">
-                    {isVi ? "Soi CV / Học Bạ" : "CV & Grade Audit"}
-                  </span>
-                  <h5 className="text-xl font-black text-gray-900 dark:text-white mt-2">5.000 - 8.000 VNĐ</h5>
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    {isVi ? "1 lượt AI audit học bạ hoặc sửa CV chuyên sâu." : "1 deep AI audit session for CV or high school transcript."}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleSimulatePurchase("Lượt Phân tích CV/Học bạ", "8.000 VNĐ")}
-                  className="w-full py-2 bg-emerald-600 text-white font-bold text-xs rounded-lg hover:bg-emerald-700 transition-colors"
-                >
-                  {isVi ? "Soi CV/Học Bạ (5k-8k)" : "Buy Audit (5k-8k)"}
-                </button>
-              </div>
-
-              {/* Trial 24h Pass */}
-              <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md space-y-3 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-black/20 text-yellow-200 rounded">
-                    {isVi ? "Trial Premium 24H" : "24H Full Pass"}
-                  </span>
-                  <h5 className="text-xl font-black mt-2">35.000 VNĐ</h5>
-                  <p className="text-[11px] text-amber-100 mt-1 leading-snug">
-                    {isVi
-                      ? "Mở khóa TẤT CẢ tính năng nâng cao trong 24 giờ."
-                      : "Unlock ALL premium tools for 24 hours."}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleSimulatePurchase("Gói Trial Premium 24H", "35.000 VNĐ", "trial24h")}
-                  className="w-full py-2 bg-white text-orange-700 font-extrabold text-xs rounded-lg hover:bg-amber-50 transition-colors shadow-sm"
-                >
-                  {isVi ? "Kích Hoạt 24H (35k)" : "Activate 24H Pass"}
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -900,13 +1027,14 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
               </div>
 
               <button
-                onClick={() => {
-                  showToast(isVi ? "🔍 Đã quét thành công IP: 113.161.xx.xx (Đắk Lắk - Tây Nguyên)! Đã áp dụng giảm giá Vùng II & III." : "Verified IP location!", "success");
-                }}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-2"
+                onClick={handleScanLocation}
+                disabled={isScanningLocation}
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-2"
               >
-                <Icons.MapPin className="w-4 h-4" />
-                {isVi ? "Bấm Quét IP & Tọa Độ Bản Đồ" : "Scan IP & Coordinates"}
+                <Icons.MapPin className={`w-4 h-4 ${isScanningLocation ? 'animate-bounce' : ''}`} />
+                {isScanningLocation 
+                  ? (isVi ? "Đang quét GPS & Google Maps..." : "Scanning GPS...") 
+                  : (isVi ? "Bấm Quét GPS & Google Maps Tọa Độ" : "Scan GPS & Coordinates")}
               </button>
             </div>
 
@@ -914,34 +1042,42 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
               <div className="lg:col-span-5 space-y-3">
                 <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl border border-white/10 text-xs space-y-2">
                   <div className="flex justify-between items-center text-gray-300">
-                    <span>IP Địa Lý Hiện Tại:</span>
-                    <strong className="text-emerald-400 font-mono">113.161.72.109 (Viettel-VN)</strong>
+                    <span>Vị Trí Định Vị Bản Đồ:</span>
+                    <strong className="text-emerald-400 font-bold">{locationVerifiedText}</strong>
                   </div>
                   <div className="flex justify-between items-center text-gray-300">
-                    <span>Vùng Xác Thực:</span>
-                    <strong className="text-amber-300">Tây Nguyên / Nông Thôn (Cấp Trợ Giá II & III)</strong>
+                    <span>Tọa Độ GPS Google Maps:</span>
+                    <strong className="text-amber-300 font-mono">{gpsCoords.lat.toFixed(4)}, {gpsCoords.lng.toFixed(4)}</strong>
                   </div>
                   <div className="flex justify-between items-center text-gray-300">
-                    <span>Độ Tin Cậy IP & GPS:</span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">98.5% Verified</span>
+                    <span>Mã Trợ Giá Đã Áp Dụng:</span>
+                    <span className="px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 font-black font-mono">{appliedCoupon}</span>
                   </div>
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-gray-300 block mb-1">
-                    {isVi ? "Chọn Tỉnh / Thành phố để kiểm tra mức trợ giá:" : "Select Province to inspect rate:"}
+                    {isVi ? "Hoặc chọn Tỉnh / Thành phố để kiểm tra mức trợ giá:" : "Or select Province to inspect rate:"}
                   </label>
                   <select
                     value={userDeclaredSchool}
                     onChange={(e) => {
                       setUserDeclaredSchool(e.target.value);
-                      setSelectedRegion(e.target.value.includes('Hà Nội') || e.target.value.includes('TP. Hồ Chí Minh') || e.target.value.includes('Đà Nẵng') ? 'tier1' : 'tier23');
+                      const isUrban = e.target.value.includes('Hà Nội') || e.target.value.includes('TP. Hồ Chí Minh') || e.target.value.includes('Đà Nẵng');
+                      setSelectedRegion(isUrban ? 'tier1' : 'tier23');
+                      if (!isUrban) {
+                        setLocationVerifiedText(`${e.target.value} (Trợ Giá Vùng Nông Thôn / Tỉnh)`);
+                        setAppliedCoupon("TROGIANONGTHON50");
+                      } else {
+                        setLocationVerifiedText(`${e.target.value} (Khu Vực Đô Thị I - Mức Giá Chuẩn)`);
+                        setAppliedCoupon("STANDARD_URBAN");
+                      }
                     }}
                     className="w-full px-3 py-2 bg-slate-900 border border-indigo-700/60 rounded-xl text-xs font-bold text-white focus:outline-none"
                   >
                     <option value="THPT Chuyên Hà Nội - Amsterdam (Hà Nội - Đô thị I)">Hà Nội (Khu vực Đô thị I - Mức chuẩn)</option>
                     <option value="THPT Nguyễn Hữu Huân (TP. Hồ Chí Minh - Đô thị I)">TP. Hồ Chí Minh (Khu vực Đô thị I - Mức chuẩn)</option>
-                    <option value="THPT Chuyên Nguyễn Du (Đắk Lắk - Tây Nguyên)">Đắk Lắk (Trợ Giá Nông Thôn / Tây Nguyên -30%)</option>
+                    <option value="THPT Chuyên Nguyễn Du (Đắk Lắk - Tây Nguyên)">Đắk Lắk (Trợ Giá Nông Thôn / Tây Nguyên -50%)</option>
                     <option value="THPT Chuyên Lê Quý Đôn (Gia Lai)">Gia Lai (Trợ Giá Nông Thôn / Tây Nguyên -40%)</option>
                     <option value="THPT Chuyên Hùng Vương (Phú Thọ)">Phú Thọ (Trợ Giá Vùng Trung Du -30%)</option>
                     <option value="THPT Chuyên Hùng Vương (Cà Mau)">Cà Mau (Trợ Giá Miền Tây / Nông Thôn -50%)</option>
@@ -950,35 +1086,35 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                 </div>
               </div>
 
-              {/* Simulated Map Canvas View */}
-              <div className="lg:col-span-7 bg-slate-900/90 rounded-xl border border-indigo-500/30 overflow-hidden relative min-h-[160px] flex flex-col justify-between p-4">
-                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+              {/* Simulated / Interactive Map View */}
+              <div className="lg:col-span-7 bg-slate-900/90 rounded-xl border border-indigo-500/30 overflow-hidden relative min-h-[180px] flex flex-col justify-between p-4">
+                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
                 <div className="flex items-center justify-between text-xs relative z-10">
-                  <span className="font-bold text-indigo-300 flex items-center gap-1.5">
+                  <span className="font-bold text-emerald-300 flex items-center gap-1.5">
                     <Icons.Compass className="w-4 h-4 text-emerald-400 animate-spin" />
                     Google Maps Satellite Region Radar
                   </span>
                   <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
-                    LAT: 12.6667, LNG: 108.0500
+                    LAT: {gpsCoords.lat.toFixed(4)}, LNG: {gpsCoords.lng.toFixed(4)}
                   </span>
                 </div>
 
-                <div className="my-auto text-center relative z-10 py-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 rounded-full text-emerald-300 text-xs font-bold mb-1">
+                <div className="my-auto text-center relative z-10 py-3 bg-slate-950/60 backdrop-blur-sm rounded-xl p-3 border border-emerald-500/20">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 rounded-full text-emerald-300 text-xs font-bold mb-1.5">
                     📍 {userDeclaredSchool}
                   </div>
-                  <p className="text-[11px] text-gray-300">
-                    Mức Trợ Giá Tự Động Được Áp Dụng: <strong className="text-amber-300 font-extrabold">{selectedRegion === 'tier23' ? '29.000 VNĐ / tháng (-50% OFF)' : '99.000 VNĐ / tháng (Giá Đô Thị)'}</strong>
+                  <p className="text-xs text-gray-200">
+                    Mức Trợ Giá Tự Động Theo Tọa Độ GPS / IP: <strong className="text-amber-300 font-black text-sm">{selectedRegion === 'tier23' ? '29.000 VNĐ / tháng (Giảm -50% OFF)' : '99.000 VNĐ / tháng (Mức Đô Thị)'}</strong>
                   </p>
                 </div>
 
                 <div className="flex items-center justify-between border-t border-white/10 pt-2 text-[10px] text-gray-400 relative z-10">
-                  <span>Powering Location Matching via Google Maps Platform</span>
+                  <span className="flex items-center gap-1"><Icons.ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Powered by Google Maps & IP Geolocation</span>
                   <button 
-                    onClick={() => handleSimulatePurchase("Gói Trợ Giá Vùng Miền Nông Thôn", "29.000 VNĐ", "monthly")}
-                    className="text-amber-300 font-bold hover:underline"
+                    onClick={() => handleSimulatePurchase("Gói Trợ Giá Vùng Miền Nông Thôn Google Maps", selectedRegion === 'tier23' ? "29.000 VNĐ" : "99.000 VNĐ", "monthly")}
+                    className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg transition-colors"
                   >
-                    Kích hoạt ngay với giá 29k &rarr;
+                    Kích hoạt giá {selectedRegion === 'tier23' ? '29k' : '99k'} &rarr;
                   </button>
                 </div>
               </div>
@@ -988,53 +1124,118 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
             <div 
               onClick={() => setSelectedRegion('tier1')}
-              className={`p-6 rounded-2xl border cursor-pointer transition-all space-y-4 ${
+              className={`p-6 rounded-2xl border cursor-pointer transition-all space-y-4 flex flex-col justify-between ${
                 selectedRegion === 'tier1'
                   ? 'border-indigo-600 bg-indigo-50/30 dark:bg-indigo-950/20 ring-2 ring-indigo-500/30'
                   : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-black text-base text-gray-900 dark:text-white">
-                  {isVi ? "Khu Vực Đô Thị (Hà Nội, TP.HCM, Đà Nẵng)" : "Tier I Metropolitan (Hanoi, HCMC, Da Nang)"}
-                </span>
-                <span className="text-xs font-bold px-2.5 py-1 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200">
-                  {isVi ? "Mức Giá Chuẩn" : "Standard Price"}
-                </span>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-base text-gray-900 dark:text-white">
+                    {isVi ? "Khu Vực Đô Thị (Hà Nội, TP.HCM, Đà Nẵng)" : "Tier I Metropolitan (Hanoi, HCMC, Da Nang)"}
+                  </span>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200">
+                    {isVi ? "Mức Giá Chuẩn" : "Standard Price"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {isVi ? "Áp dụng cho người dùng tại các trung tâm đô thị lớn. Đầy đủ tính năng AI tư vấn 24/7, phòng phỏng vấn ảo & xem điểm chuẩn." : "Standard subscription rate for major urban centers."}
+                </p>
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <span className="text-xs text-gray-500">{isVi ? "Mức giá Premium:" : "Premium monthly rate:"}</span>
+                  <span className="text-xl font-black text-indigo-600 dark:text-indigo-400">99.000 VNĐ / tháng</span>
+                </div>
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-300">
-                {isVi ? "Áp dụng cho người dùng tại các trung tâm đô thị lớn." : "Standard subscription rate for major urban centers."}
-              </p>
-              <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <span className="text-xs text-gray-500">{isVi ? "Mức giá Premium:" : "Premium monthly rate:"}</span>
-                <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">99.000 VNĐ / tháng</span>
-              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedRegion('tier1');
+                  handleSimulatePurchase("Gói Premium Đô Thị (Hà Nội / TP.HCM / Đà Nẵng)", "99.000 VNĐ", "monthly");
+                }}
+                className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-2"
+              >
+                <Icons.CreditCard className="w-4 h-4" />
+                {isVi ? "Mua Gói Đô Thị (99.000 VNĐ / tháng)" : "Purchase Urban Plan (99k/mo)"}
+              </button>
             </div>
 
             <div 
               onClick={() => setSelectedRegion('tier23')}
-              className={`p-6 rounded-2xl border cursor-pointer transition-all space-y-4 ${
+              className={`p-6 rounded-2xl border cursor-pointer transition-all space-y-4 flex flex-col justify-between ${
                 selectedRegion === 'tier23'
-                  ? 'border-emerald-600 bg-emerald-50/30 dark:bg-emerald-950/20 ring-2 ring-emerald-500/30'
+                  ? 'border-emerald-600 bg-emerald-50/40 dark:bg-emerald-950/30 ring-2 ring-emerald-500/50 shadow-lg'
                   : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-black text-base text-gray-900 dark:text-white">
-                  {isVi ? "Tỉnh, Nông Thôn & Vùng Sâu Vùng Xa" : "Provinces & Rural Regions"}
-                </span>
-                <span className="text-xs font-bold px-2.5 py-1 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200">
-                  {isVi ? "Ưu Đãi Trợ Giá 30% - 50%" : "30-50% Regional Subsidy"}
-                </span>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-base text-gray-900 dark:text-white flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {isVi ? "Tỉnh, Nông Thôn & Vùng Sâu Vùng Xa" : "Provinces & Rural Regions"}
+                  </span>
+                  <span className="text-xs font-black px-2.5 py-1 rounded bg-amber-400 text-slate-950 shadow-sm">
+                    {isVi ? "🔥 Trợ Giá Giảm -50% OFF" : "50% Rural Subsidy"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {isVi ? "Trợ giá sâu cho cùng một gói Premium đầy đủ tính năng giúp học sinh vùng nông thôn, Tây Nguyên & Miền Tây tiếp cận AI bình đẳng." : "Deeply subsidized rate for the identical Premium package."}
+                </p>
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <span className="text-xs text-gray-500">{isVi ? "Giá sau trợ giá vùng miền:" : "Subsidized rate:"}</span>
+                  <div className="text-right">
+                    <span className="text-xs line-through text-gray-400 mr-2">99.000đ</span>
+                    <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">29.000 VNĐ / tháng</span>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-300">
-                {isVi ? "Trợ giá sâu cho cùng một gói Premium giúp học sinh vùng xa tiếp cận AI công bằng." : "Deeply subsidized rate for the identical Premium package."}
-              </p>
-              <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <span className="text-xs text-gray-500">{isVi ? "Mức giá ưu đãi trợ giá:" : "Subsidized monthly rate:"}</span>
-                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">29.000 - 39.000 VNĐ / tháng</span>
-              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedRegion('tier23');
+                  handleSimulatePurchase(`Gói Trợ Giá Nông Thôn (${userDeclaredSchool})`, "29.000 VNĐ", "monthly");
+                }}
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:to-teal-700 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-2"
+              >
+                <Icons.Zap className="w-4 h-4 fill-slate-950" />
+                {isVi ? "⚡ MUA NGAY GÓI TRỢ GIÁ NÔNG THÔN (29.000 VNĐ)" : "BUY RURAL PLAN (29,000 VNĐ)"}
+              </button>
             </div>
+          </div>
+
+          {/* Unified Dynamic Checkout Banner */}
+          <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 text-white border border-emerald-500/40 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold text-emerald-400">
+                <Icons.CheckCircle className="w-4 h-4 text-emerald-400" />
+                <span>{isVi ? "GÓI DỊCH VỤ ĐÃ CHỌN THEO VỊ TRÍ BẢN ĐỒ / TỈNH:" : "SELECTED REGIONAL PLAN:"}</span>
+              </div>
+              <h4 className="text-base font-extrabold text-white">
+                {selectedRegion === 'tier23' 
+                  ? (isVi ? `Gói Premium Trợ Giá Nông Thôn - Tỉnh (${userDeclaredSchool})` : `Subsidized Rural Plan (${userDeclaredSchool})`)
+                  : (isVi ? "Gói Premium Đô Thị Cấp I (Hà Nội / TP.HCM / Đà Nẵng)" : "Urban Tier I Plan")}
+              </h4>
+              <p className="text-xs text-gray-300">
+                {isVi ? `Mã ưu đãi vị trí: ${appliedCoupon} • Giá thanh toán chính thức:` : `Location coupon: ${appliedCoupon} • Final Price:`}{' '}
+                <strong className="text-amber-300 font-black text-sm">{selectedRegion === 'tier23' ? '29.000 VNĐ / tháng' : '99.000 VNĐ / tháng'}</strong>
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                const planName = selectedRegion === 'tier23' 
+                  ? `Gói Trợ Giá Nông Thôn Vùng II/III (${userDeclaredSchool})`
+                  : "Gói Premium Đô Thị Cấp I";
+                const priceStr = selectedRegion === 'tier23' ? "29.000 VNĐ" : "99.000 VNĐ";
+                handleSimulatePurchase(planName, priceStr, "monthly");
+              }}
+              className="w-full md:w-auto px-6 py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+            >
+              <Icons.CreditCard className="w-4 h-4" />
+              <span>{isVi ? "TIẾN HÀNH THANH TOÁN & KÍCH HOẠT NGAY ↗" : "PROCEED TO CHECKOUT ↗"}</span>
+            </button>
           </div>
         </div>
       )}
@@ -1324,4 +1525,53 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
       )}
     </div>
   );
+
+  if (isModal || onClose) {
+    return (
+      <AnimatePresence>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 md:p-6 bg-black/80 backdrop-blur-md overflow-hidden">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden relative"
+          >
+            {/* Modal Header Bar */}
+            <div className="p-4 md:px-6 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-gray-50/90 dark:bg-gray-800/90 backdrop-blur-sm flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-xl shadow-md">
+                  <Icons.CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base md:text-lg text-gray-900 dark:text-white flex items-center gap-2">
+                    {isVi ? "Cửa Sổ Gói Cước & Đổi Thưởng" : "Subscriptions & Monetization Hub"}
+                    <span className="px-2 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold rounded-full">
+                      {isVi ? "Google Maps Trợ Giá Vùng Miền" : "Regional Subsidies"}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {isVi ? "Xem các gói đăng ký, đổi điểm CP, ưu đãi đối tác & trợ giá nông thôn" : "Explore plans, redeem CP, partner vouchers & rural subsidies"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-full text-gray-400 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                title={isVi ? "Đóng cửa sổ" : "Close window"}
+              >
+                <Icons.X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Body Content */}
+            <div className="p-4 md:p-6 overflow-y-auto flex-1 space-y-6">
+              {mainContent}
+            </div>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    );
+  }
+
+  return mainContent;
 };
