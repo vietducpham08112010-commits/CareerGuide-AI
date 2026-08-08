@@ -200,13 +200,7 @@ export const getGeminiApiKey = async () => {
             console.warn("Failed to fetch API key from server fallback", e);
         }
     }
-    // Fallback default key if not provided via env or server (needed for static frontend-only deployments)
-    if (!apiKey) {
-        const k1 = "AIzaSyAWdZ7q2CJ7Th9IanoK";
-        const k2 = "_8EGF6W6S6TdUKo";
-        apiKey = k1 + k2;
-    }
-    return apiKey;
+    return apiKey || '';
 };
 
 export const cleanFrontEndErrorMessage = (error: any, language: Language): string => {

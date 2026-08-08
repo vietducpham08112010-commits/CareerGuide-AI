@@ -21,10 +21,8 @@ wss.on('error', (err) => {
 });
 
 const PORT = 3000;
-const k1 = "AIzaSyAWdZ7q2CJ7Th9IanoK";
-const k2 = "_8EGF6W6S6TdUKo";
-const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || (k1 + k2);
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+const ai = new GoogleGenAI({ apiKey: API_KEY || "DUMMY_KEY" });
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -154,7 +152,10 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Message or file is required" });
     }
 
-    const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || (k1 + k2);
+    const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+    if (!finalApiKey) {
+      return res.status(400).json({ error: "Gemini API Key is missing." });
+    }
     const aiInstance = new GoogleGenAI({ apiKey: finalApiKey });
 
     const contents = formatHistoryForGemini(history || [], message || "");
@@ -192,7 +193,10 @@ app.post("/api/search", async (req, res) => {
       return res.status(400).json({ error: "Message is required" });
     }
 
-    const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || (k1 + k2);
+    const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+    if (!finalApiKey) {
+      return res.status(400).json({ error: "Gemini API Key is missing." });
+    }
     const aiInstance = new GoogleGenAI({ apiKey: finalApiKey });
 
     const contents = formatHistoryForGemini(history || [], message || "");
@@ -222,7 +226,10 @@ app.post("/api/generate-skill-map", async (req, res) => {
       return res.status(400).json({ error: "Career name is required" });
     }
 
-    const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || (k1 + k2);
+    const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+    if (!finalApiKey) {
+      return res.status(400).json({ error: "Gemini API Key is missing." });
+    }
     const aiInstance = new GoogleGenAI({ apiKey: finalApiKey });
 
     const careerId = "ai-gen-" + Math.random().toString(36).substring(2, 9);
