@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import * as htmlToImage from 'html-to-image';
-import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import * as Icons from 'lucide-react';
+import { captureElementToCanvasDataUrl } from '../utils/exportUtils';
 import { Language, Theme, UserProfile } from '../types';
 import { getGeminiApiKey } from '../services/geminiService';
 import { getSubscriptionDetails } from '../utils/subscriptionUtils';
@@ -343,27 +342,7 @@ Hãy trả về duy nhất 1 JSON object với cấu trúc chính xác như sau 
   };
 
   const captureCvCanvas = async (element: HTMLElement): Promise<string> => {
-    const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSU5ErkJggg==';
-    try {
-      return await htmlToImage.toPng(element, {
-        quality: 0.98,
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-        skipFonts: true,
-        cacheBust: true,
-        imagePlaceholder: transparentPixel,
-      });
-    } catch (err) {
-      console.warn("htmlToImage failed for CV, using html2canvas fallback:", err);
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-      });
-      return canvas.toDataURL('image/png');
-    }
+    return await captureElementToCanvasDataUrl(element, '#ffffff');
   };
 
   const handleExportCvPdf = async () => {

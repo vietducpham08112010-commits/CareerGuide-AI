@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import * as htmlToImage from 'html-to-image';
-import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import * as Icons from 'lucide-react';
+import { captureElementToCanvasDataUrl } from '../utils/exportUtils';
 import { ChatSession, UserProfile, Language, ChatMessage, Milestone, Theme } from '../types';
 import { generateRoadmap, getGeminiApiKey } from '../services/geminiService';
 import { getSubscriptionDetails } from '../utils/subscriptionUtils';
@@ -683,27 +682,7 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
   };
 
   const captureBoardCanvas = async (element: HTMLElement): Promise<string> => {
-    const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSU5ErkJggg==';
-    try {
-      return await htmlToImage.toPng(element, {
-        quality: 0.98,
-        pixelRatio: 2,
-        backgroundColor: theme === Theme.DARK ? '#111111' : '#ffffff',
-        skipFonts: true,
-        cacheBust: true,
-        imagePlaceholder: transparentPixel,
-      });
-    } catch (err) {
-      console.warn("htmlToImage failed for roadmap, using html2canvas fallback:", err);
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: theme === Theme.DARK ? '#111111' : '#ffffff',
-        logging: false,
-      });
-      return canvas.toDataURL('image/png');
-    }
+    return await captureElementToCanvasDataUrl(element, theme === Theme.DARK ? '#111111' : '#ffffff');
   };
 
   const exportToPDF = async () => {
