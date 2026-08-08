@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as Icons from 'lucide-react';
 import { Language, UserProfile } from '../types';
+import { getSubscriptionDetails } from '../utils/subscriptionUtils';
+import { getGeminiApiKey } from '../services/geminiService';
 
 interface CareerLifecycleManagerProps {
   language: Language;
   user: UserProfile | null;
   onSendPromptToChat: (promptText: string) => void;
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  onRequestUpgrade?: (featureName: string) => void;
 }
 
 export type CareerStage = 'student' | 'junior' | 'mid_senior' | 'alumni';
@@ -251,10 +254,74 @@ export const CareerLifecycleManager: React.FC<CareerLifecycleManagerProps> = ({
   language,
   user,
   onSendPromptToChat,
-  showToast
+  showToast,
+  onRequestUpgrade
 }) => {
   const isVi = language === Language.VI;
+  const currentSub = getSubscriptionDetails(user?.subscription);
   const [activeStage, setActiveStage] = useState<CareerStage>('junior');
+
+  // Max Feature: Skill Bridge / Reskilling State
+  const [currentBg, setCurrentBg] = useState('');
+  const [targetSkillRole, setTargetSkillRole] = useState('');
+  const [isSkillBridgeLoading, setIsSkillBridgeLoading] = useState(false);
+  const [reskillingResult, setReskillingResult] = useState<{
+    transferableSkills: string[];
+    skillGaps: string[];
+    roadmap90Days: { phase: string; title: string; tasks: string[] }[];
+  } | null>(null);
+
+  const handleGenerateReskillingRoadmap = async () => {
+    if (!currentSub.unlockedFeatures?.upskillReskilling) {
+      onRequestUpgrade?.(isVi ? 'Lộ trình Chuyển ngành & Upskill Chuyên Sâu (Gói CAREER MAX)' : 'Reskilling & Skill Bridge Matrix (Career MAX)');
+      return;
+    }
+
+    if (!currentBg.trim() || !targetSkillRole.trim()) {
+      showToast(isVi ? 'Vui lòng điền cả xuất phát điểm hiện tại và ngành tiêu điểm.' : 'Please enter both current background and target role.', 'info');
+      return;
+    }
+
+    setIsSkillBridgeLoading(true);
+    try {
+      const apiKey = getGeminiApiKey();
+      const prompt = `Bạn là chuyên gia tư vấn Chuyển ngành & Upskill nhân sự.
+Xuất phát điểm hiện tại: ${currentBg}
+Vị trí tiêu điểm muốn chuyển đến: ${targetSkillRole}
+
+Hãy lập lộ trình chuyển ngành 90 ngày và phân tích kỹ năng.
+Trả về duy nhất JSON object (không markdown):
+{
+  "transferableSkills": ["Kỹ năng A có thể kế thừa", "Kỹ năng B"],
+  "skillGaps": ["Kỹ năng thiếu hụt 1", "Kỹ năng thiếu hụt 2"],
+  "roadmap90Days": [
+    { "phase": "Tháng 1 (Ngày 1-30)", "title": "Bổ sung nền tảng cốt lõi", "tasks": ["Nhiệm vụ 1", "Nhiệm vụ 2"] },
+    { "phase": "Tháng 2 (Ngày 31-60)", "title": "Thực hành dự án Portfolio", "tasks": ["Nhiệm vụ 1", "Nhiệm vụ 2"] },
+    { "phase": "Tháng 3 (Ngày 61-90)", "title": "Luyện CV & Phỏng vấn chuyển ngành", "tasks": ["Nhiệm vụ 1", "Nhiệm vụ 2"] }
+  ]
+}`;
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json' }
+        })
+      });
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const parsed = JSON.parse(text);
+      setReskillingResult(parsed);
+      showToast(isVi ? '🌉 Đã tạo thành công Lộ trình Chuyển ngành 90 Ngày!' : '🌉 Successfully built 90-Day Reskilling Roadmap!', 'success');
+    } catch (e) {
+      console.error(e);
+      showToast(isVi ? 'Tạo lộ trình chuyển ngành thất bại.' : 'Reskilling generation failed.', 'error');
+    } finally {
+      setIsSkillBridgeLoading(false);
+    }
+  };
   const [completedChecklist, setCompletedChecklist] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('career_lifecycle_checklist');
@@ -638,6 +705,126 @@ export const CareerLifecycleManager: React.FC<CareerLifecycleManagerProps> = ({
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Skill Bridge & Reskilling Matrix Section (CAREER MAX FEATURE) */}
+        <div className="pt-6 border-t border-gray-100 dark:border-white/10 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-extrabold uppercase tracking-wider mb-1">
+                <Icons.Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                {isVi ? 'Đặc Quyền Gói Career MAX' : 'Career MAX Exclusive'}
+              </div>
+              <h4 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <span>🌉 Skill Bridge: Lộ Trình Chuyển Ngành & Upskill Matrix</span>
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {isVi 
+                  ? 'Phân tích kỹ năng kế thừa từ ngành cũ, xác định lỗ hổng kỹ năng cốt lõi và xây dựng kế hoạch hành động 90 ngày.' 
+                  : 'Map transferable skills from your previous background, identify skill gaps, and execute a 90-day transition plan.'}
+              </p>
+            </div>
+            {!currentSub.unlockedFeatures?.upskillReskilling && (
+              <button
+                onClick={() => onRequestUpgrade?.(isVi ? 'Lộ trình Chuyển ngành & Upskill Chuyên Sâu (Gói CAREER MAX)' : 'Reskilling & Skill Bridge Matrix (Career MAX)')}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-xs shadow hover:brightness-110 transition-all self-start sm:self-auto whitespace-nowrap"
+              >
+                🔒 {isVi ? 'Mở Khóa Gói MAX' : 'Unlock MAX Tier'}
+              </button>
+            )}
+          </div>
+
+          <div className="p-5 md:p-6 rounded-2xl bg-gradient-to-br from-amber-500/5 via-orange-500/5 to-purple-500/5 border border-amber-500/20 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                  {isVi ? 'Xuất phát điểm hiện tại:' : 'Current Background / Major:'}
+                </label>
+                <input
+                  type="text"
+                  value={currentBg}
+                  onChange={e => setCurrentBg(e.target.value)}
+                  placeholder={isVi ? 'VD: Nhân viên Sales, Kế toán, Marketing, Giáo viên...' : 'e.g., Sales rep, Accountant, Teacher, Non-tech'}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-black/40 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                  {isVi ? 'Vị trí / Ngành tiêu điểm muốn chuyển đến:' : 'Target Career Goal:'}
+                </label>
+                <input
+                  type="text"
+                  value={targetSkillRole}
+                  onChange={e => setTargetSkillRole(e.target.value)}
+                  placeholder={isVi ? 'VD: Data Analyst, AI Engineer, Product Owner...' : 'e.g., Data Analyst, AI Engineer, Product Owner'}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-black/40 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleGenerateReskillingRoadmap}
+              disabled={isSkillBridgeLoading}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 text-slate-950 font-black text-xs hover:brightness-110 transition-all shadow flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isSkillBridgeLoading ? <Icons.Loader2 className="w-4 h-4 animate-spin" /> : <Icons.Zap className="w-4 h-4" />}
+              <span>{isVi ? '🚀 Lập Lộ Trình Chuyển Ngành 90 Ngày (AI Matrix)' : '🚀 Generate 90-Day Reskilling Roadmap'}</span>
+            </button>
+
+            {reskillingResult && (
+              <div className="pt-4 border-t border-amber-500/20 space-y-4 text-xs animate-in fade-in duration-300">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-gray-900 border border-emerald-500/30 space-y-1.5">
+                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <Icons.CheckCircle className="w-4 h-4" />
+                      {isVi ? 'Kỹ năng có thể kế thừa (Transferable Skills):' : 'Transferable Skills:'}
+                    </span>
+                    <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+                      {reskillingResult.transferableSkills?.map((s, idx) => (
+                        <li key={idx}>{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-gray-900 border border-rose-500/30 space-y-1.5">
+                    <span className="font-extrabold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                      <Icons.AlertCircle className="w-4 h-4" />
+                      {isVi ? 'Kỹ năng cần bổ sung gấp (Skill Gaps):' : 'Critical Skill Gaps:'}
+                    </span>
+                    <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+                      {reskillingResult.skillGaps?.map((s, idx) => (
+                        <li key={idx}>{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <span className="font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5">
+                    <Icons.Calendar className="w-4 h-4 text-amber-500" />
+                    {isVi ? 'Lộ Trình Hành Động 90 Ngày Chi Tiết:' : 'Detailed 90-Day Action Roadmap:'}
+                  </span>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {reskillingResult.roadmap90Days?.map((step, idx) => (
+                      <div key={idx} className="p-3.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 space-y-2">
+                        <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-extrabold text-[10px] block w-fit">
+                          {step.phase}
+                        </span>
+                        <h5 className="font-extrabold text-gray-900 dark:text-white">{step.title}</h5>
+                        <ul className="list-disc list-inside space-y-1 text-[11px] text-gray-600 dark:text-gray-400">
+                          {step.tasks?.map((t, tidx) => (
+                            <li key={tidx}>{t}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

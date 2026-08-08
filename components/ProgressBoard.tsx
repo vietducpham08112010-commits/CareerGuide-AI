@@ -4,7 +4,8 @@ import * as htmlToImage from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import * as Icons from 'lucide-react';
 import { ChatSession, UserProfile, Language, ChatMessage, Milestone, Theme } from '../types';
-import { generateRoadmap } from '../services/geminiService';
+import { generateRoadmap, getGeminiApiKey } from '../services/geminiService';
+import { getSubscriptionDetails } from '../utils/subscriptionUtils';
 import emailjs from '@emailjs/browser';
 import { InlineGuide } from './InlineGuide';
 import { CareerLifecycleManager } from './CareerLifecycleManager';
@@ -22,6 +23,7 @@ interface ProgressBoardProps {
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   onNavigateToChat: () => void;
   onSendPromptToChat?: (promptText: string) => void;
+  onRequestUpgrade?: (featureName: string) => void;
 }
 
 interface Skill {
@@ -243,9 +245,123 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
   onConnectGoogleCalendar, 
   showToast, 
   onNavigateToChat,
-  onSendPromptToChat 
+  onSendPromptToChat,
+  onRequestUpgrade
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'lifecycle' | 'roadmap' | 'skills_jobs'>('lifecycle');
+  const currentSub = getSubscriptionDetails(user?.subscription);
+  const [activeSubTab, setActiveSubTab] = useState<'lifecycle' | 'roadmap' | 'skills_jobs' | 'salary_insights' | 'monthly_okr'>('lifecycle');
+
+  // MAX Feature: Salary Insight State
+  const [salaryJobRole, setSalaryJobRole] = useState(user?.careerGoal || 'AI Engineer');
+  const [salaryExpLevel, setSalaryExpLevel] = useState<'Junior' | 'Mid' | 'Senior' | 'Lead'>('Mid');
+  const [salaryLocation, setSalaryLocation] = useState<'Hà Nội' | 'TP.HCM' | 'Đà Nẵng' | 'Remote'>('TP.HCM');
+  const [isSalaryLoading, setIsSalaryLoading] = useState(false);
+  const [salaryResult, setSalaryResult] = useState<{
+    minSalaryVnd: string;
+    medianSalaryVnd: string;
+    maxSalaryVnd: string;
+    promotionLevers: string[];
+    nextRoleTitle: string;
+    marketOutlook: string;
+  } | null>(null);
+
+  // MAX Feature: Monthly OKR State
+  const [selectedMonth, setSelectedMonth] = useState('Tháng 8/2026');
+  const [okrObjective, setOkrObjective] = useState('Hoàn thành khóa học AI & Xây dựng 2 dự án Portfolio');
+  const [okrKeyResults, setOkrKeyResults] = useState([
+    { id: 'kr1', text: 'Đạt điểm > 8.5 các bài quiz PyTorch & Computer Vision', progress: 65 },
+    { id: 'kr2', text: 'Triển khai 1 ứng dụng AI Web Demo trên Vercel/Cloud', progress: 40 },
+    { id: 'kr3', text: 'Thực hiện 2 lượt phỏng vấn thử AI Mock Interview', progress: 100 },
+  ]);
+  const [isOkrAnalyzing, setIsOkrAnalyzing] = useState(false);
+  const [okrFeedback, setOkrFeedback] = useState<string | null>(null);
+
+  const handleAnalyzeSalary = async () => {
+    if (!currentSub.unlockedFeatures?.careerPathSalaryInsight) {
+      onRequestUpgrade?.(language === Language.VI ? 'Phân tích Dải Lương & Lộ Trình Thăng Tiến (Gói CAREER MAX)' : 'Salary Insights & Career Ladder (Career MAX)');
+      return;
+    }
+
+    if (!salaryJobRole.trim()) return;
+    setIsSalaryLoading(true);
+
+    try {
+      const apiKey = getGeminiApiKey();
+      const prompt = `Bạn là chuyên gia phân tích thị trường lao động Việt Nam 2026.
+Hãy phân tích dải lương và lộ trình thăng tiến cho vị trí: "${salaryJobRole}", cấp độ: "${salaryExpLevel}", khu vực: "${salaryLocation}".
+
+Trả về DUY NHẤT JSON object (không markdown):
+{
+  "minSalaryVnd": "18.000.000 VNĐ",
+  "medianSalaryVnd": "28.000.000 VNĐ",
+  "maxSalaryVnd": "45.000.000 VNĐ",
+  "promotionLevers": [
+    "Thành thạo MLOps và CI/CD tự động hóa",
+    "Có chứng chỉ Cloud Architecture (AWS/GCP)",
+    "Kỹ năng Quản trị dự án & Tiếng Anh giao tiếp xuất sắc"
+  ],
+  "nextRoleTitle": "Senior AI Architect / Technical Lead",
+  "marketOutlook": "Nhu cầu thị trường cực cao trong năm 2026 với mức tăng trưởng thu nhập trung bình 25%/năm."
+}`;
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json' }
+        })
+      });
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const parsed = JSON.parse(text);
+      setSalaryResult(parsed);
+      showToast(language === Language.VI ? '💵 Đã phân tích thành công Dải Lương & Thăng Tiến!' : '💵 Salary insight loaded!', 'success');
+    } catch (e) {
+      console.error(e);
+      showToast(language === Language.VI ? 'Lỗi khi phân tích dải lương.' : 'Salary analysis failed.', 'error');
+    } finally {
+      setIsSalaryLoading(false);
+    }
+  };
+
+  const handleAnalyzeOkrWithAi = async () => {
+    if (!currentSub.unlockedFeatures?.monthlyGoalTracking) {
+      onRequestUpgrade?.(language === Language.VI ? 'Theo Dõi Mục Tiêu & OKR Hàng Tháng (Gói CAREER MAX)' : 'Monthly Goal & OKR Tracking (Career MAX)');
+      return;
+    }
+
+    setIsOkrAnalyzing(true);
+    try {
+      const apiKey = getGeminiApiKey();
+      const prompt = `Bạn là Mentor tư vấn Quản trị Mục tiêu (OKR).
+Tháng: ${selectedMonth}
+Mục tiêu chính (Objective): ${okrObjective}
+Các kết quả cốt lõi (Key Results):
+${okrKeyResults.map((kr, i) => `${i+1}. ${kr.text} (Tiến độ: ${kr.progress}%)`).join('\n')}
+
+Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đà tăng trưởng và 2 hành động ưu tiên cho tuần tiếp theo. Nêu rõ ràng, truyền cảm hứng.`;
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      setOkrFeedback(text);
+      showToast(language === Language.VI ? '🎯 AI đã phân tích OKR tháng của bạn!' : '🎯 OKR evaluated!', 'success');
+    } catch (e) {
+      console.error(e);
+      showToast(language === Language.VI ? 'Không thể phân tích OKR.' : 'OKR analysis failed.', 'error');
+    } finally {
+      setIsOkrAnalyzing(false);
+    }
+  };
   
   // Roadmap States
   const [isExporting, setIsExporting] = useState(false);
@@ -740,6 +856,22 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
               <Icons.Map className="w-4 h-4" />
               <span>{language === Language.VI ? "Bản Đồ Kỹ Năng & Việc Làm" : "Skill Map & Job Matching"}</span>
             </button>
+            <button 
+              onClick={() => setActiveSubTab('salary_insights')} 
+              className={`shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'salary_insights' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
+            >
+              <Icons.Banknote className="w-4 h-4 text-emerald-400" />
+              <span>{language === Language.VI ? "Soi Lương & Thăng Tiến" : "Salary & Promotion"}</span>
+              <span className="px-1 py-0.2 bg-amber-400 text-slate-950 font-black text-[9px] rounded uppercase ml-1">MAX</span>
+            </button>
+            <button 
+              onClick={() => setActiveSubTab('monthly_okr')} 
+              className={`shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${activeSubTab === 'monthly_okr' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
+            >
+              <Icons.CalendarCheck className="w-4 h-4 text-cyan-400" />
+              <span>{language === Language.VI ? "Mục Tiêu & OKR Tháng" : "Monthly OKR"}</span>
+              <span className="px-1 py-0.2 bg-amber-400 text-slate-950 font-black text-[9px] rounded uppercase ml-1">MAX</span>
+            </button>
         </div>
 
         {activeSubTab === 'roadmap' && milestones.length > 0 && (
@@ -768,16 +900,274 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
         )}
       </div>
 
-      {activeSubTab === 'lifecycle' && (
-        <div className="flex-1 p-2 sm:p-4 md:p-6 animate-fade-in">
-          <CareerLifecycleManager
-            language={language}
-            user={user}
-            onSendPromptToChat={onSendPromptToChat || (() => {})}
-            showToast={showToast}
-          />
-        </div>
-      )}
+        {/* Career Lifecycle Tab */}
+        {activeSubTab === 'lifecycle' && (
+          <div className="flex-1 p-2 sm:p-4 md:p-6 animate-fade-in">
+            <CareerLifecycleManager
+              language={language}
+              user={user}
+              onSendPromptToChat={onSendPromptToChat || (() => {})}
+              showToast={showToast}
+              onRequestUpgrade={onRequestUpgrade}
+            />
+          </div>
+        )}
+
+        {/* Salary Insights Tab (MAX Tier) */}
+        {activeSubTab === 'salary_insights' && (
+          <div className="w-full p-4 md:p-8 max-w-5xl mx-auto space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 shadow-sm">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-extrabold uppercase tracking-wider mb-2">
+                  <Icons.Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  {language === Language.VI ? 'Đặc Quyền Gói Career MAX' : 'Career MAX Exclusive'}
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white">
+                  💵 {language === Language.VI ? 'Soi Dải Lương & Lộ Trình Thăng Tiến' : 'Salary Insights & Career Benchmark'}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {language === Language.VI 
+                    ? 'Phân tích dải lương thực tế thị trường Việt Nam 2026, đòn bẩy kỹ năng giúp x1.5-x2 thu nhập và vị trí tiếp theo.' 
+                    : 'Real 2026 salary benchmarks in VN, critical skill levers for 50%+ pay raises, and career advancement paths.'}
+                </p>
+              </div>
+              {!currentSub.unlockedFeatures?.careerPathSalaryInsight && (
+                <button
+                  onClick={() => onRequestUpgrade?.(language === Language.VI ? 'Phân tích Dải Lương & Lộ Trình Thăng Tiến (Gói CAREER MAX)' : 'Salary Insights & Career Ladder (Career MAX)')}
+                  className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-xs shadow-md hover:brightness-110 transition-all self-start sm:self-auto cursor-pointer"
+                >
+                  🔒 {language === Language.VI ? 'Mở Khóa Gói MAX' : 'Unlock MAX Tier'}
+                </button>
+              )}
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 space-y-6 shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    {language === Language.VI ? 'Vị trí / Ngành nghề:' : 'Target Job Role:'}
+                  </label>
+                  <input
+                    type="text"
+                    value={salaryJobRole}
+                    onChange={e => setSalaryJobRole(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/40 text-xs text-gray-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    {language === Language.VI ? 'Cấp độ kinh nghiệm:' : 'Experience Level:'}
+                  </label>
+                  <select
+                    value={salaryExpLevel}
+                    onChange={e => setSalaryExpLevel(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/40 text-xs text-gray-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="Junior">Junior (0-2 năm)</option>
+                    <option value="Mid">Midweight (2-4 năm)</option>
+                    <option value="Senior">Senior Specialist (4-7 năm)</option>
+                    <option value="Lead">Lead / Engineering Manager (7+ năm)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    {language === Language.VI ? 'Thị trường / Khu vực:' : 'Location / Market:'}
+                  </label>
+                  <select
+                    value={salaryLocation}
+                    onChange={e => setSalaryLocation(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/40 text-xs text-gray-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="TP.HCM">TP. Hồ Chí Minh</option>
+                    <option value="Hà Nội">Hà Nội</option>
+                    <option value="Đà Nẵng">Đà Nẵng</option>
+                    <option value="Remote">Remote Quốc Tế (US/SG)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={handleAnalyzeSalary}
+                disabled={isSalaryLoading}
+                className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isSalaryLoading ? <Icons.Loader2 className="w-4 h-4 animate-spin" /> : <Icons.Banknote className="w-4 h-4" />}
+                <span>{language === Language.VI ? '📊 AI Phân Tích Dải Lương & Benchmark Thị Trường' : '📊 Analyze Salary Benchmark'}</span>
+              </button>
+
+              {salaryResult && (
+                <div className="pt-6 border-t border-gray-100 dark:border-white/10 space-y-6 animate-in fade-in duration-300">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-500/20 text-center space-y-1">
+                      <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider">Lương Tối Thiểu (Min)</span>
+                      <h4 className="text-xl font-black text-emerald-700 dark:text-emerald-400">{salaryResult.minSalaryVnd}</h4>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-500/20 text-center space-y-1">
+                      <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider">Lương Trung Bình (Median)</span>
+                      <h4 className="text-xl font-black text-indigo-700 dark:text-indigo-400">{salaryResult.medianSalaryVnd}</h4>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/20 border border-purple-500/20 text-center space-y-1">
+                      <span className="text-[10px] font-extrabold text-purple-600 uppercase tracking-wider">Lương Đỉnh Cao (Max)</span>
+                      <h4 className="text-xl font-black text-purple-700 dark:text-purple-400">{salaryResult.maxSalaryVnd}</h4>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 space-y-3">
+                      <h5 className="font-extrabold text-sm text-gray-900 dark:text-white flex items-center gap-2">
+                        <Icons.TrendingUp className="w-4 h-4 text-emerald-500" />
+                        <span>{language === Language.VI ? '🚀 Đòn bẩy kỹ năng giúp tăng 30-50% thu nhập:' : '🚀 Key Skill Levers for Higher Pay:'}</span>
+                      </h5>
+                      <ul className="space-y-2 text-xs text-gray-700 dark:text-gray-300">
+                        {salaryResult.promotionLevers?.map((item, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <Icons.CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 space-y-3">
+                      <h5 className="font-extrabold text-sm text-gray-900 dark:text-white flex items-center gap-2">
+                        <Icons.Award className="w-4 h-4 text-indigo-500" />
+                        <span>{language === Language.VI ? '🎯 Cột mốc thăng tiến tiếp theo:' : '🎯 Next Promotion Milestone:'}</span>
+                      </h5>
+                      <p className="text-base font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 p-3 rounded-xl border border-indigo-500/20">
+                        {salaryResult.nextRoleTitle}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed italic">
+                        💡 {salaryResult.marketOutlook}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Monthly Goal & OKR Tracking Tab (MAX Tier) */}
+        {activeSubTab === 'monthly_okr' && (
+          <div className="w-full p-4 md:p-8 max-w-5xl mx-auto space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 shadow-sm">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-extrabold uppercase tracking-wider mb-2">
+                  <Icons.Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  {language === Language.VI ? 'Đặc Quyền Gói Career MAX' : 'Career MAX Exclusive'}
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white">
+                  🎯 {language === Language.VI ? 'Theo Dõi Mục Tiêu & OKR Hàng Tháng' : 'Monthly Goal & OKR Tracking'}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {language === Language.VI 
+                    ? 'Thiết lập Objective, đo lường tiến độ các Key Results hàng tháng và nhận phản hồi AI định kỳ.' 
+                    : 'Define monthly Objectives, track Key Result progress bars, and get AI feedback on sprint completion.'}
+                </p>
+              </div>
+              {!currentSub.unlockedFeatures?.monthlyGoalTracking && (
+                <button
+                  onClick={() => onRequestUpgrade?.(language === Language.VI ? 'Theo Dõi Mục Tiêu & OKR Hàng Tháng (Gói CAREER MAX)' : 'Monthly Goal & OKR Tracking (Career MAX)')}
+                  className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-xs shadow-md hover:brightness-110 transition-all self-start sm:self-auto cursor-pointer"
+                >
+                  🔒 {language === Language.VI ? 'Mở Khóa Gói MAX' : 'Unlock MAX Tier'}
+                </button>
+              )}
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 space-y-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-white/5">
+                <span className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Icons.Calendar className="w-4 h-4 text-cyan-500" />
+                  <span>{language === Language.VI ? 'Chọn tháng theo dõi:' : 'Select tracking month:'}</span>
+                </span>
+                <select
+                  value={selectedMonth}
+                  onChange={e => setSelectedMonth(e.target.value)}
+                  className="px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/40 text-xs font-extrabold text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="Tháng 8/2026">Tháng 8 / 2026</option>
+                  <option value="Tháng 9/2026">Tháng 9 / 2026</option>
+                  <option value="Tháng 10/2026">Tháng 10 / 2026</option>
+                  <option value="Tháng 11/2026">Tháng 11 / 2026</option>
+                  <option value="Tháng 12/2026">Tháng 12 / 2026</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider block">
+                  🎯 {language === Language.VI ? 'Mục Tiêu Chính (Objective):' : 'Main Objective:'}
+                </label>
+                <input
+                  type="text"
+                  value={okrObjective}
+                  onChange={e => setOkrObjective(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/40 text-sm font-bold text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider block">
+                  🔑 {language === Language.VI ? 'Các Kết Quả Cốt Lõi (Key Results - KRs):' : 'Key Results (KRs):'}
+                </label>
+
+                {okrKeyResults.map((kr, idx) => (
+                  <div key={kr.id} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <input
+                        type="text"
+                        value={kr.text}
+                        onChange={e => {
+                          const newKrs = [...okrKeyResults];
+                          newKrs[idx].text = e.target.value;
+                          setOkrKeyResults(newKrs);
+                        }}
+                        className="flex-1 bg-transparent text-xs font-bold text-gray-900 dark:text-white focus:outline-none border-b border-transparent focus:border-cyan-500 pb-0.5"
+                      />
+                      <span className="text-xs font-black text-cyan-600 dark:text-cyan-400 shrink-0">{kr.progress}%</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={kr.progress}
+                        onChange={e => {
+                          const newKrs = [...okrKeyResults];
+                          newKrs[idx].progress = Number(e.target.value);
+                          setOkrKeyResults(newKrs);
+                        }}
+                        className="flex-1 accent-cyan-500 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={handleAnalyzeOkrWithAi}
+                disabled={isOkrAnalyzing}
+                className="w-full py-3.5 rounded-2xl bg-cyan-600 hover:bg-cyan-700 text-white font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isOkrAnalyzing ? <Icons.Loader2 className="w-4 h-4 animate-spin" /> : <Icons.Zap className="w-4 h-4" />}
+                <span>{language === Language.VI ? '🤖 AI Phân Tích & Tinh Chỉnh OKR Tháng' : '🤖 Evaluate OKRs with AI'}</span>
+              </button>
+
+              {okrFeedback && (
+                <div className="p-5 rounded-2xl bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-500/20 text-xs text-gray-800 dark:text-gray-200 leading-relaxed space-y-2 animate-in fade-in duration-300">
+                  <span className="font-extrabold text-cyan-700 dark:text-cyan-400 flex items-center gap-1.5">
+                    <Icons.Sparkles className="w-4 h-4 text-cyan-500" />
+                    {language === Language.VI ? 'Đánh giá & Khuyến nghị từ AI Coach:' : 'AI Coach Feedback:'}
+                  </span>
+                  <p className="whitespace-pre-line">{okrFeedback}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
       {activeSubTab !== 'lifecycle' && (
       <div className="w-full p-4 md:p-8 max-w-5xl mx-auto">

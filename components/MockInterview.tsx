@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Language, Theme, UserProfile } from '../types';
 import { getGeminiApiKey } from '../services/geminiService';
+import { getSubscriptionDetails } from '../utils/subscriptionUtils';
 import { InlineGuide } from './InlineGuide';
 
 // Standard simple SVG icons for inline usage (matches lucide style)
@@ -52,6 +53,7 @@ interface MockInterviewProps {
   theme: Theme;
   user: UserProfile | null;
   onAddEarnedPoints?: (pts: number) => void;
+  onRequestUpgrade?: (featureName: string) => void;
 }
 
 interface InterviewResult {
@@ -72,9 +74,11 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
   language,
   theme,
   user,
-  onAddEarnedPoints
+  onAddEarnedPoints,
+  onRequestUpgrade
 }) => {
   const isEn = language === Language.EN;
+  const currentSub = getSubscriptionDetails(user?.subscription);
 
   // Translation constants
   const t = {
@@ -133,6 +137,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
     return () => clearInterval(interval);
   }, [step]);
   const [job, setJob] = useState(defaultRole);
+  const [targetCompany, setTargetCompany] = useState('');
   const [level, setLevel] = useState('junior');
   const [tone, setTone] = useState('friendly');
   const [questions, setQuestions] = useState<string[]>([]);
@@ -233,6 +238,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
       
       const userMessage = `Create 4 tailored interview questions for the position of "${job}" with "${level}" experience level.
       The interviewer tone should be "${tone}".
+      ${targetCompany ? `Target Hiring Company: "${targetCompany}". Adapt questions to the specific culture and hiring process of ${targetCompany}.` : ''}
       ${user?.careerProfile ? `Consider the candidate's RIASEC profile: ${user.careerProfile}.` : ''}
       Return the output strictly as a JSON array of 4 string questions. Do not write anything else. Do not use markdown \`\`\`json.`;
 
@@ -540,6 +546,47 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
                     <option value="professional">{t.toneProfessional}</option>
                     <option value="technical">{t.toneTechnical}</option>
                   </select>
+                </div>
+
+                {/* Target Company / Corporate Interviewer (MAX Tier Feature) */}
+                <div className="col-span-1 md:col-span-2 space-y-2 pt-2 border-t border-gray-100 dark:border-white/5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>{language === Language.VI ? '🏢 Doanh Nghiệp Mục Tiêu (Phỏng vấn theo Công ty)' : '🏢 Target Company (Company-Specific AI)'}</span>
+                      <span className="px-1.5 py-0.5 bg-amber-400 text-slate-950 font-black text-[9px] rounded uppercase">MAX</span>
+                    </label>
+                    {!currentSub.unlockedFeatures?.positionInterviewAI && (
+                      <button
+                        type="button"
+                        onClick={() => onRequestUpgrade?.(language === Language.VI ? 'Phỏng vấn AI theo vị trí & doanh nghiệp cụ thể (Gói CAREER MAX)' : 'Company-Specific AI Interview (Career MAX)')}
+                        className="text-[11px] text-amber-600 dark:text-amber-400 font-bold hover:underline flex items-center gap-1"
+                      >
+                        🔒 {language === Language.VI ? 'Mở khóa Gói MAX' : 'Unlock MAX'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={targetCompany}
+                      onChange={(e) => {
+                        if (!currentSub.unlockedFeatures?.positionInterviewAI) {
+                          onRequestUpgrade?.(language === Language.VI ? 'Phỏng vấn AI theo vị trí & doanh nghiệp cụ thể (Gói CAREER MAX)' : 'Company-Specific AI Interview (Career MAX)');
+                        } else {
+                          setTargetCompany(e.target.value);
+                        }
+                      }}
+                      placeholder={language === Language.VI ? 'VD: VNG, Shopee, Techcombank, FPT, Viettel, VinGroup, Big4...' : 'e.g. VNG, Shopee, Techcombank, FPT, Google'}
+                      className={`w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border rounded-2xl text-sm focus:outline-none dark:text-white font-medium transition-colors ${
+                        !currentSub.unlockedFeatures?.positionInterviewAI 
+                          ? 'border-amber-500/30 bg-amber-500/5 cursor-pointer' 
+                          : 'border-gray-200 dark:border-white/10 focus:border-amber-500'
+                      }`}
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-400 italic">
+                    {language === Language.VI ? '💡 AI sẽ tùy biến văn hóa và câu hỏi sát với quy trình tuyển dụng thực tế của doanh nghiệp này.' : '💡 AI adapts questions and corporate culture to match this target firm.'}
+                  </p>
                 </div>
               </div>
 

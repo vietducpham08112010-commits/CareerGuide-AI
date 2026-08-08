@@ -64,7 +64,20 @@ export const CvBuilder: React.FC<CvBuilderProps> = ({
 
   const [cvTheme, setCvTheme] = useState<'ats' | 'modern' | 'executive' | 'creative'>('ats');
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'preview' | 'edit'>('preview');
+  const [activeTab, setActiveTab] = useState<'preview' | 'edit' | 'jd-match'>('preview');
+
+  // Max Feature: JD Matching State
+  const [jdText, setJdText] = useState('');
+  const [targetCompany, setTargetCompany] = useState('');
+  const [isJdLoading, setIsJdLoading] = useState(false);
+  const [jdResult, setJdResult] = useState<{
+    score: number;
+    matchLevel: string;
+    matchedSkills: string[];
+    missingKeywords: string[];
+    suggestions: string[];
+    optimizedSummary?: string;
+  } | null>(null);
 
   // Initial state pulled from local storage & user profile
   const [cvData, setCvData] = useState<CvData>(() => {
@@ -243,6 +256,86 @@ Chỉ trả về duy nhất khối JSON nguyên bản, không dùng markdown cod
     }
   };
 
+  // Max Feature: AI JD Analysis
+  const handleAnalyzeJd = async () => {
+    const hasPermission = currentSub.unlockedFeatures?.cvJdAnalysis;
+    if (!hasPermission) {
+      onRequestUpgrade(isVi ? 'Phân tích CV theo JD (Gói CAREER MAX)' : 'AI JD Matching & ATS Audit (Career MAX Tier)');
+      return;
+    }
+
+    if (!jdText.trim()) {
+      showToast(isVi ? 'Vui lòng dán nội dung Mô tả công việc (JD) vào ô bên dưới.' : 'Please paste the Job Description text first.', 'info');
+      return;
+    }
+
+    setIsJdLoading(true);
+    try {
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
+        showToast(isVi ? 'Chưa cấu hình API Key Gemini.' : 'Gemini API Key missing.', 'error');
+        setIsJdLoading(false);
+        return;
+      }
+
+      const prompt = `Bạn là chuyên gia tuyển dụng & chuyên gia phần mềm quét CV ATS (Applicant Tracking System).
+Hãy phân tích sự tương thích giữa CV của ứng viên và Mô Tả Công Việc (JD) dưới đây.
+
+MÔ TẢ CÔNG VIỆC (JD):
+"""
+${jdText}
+"""
+Doanh nghiệp mục tiêu: ${targetCompany || 'Công ty Công nghệ'}
+
+THÔNG TIN CV HIỆN TẠI CỦA ỨNG VIÊN:
+- Vị trí: ${cvData.jobTitle}
+- Tóm tắt: ${cvData.summary}
+- Kỹ năng hiện có: ${cvData.skills.join(', ')}
+- Kinh nghiệm: ${JSON.stringify(cvData.experience)}
+
+Hãy trả về duy nhất 1 JSON object với cấu trúc chính xác như sau (không kèm markdown):
+{
+  "score": 85,
+  "matchLevel": "${isVi ? 'Phù hợp rất cao' : 'High Match'}",
+  "matchedSkills": ["Kỹ năng A", "Kỹ năng B"],
+  "missingKeywords": ["Từ khóa ATS 1", "Từ khóa ATS 2"],
+  "suggestions": ["Khuyên 1", "Khuyên 2"],
+  "optimizedSummary": "Đoạn tóm tắt CV được viết lại lồng ghép chính xác các từ khóa ATS từ JD này..."
+}`;
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json' }
+        })
+      });
+
+      const data = await res.json();
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const parsed = JSON.parse(rawText);
+
+      setJdResult(parsed);
+      showToast(isVi ? '🎯 Đã hoàn thành phân tích So khớp CV với JD!' : '🎯 Completed JD & CV Match analysis!', 'success');
+    } catch (e) {
+      console.error("JD Analysis error", e);
+      showToast(isVi ? 'Phân tích JD gặp sự cố, vui lòng thử lại.' : 'JD analysis failed.', 'error');
+    } finally {
+      setIsJdLoading(false);
+    }
+  };
+
+  const handleApplyJdOptimization = () => {
+    if (!jdResult?.optimizedSummary) return;
+    setCvData(prev => ({
+      ...prev,
+      summary: jdResult.optimizedSummary || prev.summary,
+      skills: Array.from(new Set([...prev.skills, ...(jdResult.missingKeywords || []).slice(0, 4)]))
+    }));
+    showToast(isVi ? '⚡ Đã áp dụng từ khóa ATS & tóm tắt mới vào CV của bạn!' : '⚡ Applied ATS keywords & new summary to CV!', 'success');
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -311,11 +404,40 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
         {/* Top Action Toolbar */}
         <div className="flex flex-wrap items-center gap-2.5">
           <button
-            onClick={() => setActiveTab(activeTab === 'preview' ? 'edit' : 'preview')}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all flex items-center gap-2"
+            onClick={() => setActiveTab('preview')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'preview'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200'
+            }`}
           >
-            {activeTab === 'preview' ? <Icons.Edit3 className="w-4 h-4" /> : <Icons.Eye className="w-4 h-4" />}
-            {activeTab === 'preview' ? (isVi ? 'Chỉnh Sửa Dữ Liệu' : 'Edit CV Content') : (isVi ? 'Xem Bản In Preview' : 'View Printable Preview')}
+            <Icons.Eye className="w-4 h-4" />
+            {isVi ? 'Xem Bản In Preview' : 'View Printable Preview'}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('edit')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'edit'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200'
+            }`}
+          >
+            <Icons.Edit3 className="w-4 h-4" />
+            {isVi ? 'Chỉnh Sửa CV' : 'Edit CV Content'}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('jd-match')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'jd-match'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md'
+                : 'bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20'
+            }`}
+          >
+            <Icons.Target className="w-4 h-4 text-amber-500" />
+            <span>{isVi ? '🎯 So Khớp CV với JD' : '🎯 JD Matcher'}</span>
+            <span className="px-1.5 py-0.5 bg-amber-400 text-slate-950 font-black text-[9px] rounded uppercase">MAX</span>
           </button>
 
           <button
@@ -482,6 +604,159 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
               {isVi ? 'Lưu & Xem Bản In' : 'Save & View Printable'}
             </button>
           </div>
+        </div>
+      ) : activeTab === 'jd-match' ? (
+        /* JD MATCHING MODE (MAX TIER FEATURE) */
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-extrabold uppercase tracking-wider mb-2">
+                <Icons.Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                {isVi ? 'Đặc Quyền Gói Career MAX' : 'Career MAX Exclusive'}
+              </div>
+              <h2 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+                🎯 Phân Tích So Khớp CV & Mô Tả Công Việc (AI JD Matcher)
+              </h2>
+              <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {isVi 
+                  ? 'Quét và so sánh CV của bạn với bản Mô Tả Công Việc (JD) thực tế. Phát hiện các từ khóa ATS thiếu sót và tỷ lệ phần trăm phù hợp (%) với nhà tuyển dụng.'
+                  : 'Compare your CV against real Job Descriptions (JDs). Uncover missing ATS keywords & get match scores.'}
+              </p>
+            </div>
+          </div>
+
+          {!currentSub.unlockedFeatures?.cvJdAnalysis ? (
+            /* Locked Max Preview Banner */
+            <div className="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-amber-950/20 border-2 border-amber-500/30 text-center space-y-5">
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto shadow-inner">
+                <Icons.Lock className="w-8 h-8" />
+              </div>
+              <div className="max-w-md mx-auto space-y-2">
+                <h3 className="text-lg font-black text-gray-900 dark:text-white">
+                  {isVi ? 'Mở Khóa Tính Năng So Khớp CV theo JD (Gói MAX)' : 'Unlock AI JD Matcher (Career MAX Tier)'}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {isVi 
+                    ? 'Bạn cần nâng cấp lên gói VIP Career MAX để sử dụng thuật toán phân tích ATS từ khóa JD, chấm điểm độ phù hợp và tự động tối ưu hóa CV cho từng vị trí.' 
+                    : 'Upgrade to Career MAX to analyze JDs, check ATS keyword gaps, and auto-optimize CVs for targeted companies.'}
+                </p>
+              </div>
+              <button
+                onClick={() => onRequestUpgrade(isVi ? 'Phân tích CV theo JD (Gói CAREER MAX)' : 'AI JD Matcher (Career MAX Tier)')}
+                className="px-6 py-3 rounded-xl font-black text-xs bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 text-slate-950 hover:brightness-110 shadow-lg transition-all"
+              >
+                {isVi ? '🔥 Nâng Cấp Gói MAX Ngay' : '🔥 Upgrade to MAX Tier'}
+              </button>
+            </div>
+          ) : (
+            /* Unlocked Interactive Form & Results */
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 space-y-2">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                    {isVi ? 'Dán Nội Dung Mô Tả Công Việc (Job Description - JD):' : 'Paste Job Description (JD) text:'}
+                  </label>
+                  <textarea
+                    rows={6}
+                    value={jdText}
+                    onChange={e => setJdText(e.target.value)}
+                    placeholder={isVi ? 'Dán toàn bộ nội dung tuyển dụng/JD của công ty bạn muốn ứng tuyển vào đây...' : 'Paste full job description text here...'}
+                    className="w-full p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="space-y-4 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                      {isVi ? 'Tên Doanh Nghiệp Mục Tiêu:' : 'Target Company Name:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={targetCompany}
+                      onChange={e => setTargetCompany(e.target.value)}
+                      placeholder={isVi ? 'VD: VNG, Shopee, Techcombank, FPT...' : 'e.g. VNG, Shopee, Techcombank'}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleAnalyzeJd}
+                    disabled={isJdLoading}
+                    className="w-full py-3.5 rounded-xl font-black text-xs bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 text-slate-950 hover:brightness-110 shadow-md transition-all flex items-center justify-center gap-2"
+                  >
+                    {isJdLoading ? <Icons.Loader2 className="w-4 h-4 animate-spin" /> : <Icons.Target className="w-4 h-4" />}
+                    {isVi ? '🚀 Phân Tích So Khớp AI (JD Matcher)' : '🚀 Run AI JD Matcher'}
+                  </button>
+                </div>
+              </div>
+
+              {jdResult && (
+                <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-5 animate-in fade-in duration-300">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-500/20">
+                    <div>
+                      <span className="text-xs text-gray-500 font-bold block">{isVi ? 'Đánh giá độ tương thích ATS:' : 'ATS Match Assessment:'}</span>
+                      <h4 className="text-3xl font-black text-amber-600 dark:text-amber-400 flex items-baseline gap-2">
+                        {jdResult.score}%
+                        <span className="text-xs font-bold text-gray-600 dark:text-gray-300 font-normal">({jdResult.matchLevel})</span>
+                      </h4>
+                    </div>
+
+                    <button
+                      onClick={handleApplyJdOptimization}
+                      className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-all shadow flex items-center gap-2 self-start sm:self-auto"
+                    >
+                      <Icons.Zap className="w-4 h-4" />
+                      {isVi ? '⚡ Tự Động Tối Ưu CV Theo JD Này' : '⚡ Auto-Apply JD Optimization to CV'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-2">
+                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <Icons.CheckCircle2 className="w-4 h-4" />
+                        {isVi ? 'Kỹ năng đã có & Khớp từ khóa:' : 'Matching Skills Found:'}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {jdResult.matchedSkills?.map((sk, idx) => (
+                          <span key={idx} className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] rounded-md">
+                            {sk}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-2">
+                      <span className="font-extrabold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                        <Icons.AlertCircle className="w-4 h-4" />
+                        {isVi ? 'Từ khóa ATS còn thiếu (Gaps):' : 'Missing ATS Keywords:'}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {jdResult.missingKeywords?.map((kw, idx) => (
+                          <span key={idx} className="px-2.5 py-1 bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold text-[11px] rounded-md">
+                            {kw}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {jdResult.suggestions?.length > 0 && (
+                    <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-2 text-xs">
+                      <span className="font-extrabold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                        <Icons.Sparkles className="w-4 h-4 text-amber-500" />
+                        {isVi ? 'Khuyến nghị nâng cấp CV cho vị trí này:' : 'Recommendations for this Role:'}
+                      </span>
+                      <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+                        {jdResult.suggestions.map((sug, idx) => (
+                          <li key={idx}>{sug}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         /* PREVIEW PRINTABLE CV CANVAS */

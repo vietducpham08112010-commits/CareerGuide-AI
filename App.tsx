@@ -3931,6 +3931,7 @@ export default function App() {
                     setTab(DashboardTab.CHAT);
                     handleSendMessage(undefined, promptText);
                 }}
+                onRequestUpgrade={(feature) => setIsUpgradeModalOpen(true)}
             />
         )}
         {tab === DashboardTab.PROMPT_BUILDER && (
@@ -3956,6 +3957,7 @@ export default function App() {
                         handleSendMessage(undefined, promptText);
                     }}
                     showToast={showToast}
+                    onRequestUpgrade={(feature) => setIsUpgradeModalOpen(true)}
                 />
             </div>
         )}
