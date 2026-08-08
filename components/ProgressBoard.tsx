@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as htmlToImage from 'html-to-image';
+import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import * as Icons from 'lucide-react';
 import { ChatSession, UserProfile, Language, ChatMessage, Milestone, Theme } from '../types';
@@ -681,18 +682,38 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
     }
   };
 
+  const captureBoardCanvas = async (element: HTMLElement): Promise<string> => {
+    const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSU5ErkJggg==';
+    try {
+      return await htmlToImage.toPng(element, {
+        quality: 0.98,
+        pixelRatio: 2,
+        backgroundColor: theme === Theme.DARK ? '#111111' : '#ffffff',
+        skipFonts: true,
+        cacheBust: true,
+        imagePlaceholder: transparentPixel,
+      });
+    } catch (err) {
+      console.warn("htmlToImage failed for roadmap, using html2canvas fallback:", err);
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: theme === Theme.DARK ? '#111111' : '#ffffff',
+        logging: false,
+      });
+      return canvas.toDataURL('image/png');
+    }
+  };
+
   const exportToPDF = async () => {
     if (!boardRef.current) return;
     setIsExporting(true);
     showToast(language === Language.EN ? "Preparing your PDF..." : "Đang chuẩn bị bản PDF của bạn...", 'info');
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const dataUrl = await htmlToImage.toPng(boardRef.current, {
-        quality: 1,
-        pixelRatio: 2,
-        backgroundColor: theme === Theme.DARK ? '#111111' : '#ffffff',
-      });
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const dataUrl = await captureBoardCanvas(boardRef.current);
       
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -721,7 +742,7 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
       pdf.save('Lo-Trinh-Nghe-Nghiep.pdf');
       showToast(language === Language.EN ? "PDF exported successfully!" : "Xuất PDF thành công!", 'success');
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('Export PDF failed:', error);
       showToast(language === Language.EN ? "Export failed. Please try again." : "Xuất file thất bại. Vui lòng thử lại.", 'error');
     } finally {
       setIsExporting(false);
@@ -734,12 +755,8 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
     showToast(language === Language.EN ? "Generating image..." : "Đang tạo ảnh...", 'info');
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const dataUrl = await htmlToImage.toPng(boardRef.current, {
-        quality: 1,
-        pixelRatio: 2,
-        backgroundColor: theme === Theme.DARK ? '#111111' : '#ffffff',
-      });
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const dataUrl = await captureBoardCanvas(boardRef.current);
       
       const link = document.createElement('a');
       link.download = 'Lo-Trinh-Nghe-Nghiep.png';
@@ -750,7 +767,7 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
       
       showToast(language === Language.EN ? "Image saved successfully!" : "Lưu ảnh thành công!", 'success');
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('Export image failed:', error);
       showToast(language === Language.EN ? "Export failed. Please try again." : "Lưu ảnh thất bại. Vui lòng thử lại.", 'error');
     } finally {
       setIsExporting(false);

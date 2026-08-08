@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import * as htmlToImage from 'html-to-image';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import * as Icons from 'lucide-react';
 import { Language, Theme, UserProfile } from '../types';
 import { getGeminiApiKey } from '../services/geminiService';
@@ -65,6 +68,9 @@ export const CvBuilder: React.FC<CvBuilderProps> = ({
   const [cvTheme, setCvTheme] = useState<'ats' | 'modern' | 'executive' | 'creative'>('ats');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'preview' | 'edit' | 'jd-match'>('preview');
+
+  const cvCardRef = useRef<HTMLDivElement>(null);
+  const [isExportingCv, setIsExportingCv] = useState(false);
 
   // Max Feature: JD Matching State
   const [jdText, setJdText] = useState('');
@@ -336,6 +342,84 @@ Hãy trả về duy nhất 1 JSON object với cấu trúc chính xác như sau 
     showToast(isVi ? '⚡ Đã áp dụng từ khóa ATS & tóm tắt mới vào CV của bạn!' : '⚡ Applied ATS keywords & new summary to CV!', 'success');
   };
 
+  const captureCvCanvas = async (element: HTMLElement): Promise<string> => {
+    const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSU5ErkJggg==';
+    try {
+      return await htmlToImage.toPng(element, {
+        quality: 0.98,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        skipFonts: true,
+        cacheBust: true,
+        imagePlaceholder: transparentPixel,
+      });
+    } catch (err) {
+      console.warn("htmlToImage failed for CV, using html2canvas fallback:", err);
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      return canvas.toDataURL('image/png');
+    }
+  };
+
+  const handleExportCvPdf = async () => {
+    if (!cvCardRef.current) return;
+    setIsExportingCv(true);
+    showToast(isVi ? 'Đang xuất file PDF CV...' : 'Preparing CV PDF...', 'info');
+    try {
+      await new Promise(r => setTimeout(r, 200));
+      const dataUrl = await captureCvCanvas(cvCardRef.current);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => { img.onload = resolve; });
+
+      const imgWidth = pdfWidth;
+      const imgHeight = (img.height * imgWidth) / img.width;
+
+      pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
+
+      const sanitizedName = cvData.fullName.trim().replace(/\s+/g, '_') || 'Applicant';
+      pdf.save(`CV_${sanitizedName}.pdf`);
+      showToast(isVi ? '🎉 Xuất file PDF CV thành công!' : '🎉 CV PDF exported successfully!', 'success');
+    } catch (e) {
+      console.error("Export CV PDF failed:", e);
+      showToast(isVi ? 'Xuất file PDF thất bại. Vui lòng thử lại.' : 'Failed to export CV PDF.', 'error');
+    } finally {
+      setIsExportingCv(false);
+    }
+  };
+
+  const handleExportCvImage = async () => {
+    if (!cvCardRef.current) return;
+    setIsExportingCv(true);
+    showToast(isVi ? 'Đang tạo ảnh CV...' : 'Generating CV image...', 'info');
+    try {
+      await new Promise(r => setTimeout(r, 200));
+      const dataUrl = await captureCvCanvas(cvCardRef.current);
+      const link = document.createElement('a');
+      const sanitizedName = cvData.fullName.trim().replace(/\s+/g, '_') || 'Applicant';
+      link.download = `CV_${sanitizedName}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast(isVi ? '📸 Lưu ảnh CV thành công!' : '📸 CV image saved successfully!', 'success');
+    } catch (e) {
+      console.error("Export CV Image failed:", e);
+      showToast(isVi ? 'Lưu ảnh CV thất bại. Vui lòng thử lại.' : 'Failed to save CV image.', 'error');
+    } finally {
+      setIsExportingCv(false);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -374,10 +458,10 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-[#070707] overflow-y-auto p-4 md:p-8 no-print space-y-6">
+    <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-[#070707] overflow-y-auto p-4 md:p-8 space-y-6">
       
       {/* Top Banner Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm">
+      <div className="no-print flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
@@ -460,6 +544,40 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
           </button>
 
           <button
+            onClick={handleExportCvPdf}
+            disabled={isExportingCv}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+          >
+            {isExportingCv ? (
+              <Icons.Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Icons.FileText className="w-4 h-4" />
+            )}
+            {isVi ? 'Xuất File PDF' : 'Export PDF'}
+          </button>
+
+          <button
+            onClick={handleExportCvImage}
+            disabled={isExportingCv}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+          >
+            {isExportingCv ? (
+              <Icons.Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Icons.Image className="w-4 h-4" />
+            )}
+            {isVi ? 'Lưu Ảnh CV' : 'Save Image'}
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-all flex items-center gap-2 shadow-md cursor-pointer"
+          >
+            <Icons.Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">{isVi ? 'In CV' : 'Print'}</span>
+          </button>
+
+          <button
             onClick={handleCopyMarkdown}
             className="px-3.5 py-2.5 rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-all flex items-center gap-2"
             title={isVi ? 'Sao chép dạng Markdown' : 'Copy Markdown'}
@@ -467,19 +585,11 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
             <Icons.Copy className="w-4 h-4" />
             <span className="hidden sm:inline">Markdown</span>
           </button>
-
-          <button
-            onClick={handlePrint}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-all flex items-center gap-2 shadow-md"
-          >
-            <Icons.Printer className="w-4 h-4" />
-            {isVi ? 'Xuất PDF / In CV' : 'Export PDF / Print'}
-          </button>
         </div>
       </div>
 
       {/* AI Data Sources Connected Bar */}
-      <div className="bg-gradient-to-r from-indigo-50/50 via-purple-50/30 to-pink-50/50 dark:from-indigo-950/20 dark:via-purple-950/10 dark:to-pink-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="no-print bg-gradient-to-r from-indigo-50/50 via-purple-50/30 to-pink-50/50 dark:from-indigo-950/20 dark:via-purple-950/10 dark:to-pink-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
         <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
           <Icons.CheckCircle2 className="w-4 h-4 text-emerald-500" />
           {isVi ? 'Nguồn dữ liệu AI đã kết nối vào CV:' : 'Connected AI Data Sources:'}
@@ -501,7 +611,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
       </div>
 
       {/* Theme Template Selector */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+      <div className="no-print flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         <span className="text-xs font-bold text-gray-500 dark:text-gray-400 mr-2 whitespace-nowrap">
           {isVi ? 'Mẫu giao diện CV:' : 'CV Template:'}
         </span>
@@ -761,7 +871,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
       ) : (
         /* PREVIEW PRINTABLE CV CANVAS */
         <div className="flex justify-center pb-12">
-          <div className={`w-full max-w-[850px] bg-white text-gray-900 rounded-2xl p-8 md:p-12 shadow-2xl border border-gray-200 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full transition-all ${
+          <div ref={cvCardRef} className={`w-full max-w-[850px] bg-white text-gray-900 rounded-2xl p-8 md:p-12 shadow-2xl border border-gray-200 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full transition-all ${
             cvTheme === 'modern' ? 'border-t-8 border-t-indigo-600' :
             cvTheme === 'executive' ? 'border-t-8 border-t-slate-800' :
             cvTheme === 'creative' ? 'border-t-8 border-t-emerald-600' :
