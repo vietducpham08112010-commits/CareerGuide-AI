@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import * as Icons from 'lucide-react';
 import { Language, UserProfile } from '../types';
 import { getSubscriptionDetails } from '../utils/subscriptionUtils';
-import { getGeminiApiKey } from '../services/geminiService';
+import { requestAiContent } from '../services/geminiService';
 
 interface CareerLifecycleManagerProps {
   language: Language;
@@ -284,7 +284,6 @@ export const CareerLifecycleManager: React.FC<CareerLifecycleManagerProps> = ({
 
     setIsSkillBridgeLoading(true);
     try {
-      const apiKey = getGeminiApiKey();
       const prompt = `Bạn là chuyên gia tư vấn Chuyển ngành & Upskill nhân sự.
 Xuất phát điểm hiện tại: ${currentBg}
 Vị trí tiêu điểm muốn chuyển đến: ${targetSkillRole}
@@ -301,23 +300,14 @@ Trả về duy nhất JSON object (không markdown):
   ]
 }`;
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' }
-        })
-      });
-
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const parsed = JSON.parse(text);
+      const rawText = await requestAiContent(prompt, "You are a career transition and upskilling consultant. Output JSON only.", language);
+      const cleanJson = rawText.replace(/```json\s*|\s*```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
       setReskillingResult(parsed);
       showToast(isVi ? '🌉 Đã tạo thành công Lộ trình Chuyển ngành 90 Ngày!' : '🌉 Successfully built 90-Day Reskilling Roadmap!', 'success');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      showToast(isVi ? 'Tạo lộ trình chuyển ngành thất bại.' : 'Reskilling generation failed.', 'error');
+      showToast(e.message || (isVi ? 'Tạo lộ trình chuyển ngành thất bại.' : 'Reskilling generation failed.'), 'error');
     } finally {
       setIsSkillBridgeLoading(false);
     }

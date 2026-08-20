@@ -4281,35 +4281,59 @@ export default function App() {
   return (
     <>
       {!hasAcceptedTerms && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-3xl p-8 max-w-lg w-full shadow-2xl relative overflow-hidden">
+        <div 
+          onClick={acceptTerms}
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative overflow-hidden cursor-default"
+          >
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-fuchsia-500"></div>
             
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t.termsTitle}</h2>
-                <button 
-                    onClick={() => setLang(lang === Language.EN ? Language.VI : Language.EN)}
-                    className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/10 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-                >
-                    {lang === Language.EN ? 'Tiếng Việt' : 'English'}
-                </button>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white pr-2">{t.termsTitle}</h2>
+                <div className="flex items-center gap-2">
+                  <button 
+                      onClick={() => setLang(lang === Language.EN ? Language.VI : Language.EN)}
+                      className="px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-white/10 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+                  >
+                      {lang === Language.EN ? 'Tiếng Việt' : 'English'}
+                  </button>
+                  <button
+                    onClick={acceptTerms}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                    title={lang === Language.VI ? 'Đóng' : 'Close'}
+                  >
+                    <Icons.X className="w-5 h-5" />
+                  </button>
+                </div>
             </div>
 
-            <div className="space-y-4 text-gray-600 dark:text-gray-300 text-sm max-h-60 overflow-y-auto pr-2">
+            <div className="space-y-3.5 text-gray-600 dark:text-gray-300 text-sm max-h-64 overflow-y-auto pr-2 leading-relaxed">
               <p><strong>{t.terms1}</strong> {t.terms1Desc}</p>
               <p><strong>{t.terms2}</strong> {t.terms2Desc}</p>
               <p><strong>{t.terms3}</strong> {t.terms3Desc}</p>
               <p><strong>{t.terms4}</strong> {t.terms4Desc}</p>
               <p><strong>{t.terms5}</strong> {t.terms5Desc}</p>
             </div>
-            <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={acceptTerms} 
-                className="mt-8 w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl font-bold text-lg transition-all shadow-lg"
-            >
-              {t.termsAccept}
-            </motion.button>
+            
+            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center gap-3">
+              <button
+                onClick={acceptTerms}
+                className="w-full sm:w-auto px-5 py-3 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+              >
+                {lang === Language.VI ? 'Bỏ qua & Xem nhanh' : 'Skip & Preview'}
+              </button>
+              <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={acceptTerms} 
+                  className="w-full flex-1 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl font-bold text-base transition-all shadow-lg text-center"
+              >
+                {t.termsAccept}
+              </motion.button>
+            </div>
           </div>
         </div>
       )}

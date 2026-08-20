@@ -79,9 +79,9 @@ Nền tảng chạy trực tiếp trong môi trường sandbox của container. 
 2. **Cấu hình biến môi trường**:
    Sao chép `.env.example` thành `.env` và cung cấp khóa của bạn:
    ```env
-   VITE_GEMINI_API_KEY=your_gemini_api_key
+   GEMINI_API_KEY=your_gemini_api_key
    # Cấu hình Firebase
-   FIREBASE_API_KEY=your_firebase_api_key
+   VITE_FIREBASE_API_KEY=your_firebase_api_key
    ```
 
 3. **Chạy ứng dụng chế độ Phát triển (Dev Mode)**:

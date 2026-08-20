@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Modality } from "@google/genai";
 import type { LiveServerMessage } from "@google/genai";
 import { TRANSLATIONS } from "../constants";
@@ -33,6 +32,7 @@ const retryWithBackoff = async <T>(
   throw lastError;
 };
 
+// Client-side fallback if user provided custom API Key directly in Settings
 const generateClientContentWithFallback = async (
     aiInstance: GoogleGenAI,
     options: {
@@ -42,10 +42,10 @@ const generateClientContentWithFallback = async (
     }
 ): Promise<any> => {
     const modelsToTry = [
-        options.model || 'gemini-3.5-flash',
-        'gemini-3.5-flash',
-        'gemini-3.1-flash-lite',
-        'gemini-flash-latest'
+        options.model || 'gemini-2.5-flash',
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+        'gemini-2.0-flash'
     ];
 
     const uniqueModels = Array.from(new Set(modelsToTry));
@@ -53,7 +53,6 @@ const generateClientContentWithFallback = async (
     if (options.config?.tools && options.config.tools.length > 0) {
         for (const model of uniqueModels) {
             try {
-                console.log(`[Client Fallback] Attempting WITH tools using model ${model}...`);
                 const response = await aiInstance.models.generateContent({
                     model: model,
                     contents: options.contents,
@@ -76,7 +75,6 @@ const generateClientContentWithFallback = async (
 
     for (const model of uniqueModels) {
         try {
-            console.log(`[Client Fallback] Attempting WITHOUT tools using model ${model}...`);
             const response = await aiInstance.models.generateContent({
                 model: model,
                 contents: options.contents,
@@ -91,7 +89,113 @@ const generateClientContentWithFallback = async (
         }
     }
 
-    throw new Error("All client model fallback attempts exhausted / Tất cả các phương án kết nối mô hình khách đều thất bại.");
+    throw new Error("All client model fallback attempts exhausted / Tất cả các phương án kết nối mô hình đều thất bại.");
+};
+
+// Get custom user API key from Settings if specified (secure: never exposes backend key)
+export const getGeminiApiKey = (): string => {
+    try {
+        const storedUser = localStorage.getItem('currentUser');
+        if (storedUser) {
+            const user = JSON.parse(storedUser);
+            if (user.customGeminiApiKey && typeof user.customGeminiApiKey === 'string' && user.customGeminiApiKey.trim()) {
+                return user.customGeminiApiKey.trim();
+            }
+        }
+    } catch (e) {
+        console.warn("Failed to check customGeminiApiKey from localStorage", e);
+    }
+    return '';
+};
+
+export const cleanFrontEndErrorMessage = (error: any, language: Language): string => {
+  const errMsg = error?.message || String(error);
+  const isVi = language === Language.VI;
+  
+  if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded")) {
+    return isVi 
+      ? "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt."
+      : "The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
+  }
+  if (errMsg.includes("503") || errMsg.includes("overloaded") || errMsg.includes("busy") || errMsg.includes("UNAVAILABLE")) {
+    return isVi
+      ? "Hệ thống AI hiện đang xử lý nhiều yêu cầu, vui lòng ấn gửi lại sau giây lát."
+      : "The AI model is currently busy. Please retry in a moment.";
+  }
+  if (errMsg.includes("API_KEY_INVALID") || errMsg.includes("403")) {
+    return isVi
+      ? "Khóa API Gemini không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại khóa API trong Cài đặt."
+      : "Invalid or expired Gemini API key. Please check your key in Settings.";
+  }
+  try {
+    const parsed = JSON.parse(errMsg);
+    if (parsed.error && parsed.error.message) {
+      const msg = parsed.error.message;
+      if (msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota") || msg.includes("Quota exceeded") || msg.includes("429")) {
+        return isVi 
+          ? "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt."
+          : "The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
+      }
+      if (msg.includes("503") || msg.includes("overloaded") || msg.includes("busy") || msg.includes("UNAVAILABLE")) {
+        return isVi
+          ? "Hệ thống AI hiện đang xử lý nhiều yêu cầu, vui lòng ấn gửi lại sau giây lát."
+          : "The AI model is currently busy. Please retry in a moment.";
+      }
+      return msg;
+    }
+  } catch (e) {
+    // No-op
+  }
+  return errMsg;
+};
+
+// Generic helper to call AI with JSON prompt via backend proxy
+export const requestAiContent = async (
+  prompt: string,
+  systemInstruction: string = "You are a helpful assistant.",
+  language: Language = Language.VI
+): Promise<string> => {
+  const customKey = getGeminiApiKey();
+  const callApi = async () => {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        history: [],
+        message: prompt,
+        systemInstruction,
+        apiKey: customKey || undefined
+      })
+    });
+
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType && contentType.includes('application/json');
+
+    if (!isJson) {
+      if (customKey) {
+        const ai = new GoogleGenAI({ apiKey: customKey });
+        const aiResponse = await generateClientContentWithFallback(ai, {
+          model: 'gemini-2.5-flash',
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: { systemInstruction }
+        });
+        return aiResponse.text || '';
+      }
+      throw new Error("Không thể kết nối đến máy chủ AI.");
+    }
+
+    const resData = await response.json();
+    if (!response.ok || resData.error) {
+      throw new Error(resData.error || `HTTP ${response.status}`);
+    }
+    return resData.text || '';
+  };
+
+  try {
+    return await retryWithBackoff(callApi);
+  } catch (error) {
+    throw new Error(cleanFrontEndErrorMessage(error, language));
+  }
 };
 
 export const generateRoadmap = async (
@@ -104,8 +208,9 @@ export const generateRoadmap = async (
     ? `Based on our conversation history and my profile, generate a personalized 3-month action plan (roadmap) for my career orientation as a high school student. Break it down into clear, actionable steps. Return ONLY a JSON array of objects, where each object has 'id' (string), 'title' (string), 'description' (string), and 'status' (must be exactly 'todo'). Do not include any markdown formatting like \`\`\`json.`
     : `Dựa trên lịch sử trò chuyện và hồ sơ của tôi, hãy tạo một kế hoạch hành động (lộ trình) cá nhân hóa trong 3 tháng tới cho việc định hướng nghề nghiệp của tôi (tôi là học sinh THPT). Hãy chia nhỏ thành các bước cụ thể và có thể thực hiện được. CHỈ trả về một mảng JSON chứa các đối tượng, mỗi đối tượng có 'id' (chuỗi), 'title' (chuỗi), 'description' (chuỗi), và 'status' (phải chính xác là 'todo'). Không bao gồm bất kỳ định dạng markdown nào như \`\`\`json.`;
 
+  const customKey = getGeminiApiKey();
+
   const callApi = async () => {
-    const apiKey = await getGeminiApiKey();
     const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,7 +218,7 @@ export const generateRoadmap = async (
             history: chatHistory,
             message: prompt,
             systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text.",
-            apiKey
+            apiKey: customKey || undefined
         })
     });
 
@@ -121,25 +226,26 @@ export const generateRoadmap = async (
     const isJson = contentType && contentType.includes('application/json');
 
     if (!isJson) {
-        console.warn("Backend proxy not found for generateRoadmap. Falling back to direct API call...");
-        const ai = new GoogleGenAI({ apiKey });
+        if (customKey) {
+            const ai = new GoogleGenAI({ apiKey: customKey });
             const contents = chatHistory.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
             contents.push({ role: 'user', parts: [{ text: prompt }] });
             const aiResponse = await generateClientContentWithFallback(ai, {
-                model: 'gemini-3.5-flash',
+                model: 'gemini-2.5-flash',
                 contents,
                 config: { systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text." }
             });
             let jsonStr = (aiResponse.text || '').trim();
             if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
             return JSON.parse(jsonStr);
+        }
+        throw new Error("Không thể kết nối đến máy chủ AI.");
     }
     
     const text = await response.text();
     try {
         const data = JSON.parse(text);
         if (data.error) {
-            // Check for 503 in the error object
             if (typeof data.error === 'object' && data.error.code === 503) {
                 throw new Error("503: Model busy");
             }
@@ -167,78 +273,6 @@ export const generateRoadmap = async (
   }
 };
 
-// --- API CLIENT (Backend Proxy) ---
-
-export const getGeminiApiKey = async () => {
-    try {
-        const storedUser = localStorage.getItem('currentUser');
-        if (storedUser) {
-            const user = JSON.parse(storedUser);
-            if (user.customGeminiApiKey && user.customGeminiApiKey.trim()) {
-                return user.customGeminiApiKey.trim();
-            }
-        }
-    } catch (e) {
-        console.warn("Failed to check customGeminiApiKey from localStorage", e);
-    }
-
-    let apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) {
-        try {
-            const keyResponse = await fetch('/api/get-gemini-key');
-            if (keyResponse.ok) {
-                const contentType = keyResponse.headers.get('content-type');
-                const isJson = contentType && contentType.includes('application/json');
-                
-                if (isJson) {
-                    const textResponse = await keyResponse.text();
-                    const data = JSON.parse(textResponse);
-                    apiKey = data.key;
-                }
-            }
-        } catch (e) {
-            console.warn("Failed to fetch API key from server fallback", e);
-        }
-    }
-    return apiKey || '';
-};
-
-export const cleanFrontEndErrorMessage = (error: any, language: Language): string => {
-  const errMsg = error?.message || String(error);
-  const isVi = language === Language.VI;
-  
-  if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded")) {
-    return isVi 
-      ? "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt."
-      : "The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
-  }
-  if (errMsg.includes("503") || errMsg.includes("overloaded") || errMsg.includes("busy") || errMsg.includes("UNAVAILABLE")) {
-    return isVi
-      ? "Hệ thống AI hiện đang xử lý nhiều yêu cầu, vui lòng ấn gửi lại sau giây lát."
-      : "The AI model is currently busy. Please retry in a moment.";
-  }
-  try {
-    const parsed = JSON.parse(errMsg);
-    if (parsed.error && parsed.error.message) {
-      const msg = parsed.error.message;
-      if (msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota") || msg.includes("Quota exceeded") || msg.includes("429")) {
-        return isVi 
-          ? "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt."
-          : "The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
-      }
-      if (msg.includes("503") || msg.includes("overloaded") || msg.includes("busy") || msg.includes("UNAVAILABLE")) {
-        return isVi
-          ? "Hệ thống AI hiện đang xử lý nhiều yêu cầu, vui lòng ấn gửi lại sau giây lát."
-          : "The AI model is currently busy. Please retry in a moment.";
-      }
-      return msg;
-    }
-  } catch (e) {
-    // No-op
-  }
-  return errMsg;
-};
-
 export const sendChatMessage = async (
   history: { role: string; text: string }[], 
   newMessage: string, 
@@ -264,10 +298,10 @@ export const sendChatMessage = async (
     return await sendExternalApiMessage(endpoint, modelName, history, newMessage, systemInstruction, language);
   }
 
-  // --- DEFAULT: GOOGLE GEMINI (VIA FRONTEND) ---
-  const callGemini = async () => {
-    const apiKey = await getGeminiApiKey();
+  // --- DEFAULT: GOOGLE GEMINI (VIA BACKEND PROXY) ---
+  const customKey = getGeminiApiKey();
 
+  const callGemini = async () => {
     const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -276,7 +310,7 @@ export const sendChatMessage = async (
             message: newMessage,
             systemInstruction,
             file,
-            apiKey
+            apiKey: customKey || undefined
         })
     });
 
@@ -284,19 +318,21 @@ export const sendChatMessage = async (
     const isJson = contentType && contentType.includes('application/json');
 
     if (!isJson) {
-        console.warn("Backend proxy not found for chat. Falling back to direct API call...");
-        const ai = new GoogleGenAI({ apiKey });
-        const contents = history.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
-        const userParts: any[] = [{ text: newMessage }];
-        if (file) userParts.push({ inlineData: { mimeType: file.mimeType, data: file.data } });
-        contents.push({ role: 'user', parts: userParts });
-        
-        const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.5-flash',
-            contents,
-            config: { systemInstruction }
-        });
-        return aiResponse.text || t.noAiResponse;
+        if (customKey) {
+            const ai = new GoogleGenAI({ apiKey: customKey });
+            const contents = history.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
+            const userParts: any[] = [{ text: newMessage }];
+            if (file) userParts.push({ inlineData: { mimeType: file.mimeType, data: file.data } });
+            contents.push({ role: 'user', parts: userParts });
+            
+            const aiResponse = await generateClientContentWithFallback(ai, {
+                model: 'gemini-2.5-flash',
+                contents,
+                config: { systemInstruction }
+            });
+            return aiResponse.text || t.noAiResponse;
+        }
+        throw new Error("Không thể kết nối đến máy chủ AI.");
     }
 
     const textResponse = await response.text();
@@ -304,7 +340,7 @@ export const sendChatMessage = async (
     try {
         data = JSON.parse(textResponse);
     } catch (e) {
-        throw new Error(`Server returned invalid response. Response preview: ${textResponse.substring(0, 100)}`);
+        throw new Error(`Server returned invalid response.`);
     }
 
     if (!response.ok) {
@@ -490,114 +526,186 @@ export class LiveSessionManager {
       this.stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       if (this.inputContext.sampleRate !== 16000) {
-          console.warn(`AudioContext sample rate is ${this.inputContext.sampleRate}, expected 16000. Audio might be distorted.`);
+          console.warn(`AudioContext sample rate is ${this.inputContext.sampleRate}, expected 16000.`);
       }
 
-      // Fetch API Key
-      const key = await getGeminiApiKey();     
-      if (!key) throw new Error("API key is empty");
-      
-      const ai = new GoogleGenAI({ apiKey: key });
+      const customKey = getGeminiApiKey();
 
-      const liveModels = ['gemini-2.0-flash-exp', 'gemini-2.0-flash-realtime-exp', 'gemini-2.0-flash'];
-      let modelIndex = 0;
+      // If user has custom key, connect via client SDK, otherwise connect via backend WebSocket
+      if (customKey) {
+        const ai = new GoogleGenAI({ apiKey: customKey });
+        const liveModels = ['gemini-2.0-flash-realtime-exp', 'gemini-2.0-flash'];
+        let modelIndex = 0;
 
-      const attemptNextModel = async (): Promise<any> => {
-        if (modelIndex >= liveModels.length) {
-          const errMessage = t.connectionFailed;
-          if (this.onError) this.onError(errMessage);
+        const attemptNextModel = async (): Promise<any> => {
+          if (modelIndex >= liveModels.length) {
+            const errMessage = t.connectionFailed;
+            if (this.onError) this.onError(errMessage);
+            this.cleanup();
+            if (this.onDisconnect) this.onDisconnect();
+            return;
+          }
+
+          const model = liveModels[modelIndex];
+          modelIndex++;
+
+          let hasOpened = false;
+          let sessionPromise: Promise<any>;
+
+          try {
+            sessionPromise = ai.live.connect({
+              model,
+              callbacks: {
+                onopen: () => {
+                  hasOpened = true;
+                  this.isConnected = true;
+                  this.startAudioStreaming(createBlobFn, sessionPromise);
+                  if (this.onConnect) this.onConnect();
+                },
+                onmessage: async (message: LiveServerMessage) => {
+                  const serverContent = message.serverContent;
+                  if (serverContent) {
+                    if (serverContent.outputTranscription) {
+                      const text = serverContent.outputTranscription.text;
+                      if (text && this.onTranscript) this.onTranscript(text, false);
+                    } else if (serverContent.inputTranscription) {
+                      const text = serverContent.inputTranscription.text;
+                      if (text && this.onTranscript) this.onTranscript(text, true);
+                    }
+                    
+                    const base64Audio = serverContent.modelTurn?.parts?.[0]?.inlineData?.data;
+                    if (base64Audio && this.outputContext) {
+                      const audioBuffer = await decodeAudioDataFn(decodeFn(base64Audio), this.outputContext, 24000, 1);
+                      this.playAudio(audioBuffer);
+                    }
+                    
+                    if (serverContent.interrupted) this.stopCurrentAudio();
+                  }
+                },
+                onclose: () => {
+                  if (!hasOpened && !this.isConnected) {
+                    attemptNextModel();
+                  } else {
+                    this.cleanup();
+                    if (this.onDisconnect) this.onDisconnect();
+                  }
+                },
+                onerror: (err: any) => {
+                  if (!hasOpened && !this.isConnected) {
+                    attemptNextModel();
+                  } else {
+                    if (this.onError) this.onError(err.message || err);
+                    this.cleanup();
+                  }
+                }
+              },
+              config: {
+                responseModalities: [Modality.AUDIO],
+                outputAudioTranscription: {},
+                inputAudioTranscription: {},
+                systemInstruction: systemInstruction,
+                speechConfig: { 
+                  voiceConfig: { 
+                    prebuiltVoiceConfig: { 
+                      voiceName: 'Kore' 
+                    } 
+                  } 
+                }
+              }
+            });
+            this.session = await sessionPromise;
+          } catch (err) {
+            if (!hasOpened && !this.isConnected) {
+              await attemptNextModel();
+            }
+          }
+        };
+
+        await attemptNextModel();
+      } else {
+        // Connect via backend WebSocket proxy on /ws
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          ws.send(JSON.stringify({
+            type: "config",
+            systemInstruction,
+            voiceName: "Kore"
+          }));
+        };
+
+        ws.onmessage = async (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "connected") {
+              this.isConnected = true;
+              this.startWebSocketAudioStreaming(createBlobFn, ws);
+              if (this.onConnect) this.onConnect();
+            } else if (data.error) {
+              if (this.onError) this.onError(data.error);
+            } else if (data.serverContent) {
+              const serverContent = data.serverContent;
+              if (serverContent.outputTranscription?.text && this.onTranscript) {
+                this.onTranscript(serverContent.outputTranscription.text, false);
+              } else if (serverContent.inputTranscription?.text && this.onTranscript) {
+                this.onTranscript(serverContent.inputTranscription.text, true);
+              }
+              const base64Audio = serverContent.modelTurn?.parts?.[0]?.inlineData?.data;
+              if (base64Audio && this.outputContext) {
+                const audioBuffer = await decodeAudioDataFn(decodeFn(base64Audio), this.outputContext, 24000, 1);
+                this.playAudio(audioBuffer);
+              }
+              if (serverContent.interrupted) this.stopCurrentAudio();
+            }
+          } catch (e) {
+            console.error("WS Parse error", e);
+          }
+        };
+
+        ws.onerror = (err) => {
+          if (this.onError) this.onError(err);
+        };
+
+        ws.onclose = () => {
           this.cleanup();
           if (this.onDisconnect) this.onDisconnect();
-          return;
-        }
+        };
 
-        const model = liveModels[modelIndex];
-        modelIndex++;
-        console.log(`[Live Session] Attempting connection with model: ${model}...`);
-
-        let hasOpened = false;
-        let sessionPromise: Promise<any>;
-
-        try {
-          sessionPromise = ai.live.connect({
-            model,
-            callbacks: {
-              onopen: () => {
-                console.log(`[Live Session] Opened successfully with model: ${model}`);
-                hasOpened = true;
-                this.isConnected = true;
-                this.startAudioStreaming(createBlobFn, sessionPromise);
-                if (this.onConnect) this.onConnect();
-              },
-              onmessage: async (message: LiveServerMessage) => {
-                const serverContent = message.serverContent;
-                if (serverContent) {
-                  if (serverContent.outputTranscription) {
-                    const text = serverContent.outputTranscription.text;
-                    if (text && this.onTranscript) this.onTranscript(text, false);
-                  } else if (serverContent.inputTranscription) {
-                    const text = serverContent.inputTranscription.text;
-                    if (text && this.onTranscript) this.onTranscript(text, true);
-                  }
-                  
-                  const base64Audio = serverContent.modelTurn?.parts?.[0]?.inlineData?.data;
-                  if (base64Audio && this.outputContext) {
-                    const audioBuffer = await decodeAudioDataFn(decodeFn(base64Audio), this.outputContext, 24000, 1);
-                    this.playAudio(audioBuffer);
-                  }
-                  
-                  if (serverContent.interrupted) this.stopCurrentAudio();
-                }
-              },
-              onclose: () => {
-                console.log(`[Live Session] Closed for model: ${model}`);
-                if (!hasOpened && !this.isConnected) {
-                  console.warn(`[Live Session] Model ${model} failed to open before close. Trying next model...`);
-                  attemptNextModel();
-                } else {
-                  this.cleanup();
-                  if (this.onDisconnect) this.onDisconnect();
-                }
-              },
-              onerror: (err: any) => {
-                console.error(`[Live Session] Error with model ${model}:`, err);
-                if (!hasOpened && !this.isConnected) {
-                  console.warn(`[Live Session] Model ${model} errored before opening. Trying next model...`);
-                  attemptNextModel();
-                } else {
-                  if (this.onError) this.onError(err.message || err);
-                  this.cleanup();
-                }
-              }
-            },
-            config: {
-              responseModalities: [Modality.AUDIO],
-              outputAudioTranscription: {},
-              inputAudioTranscription: {},
-              systemInstruction: systemInstruction,
-              speechConfig: { 
-                voiceConfig: { 
-                  prebuiltVoiceConfig: { 
-                    voiceName: 'Kore' 
-                  } 
-                } 
-              }
-            }
-          });
-          this.session = await sessionPromise;
-        } catch (err) {
-          console.warn(`[Live Session] Exception creating connect for ${model}:`, err);
-          if (!hasOpened && !this.isConnected) {
-            await attemptNextModel();
-          }
-        }
-      };
-
-      await attemptNextModel();
+        this.session = ws;
+      }
 
     } catch (e) { 
         if (this.onError) this.onError(e); 
         throw e;
+    }
+  }
+
+  async startWebSocketAudioStreaming(createBlobFn: any, ws: WebSocket) {
+    if (!this.inputContext || !this.stream) return;
+    this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
+    
+    try {
+      this.processor = this.inputContext.createScriptProcessor(2048, 1, 1);
+      this.processor.onaudioprocess = (e: any) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        let sum = 0; for(let i=0; i<inputData.length; i++) sum += inputData[i] * inputData[i];
+        if (this.onAudioLevel) this.onAudioLevel(Math.sqrt(sum / inputData.length));
+        
+        const downsampled = downsampleBuffer(inputData, this.inputContext?.sampleRate || 16000, 16000);
+        const pcmBlob = createBlobFn(downsampled, 16000);
+        
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            realtimeInput: { audio: { data: pcmBlob.data, mimeType: pcmBlob.mimeType } }
+          }));
+        }
+      };
+      this.inputSource.connect(this.processor);
+      this.processor.connect(this.inputContext.destination);
+    } catch (err) {
+      console.warn("ScriptProcessor fallback failed", err);
     }
   }
 
@@ -631,7 +739,6 @@ export class LiveSessionManager {
     } catch (err) {
         console.warn("AudioWorklet failed, falling back to ScriptProcessorNode", err);
         if (!this.inputContext) return;
-        // Fallback to ScriptProcessorNode
         this.processor = this.inputContext.createScriptProcessor(2048, 1, 1);
         this.processor.onaudioprocess = (e) => {
           const inputData = e.inputBuffer.getChannelData(0);
@@ -676,7 +783,9 @@ export class LiveSessionManager {
 
   disconnect() { 
       if (this.session) {
-          this.session.close();
+          if (typeof this.session.close === 'function') {
+            this.session.close();
+          }
       }
       this.cleanup(); 
   }
@@ -694,9 +803,9 @@ export class LiveSessionManager {
 
 export const generateChatTitle = async (message: string, language: Language) => {
   const systemInstruction = "Generate a short, concise, and descriptive title (maximum 4 words) for a chat conversation that starts with the given user message. Return ONLY the title text, nothing else. No quotes.";
-  
+  const customKey = getGeminiApiKey();
+
   const callApi = async () => {
-    const apiKey = await getGeminiApiKey();
     const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -704,21 +813,23 @@ export const generateChatTitle = async (message: string, language: Language) => 
             history: [],
             message: `Generate title for this message: "${message}"\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.`,
             systemInstruction,
-            apiKey
+            apiKey: customKey || undefined
         })
     });
     
-    // Direct fallback if proxy is missing
     const contentType = response.headers.get('content-type');
     const isJson = contentType && contentType.includes('application/json');
     if (!isJson) {
-        const ai = new GoogleGenAI({ apiKey });
-        const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.5-flash',
-            contents: [{ role: 'user', parts: [{ text: `Generate title for this message: "${message}"\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.` }] }],
-            config: { systemInstruction }
-        });
-        return aiResponse.text?.trim() || 'New Chat';
+        if (customKey) {
+            const ai = new GoogleGenAI({ apiKey: customKey });
+            const aiResponse = await generateClientContentWithFallback(ai, {
+                model: 'gemini-2.5-flash',
+                contents: [{ role: 'user', parts: [{ text: `Generate title for this message: "${message}"\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.` }] }],
+                config: { systemInstruction }
+            });
+            return aiResponse.text?.trim() || 'New Chat';
+        }
+        return 'New Chat';
     }
 
     const textResponse = await response.text();
@@ -742,8 +853,9 @@ export const searchUniversityScores = async (query: string, language: Language) 
     ? "Bạn là một chuyên gia tư vấn tuyển sinh đại học hàng đầu Việt Nam. Hãy sử dụng tính năng Google Search đi kèm để tìm kiếm ĐIỂM CHUẨN (điểm chuẩn học bạ, điểm chuẩn thi tốt nghiệp THPT, hoặc điểm chuẩn ĐGNL) mới nhất và chính xác nhất phù hợp với yêu cầu. Luôn ưu tiên thông tin chính thống từ các nguồn uy tín như VnExpress (vnexpress.net), Báo Tuổi Trẻ (tuoitre.vn), Báo Thanh Niên (thanhnien.vn), hoặc Cổng thông tin tuyển sinh chính thức của trường Đại học. Trình bày thông tin rõ ràng dưới dạng bảng Markdown (gồm các cột: Trường, Ngành/Mã ngành, Tổ hợp xét tuyển, Điểm chuẩn, Năm áp dụng) và đưa ra lời khuyên hữu ích cho học sinh."
     : "You are an elite university admission advisor in Vietnam. Use the Google Search tool to find the absolute latest and most accurate admission scores ( điểm chuẩn ) matching the university or major requested. Prioritize official and prestigious Vietnamese sources like VnExpress, Tuoi Tre, Thanh Nien, or official university portals. Present results in a neat Markdown table containing: University, Major/Code, Exam Group, Score, and Year. Provide strategic advice below.";
   
+  const customKey = getGeminiApiKey();
+
   const callApi = async () => {
-    const apiKey = await getGeminiApiKey();
     const promptMessage = isVi
       ? `Tra cứu điểm chuẩn đại học mới nhất của trường/ngành: "${query}". Chú ý: Hiện tại đang là năm 2026. Hãy tìm kiếm các dữ liệu mới nhất có sẵn (ví dụ điểm chuẩn năm 2025, 2024). Luôn cung cấp tên nguồn báo hoặc trang tuyển sinh chính thống mà bạn lấy dữ liệu.`
       : `Find the latest university admission scores for: "${query}". Note: The current year is 2026, so look for the most recent data (e.g., 2025, 2024 figures) using actual search grounding and specify the sources clearly.`;
@@ -755,26 +867,29 @@ export const searchUniversityScores = async (query: string, language: Language) 
             history: [],
             message: promptMessage,
             systemInstruction,
-            apiKey
+            apiKey: customKey || undefined
         })
     });
     
     const contentType = response.headers.get('content-type');
     const isJson = contentType && contentType.includes('application/json');
     if (!isJson) {
-        const ai = new GoogleGenAI({ apiKey });
-        const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.5-flash',
-            contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
-            config: { 
-                systemInstruction,
-                tools: [{ googleSearch: {} }]
-            }
-        });
-        return {
-            text: aiResponse.text || TRANSLATIONS[language].noAiResponse,
-            groundingMetadata: aiResponse.candidates?.[0]?.groundingMetadata || null
-        };
+        if (customKey) {
+            const ai = new GoogleGenAI({ apiKey: customKey });
+            const aiResponse = await generateClientContentWithFallback(ai, {
+                model: 'gemini-2.5-flash',
+                contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
+                config: { 
+                    systemInstruction,
+                    tools: [{ googleSearch: {} }]
+                }
+            });
+            return {
+                text: aiResponse.text || TRANSLATIONS[language].noAiResponse,
+                groundingMetadata: aiResponse.candidates?.[0]?.groundingMetadata || null
+            };
+        }
+        throw new Error("Không thể kết nối đến máy chủ tìm kiếm tuyển sinh.");
     }
 
     const textResponse = await response.text();
@@ -836,15 +951,16 @@ The JSON structure must be EXACTLY:
 }
 Do NOT include any markdown formatting like \`\`\`json or trailing comments. Ensure all strings are translated into the requested language (either Vietnamese or English).`;
   
+  const customKey = getGeminiApiKey();
+
   const callApi = async () => {
-    const apiKey = await getGeminiApiKey();
     const prompt = `Provide an in-depth comparison between "${career1}" and "${career2}". Language requested: ${language === Language.EN ? 'English' : 'Vietnamese'}. Make the analysis highly specific, detailed, and realistic (include local salary ranges if appropriate).`;
     
     const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            history: [], message: prompt, systemInstruction, apiKey
+            history: [], message: prompt, systemInstruction, apiKey: customKey || undefined
         })
     });
     
@@ -853,13 +969,17 @@ Do NOT include any markdown formatting like \`\`\`json or trailing comments. Ens
     
     let jsonStr = '';
     if (!isJson) {
-        const ai = new GoogleGenAI({ apiKey });
-        const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.5-flash',
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            config: { systemInstruction }
-        });
-        jsonStr = aiResponse.text || '';
+        if (customKey) {
+            const ai = new GoogleGenAI({ apiKey: customKey });
+            const aiResponse = await generateClientContentWithFallback(ai, {
+                model: 'gemini-2.5-flash',
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                config: { systemInstruction }
+            });
+            jsonStr = aiResponse.text || '';
+        } else {
+            throw new Error("Không thể kết nối đến máy chủ so sánh ngành.");
+        }
     } else {
         const textResponse = await response.text();
         let data;
@@ -899,9 +1019,9 @@ export const searchScholarships = async (
     : '';
 
   const systemInstruction = "You are a scholarship and study abroad advisor. Search the web for real, current scholarships matching the user's query and profile. Provide a well-formatted summary of 3-5 scholarships including name, amount, deadline, requirements, and links if available. Keep formatting clean using markdown. If you cannot find real scholarships, advise the user on where to look.";
-  
+  const customKey = getGeminiApiKey();
+
   const callApi = async () => {
-    const apiKey = await getGeminiApiKey();
     const response = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -909,7 +1029,7 @@ export const searchScholarships = async (
             history: [],
             message: `Find scholarships for: ${query}${profileDetails}\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.`,
             systemInstruction,
-            apiKey
+            apiKey: customKey || undefined
         })
     });
     
@@ -917,14 +1037,16 @@ export const searchScholarships = async (
     const isJson = contentType && contentType.includes('application/json');
 
     if (!isJson) {
-        console.warn("Backend proxy not found. Falling back to direct API call...");
-        const ai = new GoogleGenAI({ apiKey });
-        const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.5-flash',
-            contents: [{ role: 'user', parts: [{ text: `Find scholarships for: ${query}${profileDetails}\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.` }] }],
-            config: { systemInstruction }
-        });
-        return aiResponse.text || TRANSLATIONS[language].noAiResponse;
+        if (customKey) {
+            const ai = new GoogleGenAI({ apiKey: customKey });
+            const aiResponse = await generateClientContentWithFallback(ai, {
+                model: 'gemini-2.5-flash',
+                contents: [{ role: 'user', parts: [{ text: `Find scholarships for: ${query}${profileDetails}\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.` }] }],
+                config: { systemInstruction }
+            });
+            return aiResponse.text || TRANSLATIONS[language].noAiResponse;
+        }
+        throw new Error("Không thể kết nối đến máy chủ tìm kiếm học bổng.");
     }
 
     const textResponse = await response.text();
@@ -932,7 +1054,7 @@ export const searchScholarships = async (
     try {
         data = JSON.parse(textResponse);
     } catch (e) {
-        throw new Error(`Server returned invalid response. Response preview: ${textResponse.substring(0, 100)}`);
+        throw new Error(`Server returned invalid response.`);
     }
 
     if (!response.ok) {

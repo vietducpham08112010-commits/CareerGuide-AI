@@ -1,27 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
-const k1 = "AIzaSyAWdZ7q2CJ7Th9IanoK";
-const k2 = "_8EGF6W6S6TdUKo";
-const API_KEY = process.env.GEMINI_API_KEY || (k1 + k2);
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
-const formatHistoryForGemini = (history: { role: string; text: string }[], newMessage: string) => {
-  const raw = [...history, { role: 'user', text: newMessage }];
-  const formatted: { role: string; parts: { text: string }[] }[] = [];
-  
-  for (const msg of raw) {
-      const role = msg.role === 'model' ? 'model' : 'user';
-      if (formatted.length > 0 && formatted[formatted.length - 1].role === role) {
-          formatted[formatted.length - 1].parts[0].text += `\n\n${msg.text}`;
-      } else {
-          formatted.push({ role, parts: [{ text: msg.text }] });
-      }
-  }
-  return formatted;
-};
-
 const cleanGeminiErrorMessage = (error: any): string => {
-  const errMsg = error.message || String(error);
+  const errMsg = error?.message || String(error);
   if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded")) {
     return "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt. / The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
   }
@@ -46,6 +26,21 @@ const cleanGeminiErrorMessage = (error: any): string => {
   return errMsg;
 };
 
+const formatHistoryForGemini = (history: { role: string; text: string }[], newMessage: string) => {
+  const raw = [...history, { role: 'user', text: newMessage }];
+  const formatted: { role: string; parts: { text: string }[] }[] = [];
+  
+  for (const msg of raw) {
+      const role = msg.role === 'model' ? 'model' : 'user';
+      if (formatted.length > 0 && formatted[formatted.length - 1].role === role) {
+          formatted[formatted.length - 1].parts[0].text += `\n\n${msg.text}`;
+      } else {
+          formatted.push({ role, parts: [{ text: msg.text }] });
+      }
+  }
+  return formatted;
+};
+
 async function generateContentWithFallback(
     aiInstance: GoogleGenAI,
     options: {
@@ -55,15 +50,14 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
-        'gemini-3.5-flash',
-        'gemini-3.1-flash-lite',
-        'gemini-flash-latest'
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+        'gemini-2.0-flash'
     ];
 
     if (options.tools && options.tools.length > 0) {
         for (const model of modelsToTry) {
             try {
-                console.log(`[Fallback API] Attempting WITH tools using model ${model}...`);
                 const response = await aiInstance.models.generateContent({
                     model: model,
                     contents: options.contents,
@@ -85,7 +79,6 @@ async function generateContentWithFallback(
     // Try without tools
     for (const model of modelsToTry) {
         try {
-            console.log(`[Fallback API] Attempting WITHOUT tools using model ${model}...`);
             const response = await aiInstance.models.generateContent({
                 model: model,
                 contents: options.contents,
@@ -111,12 +104,20 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { history, message, systemInstruction } = req.body;
+    const { history, message, systemInstruction, apiKey } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: "Message is required" });
     }
 
+    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || process.env.GEMINI_API_KEY || "";
+    if (!finalApiKey) {
+      return res.status(500).json({ 
+        error: "Chưa cấu hình khóa API Gemini trên máy chủ. Vui lòng cấu hình biến môi trường GEMINI_API_KEY hoặc dán khóa cá nhân trong Cài đặt." 
+      });
+    }
+
+    const ai = new GoogleGenAI({ apiKey: finalApiKey });
     const contents = formatHistoryForGemini(history || [], message);
 
     const response = await generateContentWithFallback(ai, {

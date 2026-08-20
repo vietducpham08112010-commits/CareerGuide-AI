@@ -4,7 +4,7 @@ import { jsPDF } from 'jspdf';
 import * as Icons from 'lucide-react';
 import { captureElementToCanvasDataUrl } from '../utils/exportUtils';
 import { Language, Theme, UserProfile } from '../types';
-import { getGeminiApiKey } from '../services/geminiService';
+import { requestAiContent } from '../services/geminiService';
 import { getSubscriptionDetails } from '../utils/subscriptionUtils';
 
 interface CvBuilderProps {
@@ -201,13 +201,6 @@ export const CvBuilder: React.FC<CvBuilderProps> = ({
 
     setIsAiLoading(true);
     try {
-      const apiKey = getGeminiApiKey();
-      if (!apiKey) {
-        showToast(isVi ? 'Chưa cấu hình API Key Gemini. Vui lòng kiểm tra lại cài đặt.' : 'Gemini API Key missing.', 'error');
-        setIsAiLoading(false);
-        return;
-      }
-
       const prompt = `Bạn là chuyên gia tuyển dụng nhân sự cấp cao và chuyên gia tối ưu CV chuẩn ATS (Applicant Tracking System).
 Hãy viết lại phần Tóm Tắt Bản Thân (Summary) và các Điểm Nổi Bật Kỹ Năng (Key Highlights) cho ứng viên sau đây bằng ngôn ngữ ${isVi ? 'Tiếng Việt' : 'Tiếng Anh'}.
 
@@ -226,16 +219,7 @@ Hãy trả về kết quả dưới định dạng JSON nguyên bản với cấ
 }
 Chỉ trả về duy nhất khối JSON nguyên bản, không dùng markdown codeblock.`;
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      });
-
-      const data = await res.json();
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const rawText = await requestAiContent(prompt, "You are an ATS CV optimization expert. Output JSON only.", language);
       const cleanJson = rawText.replace(/```json\s*|\s*```/g, '').trim();
 
       try {
@@ -253,9 +237,9 @@ Chỉ trả về duy nhất khối JSON nguyên bản, không dùng markdown cod
       } catch (parseErr) {
         showToast(isVi ? 'Đã tối ưu hóa phần tóm tắt!' : 'Updated CV summary!', 'info');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("CV AI error:", err);
-      showToast(isVi ? 'Có lỗi xảy ra khi gọi AI Gemini.' : 'Error generating AI CV.', 'error');
+      showToast(err.message || (isVi ? 'Có lỗi xảy ra khi gọi AI Gemini.' : 'Error generating AI CV.'), 'error');
     } finally {
       setIsAiLoading(false);
     }
@@ -276,13 +260,6 @@ Chỉ trả về duy nhất khối JSON nguyên bản, không dùng markdown cod
 
     setIsJdLoading(true);
     try {
-      const apiKey = getGeminiApiKey();
-      if (!apiKey) {
-        showToast(isVi ? 'Chưa cấu hình API Key Gemini.' : 'Gemini API Key missing.', 'error');
-        setIsJdLoading(false);
-        return;
-      }
-
       const prompt = `Bạn là chuyên gia tuyển dụng & chuyên gia phần mềm quét CV ATS (Applicant Tracking System).
 Hãy phân tích sự tương thích giữa CV của ứng viên và Mô Tả Công Việc (JD) dưới đây.
 
@@ -308,24 +285,15 @@ Hãy trả về duy nhất 1 JSON object với cấu trúc chính xác như sau 
   "optimizedSummary": "Đoạn tóm tắt CV được viết lại lồng ghép chính xác các từ khóa ATS từ JD này..."
 }`;
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' }
-        })
-      });
-
-      const data = await res.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const parsed = JSON.parse(rawText);
+      const rawText = await requestAiContent(prompt, "You are a job description and ATS analyzer. Output JSON only.", language);
+      const cleanJson = rawText.replace(/```json\s*|\s*```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
 
       setJdResult(parsed);
       showToast(isVi ? '🎯 Đã hoàn thành phân tích So khớp CV với JD!' : '🎯 Completed JD & CV Match analysis!', 'success');
-    } catch (e) {
+    } catch (e: any) {
       console.error("JD Analysis error", e);
-      showToast(isVi ? 'Phân tích JD gặp sự cố, vui lòng thử lại.' : 'JD analysis failed.', 'error');
+      showToast(e.message || (isVi ? 'Phân tích JD gặp sự cố, vui lòng thử lại.' : 'JD analysis failed.'), 'error');
     } finally {
       setIsJdLoading(false);
     }

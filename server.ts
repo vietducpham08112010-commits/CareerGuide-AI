@@ -21,8 +21,7 @@ wss.on('error', (err) => {
 });
 
 const PORT = 3000;
-const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
-const ai = new GoogleGenAI({ apiKey: API_KEY || "DUMMY_KEY" });
+const SERVER_API_KEY = process.env.GEMINI_API_KEY || "";
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -50,7 +49,7 @@ const formatHistoryForGemini = (history: { role: string; text: string }[], newMe
 };
 
 const cleanGeminiErrorMessage = (error: any): string => {
-  const errMsg = error.message || String(error);
+  const errMsg = error?.message || String(error);
   if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded")) {
     return "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt. / The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
   }
@@ -84,15 +83,14 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
-        'gemini-3.5-flash',
-        'gemini-3.1-flash-lite',
-        'gemini-flash-latest'
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+        'gemini-2.0-flash'
     ];
 
     if (options.tools && options.tools.length > 0) {
         for (const model of modelsToTry) {
             try {
-                console.log(`[Fallback API] Attempting WITH tools using model ${model}...`);
                 const response = await aiInstance.models.generateContent({
                     model: model,
                     contents: options.contents,
@@ -114,7 +112,6 @@ async function generateContentWithFallback(
     // Try without tools
     for (const model of modelsToTry) {
         try {
-            console.log(`[Fallback API] Attempting WITHOUT tools using model ${model}...`);
             const response = await aiInstance.models.generateContent({
                 model: model,
                 contents: options.contents,
@@ -135,13 +132,6 @@ async function generateContentWithFallback(
 }
 
 // --- API Routes ---
-app.get("/api/get-gemini-key", (req, res) => {
-  if (API_KEY) {
-    res.json({ key: API_KEY });
-  } else {
-    res.status(500).json({ error: "API key not configured on server" });
-  }
-});
 
 app.post("/api/chat", async (req, res) => {
   try {
@@ -152,9 +142,11 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Message or file is required" });
     }
 
-    const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || SERVER_API_KEY;
     if (!finalApiKey) {
-      return res.status(400).json({ error: "Gemini API Key is missing." });
+      return res.status(500).json({ 
+        error: "Chưa cấu hình khóa API Gemini trên máy chủ. Vui lòng cấu hình biến môi trường GEMINI_API_KEY hoặc dán khóa cá nhân trong Cài đặt." 
+      });
     }
     const aiInstance = new GoogleGenAI({ apiKey: finalApiKey });
 
@@ -163,7 +155,7 @@ app.post("/api/chat", async (req, res) => {
     // Add file if present
     if (attachment && attachment.data && attachment.mimeType) {
       const lastTurn = contents[contents.length - 1];
-      if (lastTurn.role === 'user') {
+      if (lastTurn && lastTurn.role === 'user') {
         lastTurn.parts.push({
           inlineData: {
             data: attachment.data,
@@ -193,9 +185,11 @@ app.post("/api/search", async (req, res) => {
       return res.status(400).json({ error: "Message is required" });
     }
 
-    const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || SERVER_API_KEY;
     if (!finalApiKey) {
-      return res.status(400).json({ error: "Gemini API Key is missing." });
+      return res.status(500).json({ 
+        error: "Chưa cấu hình khóa API Gemini trên máy chủ. Vui lòng cấu hình biến môi trường GEMINI_API_KEY hoặc dán khóa cá nhân trong Cài đặt." 
+      });
     }
     const aiInstance = new GoogleGenAI({ apiKey: finalApiKey });
 
@@ -226,9 +220,11 @@ app.post("/api/generate-skill-map", async (req, res) => {
       return res.status(400).json({ error: "Career name is required" });
     }
 
-    const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || SERVER_API_KEY;
     if (!finalApiKey) {
-      return res.status(400).json({ error: "Gemini API Key is missing." });
+      return res.status(500).json({ 
+        error: "Chưa cấu hình khóa API Gemini trên máy chủ. Vui lòng cấu hình biến môi trường GEMINI_API_KEY hoặc dán khóa cá nhân trong Cài đặt." 
+      });
     }
     const aiInstance = new GoogleGenAI({ apiKey: finalApiKey });
 
@@ -291,13 +287,18 @@ wss.on("connection", (ws: WebSocket) => {
   ws.on("message", async (data: Buffer) => {
     try {
       const msg = JSON.parse(data.toString());
-      console.log("Received WebSocket message type:", msg.type);
 
       if (msg.type === "config") {
-        // Initialize Gemini Live Session
+        const liveApiKey = (msg.apiKey && typeof msg.apiKey === 'string' && msg.apiKey.trim()) || SERVER_API_KEY;
+        if (!liveApiKey) {
+          ws.send(JSON.stringify({ error: "Gemini API Key is missing for Live Session." }));
+          return;
+        }
+        const liveAi = new GoogleGenAI({ apiKey: liveApiKey });
+
         const connectToGemini = async (model: string) => {
             console.log(`Attempting to connect to Gemini Live with model: ${model}`);
-            return ai.live.connect({
+            return liveAi.live.connect({
                 model,
                 callbacks: {
                   onopen: () => {
@@ -340,21 +341,23 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        try {
-            try {
-                session = await connectToGemini('gemini-3.1-flash-live-preview');
-            } catch (err) {
-                console.warn("Failed with primary model, trying fallback.");
-            }
-        } catch (err: any) {
-            console.error("Failed to connect to Gemini Live (All models):", err);
-            ws.send(JSON.stringify({ error: "Failed to connect to Gemini Live. Please check API Key or Model availability." }));
+        const liveModels = ['gemini-2.0-flash-realtime-exp', 'gemini-2.0-flash'];
+        let connected = false;
+        for (const model of liveModels) {
+          try {
+            session = await connectToGemini(model);
+            connected = true;
+            break;
+          } catch (err) {
+            console.warn(`Failed with model ${model}, trying next...`);
+          }
+        }
+        if (!connected) {
+          ws.send(JSON.stringify({ error: "Failed to connect to Gemini Live. Please verify model availability." }));
         }
       } else if (msg.realtimeInput) {
-          // Forward audio/input to Gemini
           if (session) {
               const input = Array.isArray(msg.realtimeInput) ? msg.realtimeInput[0] : msg.realtimeInput;
-              // session is now the object, not a promise
               session.sendRealtimeInput(input);
           }
       } else if (msg.toolResponse) {

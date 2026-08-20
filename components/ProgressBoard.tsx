@@ -4,7 +4,7 @@ import { jsPDF } from 'jspdf';
 import * as Icons from 'lucide-react';
 import { captureElementToCanvasDataUrl } from '../utils/exportUtils';
 import { ChatSession, UserProfile, Language, ChatMessage, Milestone, Theme } from '../types';
-import { generateRoadmap, getGeminiApiKey } from '../services/geminiService';
+import { generateRoadmap, requestAiContent } from '../services/geminiService';
 import { getSubscriptionDetails } from '../utils/subscriptionUtils';
 import emailjs from '@emailjs/browser';
 import { InlineGuide } from './InlineGuide';
@@ -286,7 +286,6 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
     setIsSalaryLoading(true);
 
     try {
-      const apiKey = getGeminiApiKey();
       const prompt = `Bạn là chuyên gia phân tích thị trường lao động Việt Nam 2026.
 Hãy phân tích dải lương và lộ trình thăng tiến cho vị trí: "${salaryJobRole}", cấp độ: "${salaryExpLevel}", khu vực: "${salaryLocation}".
 
@@ -304,23 +303,14 @@ Trả về DUY NHẤT JSON object (không markdown):
   "marketOutlook": "Nhu cầu thị trường cực cao trong năm 2026 với mức tăng trưởng thu nhập trung bình 25%/năm."
 }`;
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' }
-        })
-      });
-
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const parsed = JSON.parse(text);
+      const text = await requestAiContent(prompt, "You are a labor market analyst. Output valid JSON only.", language);
+      const cleanJson = text.replace(/```json\s*|\s*```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
       setSalaryResult(parsed);
       showToast(language === Language.VI ? '💵 Đã phân tích thành công Dải Lương & Thăng Tiến!' : '💵 Salary insight loaded!', 'success');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      showToast(language === Language.VI ? 'Lỗi khi phân tích dải lương.' : 'Salary analysis failed.', 'error');
+      showToast(e.message || (language === Language.VI ? 'Lỗi khi phân tích dải lương.' : 'Salary analysis failed.'), 'error');
     } finally {
       setIsSalaryLoading(false);
     }
@@ -334,7 +324,6 @@ Trả về DUY NHẤT JSON object (không markdown):
 
     setIsOkrAnalyzing(true);
     try {
-      const apiKey = getGeminiApiKey();
       const prompt = `Bạn là Mentor tư vấn Quản trị Mục tiêu (OKR).
 Tháng: ${selectedMonth}
 Mục tiêu chính (Objective): ${okrObjective}
@@ -343,21 +332,12 @@ ${okrKeyResults.map((kr, i) => `${i+1}. ${kr.text} (Tiến độ: ${kr.progress}
 
 Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đà tăng trưởng và 2 hành động ưu tiên cho tuần tiếp theo. Nêu rõ ràng, truyền cảm hứng.`;
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      });
-
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const text = await requestAiContent(prompt, "You are a goal management mentor.", language);
       setOkrFeedback(text);
       showToast(language === Language.VI ? '🎯 AI đã phân tích OKR tháng của bạn!' : '🎯 OKR evaluated!', 'success');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      showToast(language === Language.VI ? 'Không thể phân tích OKR.' : 'OKR analysis failed.', 'error');
+      showToast(e.message || (language === Language.VI ? 'Không thể phân tích OKR.' : 'OKR analysis failed.'), 'error');
     } finally {
       setIsOkrAnalyzing(false);
     }

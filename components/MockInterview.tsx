@@ -233,7 +233,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
     setIsLoading(true);
 
     try {
-      const apiKey = await getGeminiApiKey();
+      const apiKey = getGeminiApiKey();
       const systemPrompt = "You are an expert HR Manager and artificial career interviewer. You must generate EXACTLY 4 highly relevant and customized interview questions for a candidate.";
       
       const userMessage = `Create 4 tailored interview questions for the position of "${job}" with "${level}" experience level.
@@ -249,7 +249,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
           history: [],
           message: userMessage,
           systemInstruction: systemPrompt,
-          apiKey
+          apiKey: apiKey || undefined
         })
       });
 
@@ -317,7 +317,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
     setStep('evaluating');
     setIsLoading(true);
     try {
-      const apiKey = await getGeminiApiKey();
+      const apiKey = getGeminiApiKey();
       const systemInstruction = "You are an elite HR consultant analyzing interview transcripts. You must analyze the questions and candidates answers then evaluate performance objectively. You must return EXACTLY a JSON string matching the specified schema.";
 
       const transcript = questions.map((q, i) => `Question ${i + 1}: ${q}\nAnswer: ${completedAnswers[i] || 'No answer'}`).join('\n\n');
@@ -352,7 +352,7 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
           history: [],
           message: evaluationGoal,
           systemInstruction,
-          apiKey
+          apiKey: apiKey || undefined
         })
       });
 
