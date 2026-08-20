@@ -240,20 +240,48 @@ export const CareerCompare = ({ lang, t, Icons }: { lang: Language, t: any, Icon
 
       <AnimatePresence mode="wait">
         {isComparing && (
-          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center py-20 text-gray-500">
-            <div className="relative mb-4">
-              <div className="w-12 h-12 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin"></div>
-              <Icons.Activity className="w-5 h-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+            <div className="flex items-center justify-center gap-2 py-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-200/40 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+              <Icons.Activity className="w-4 h-4 animate-spin text-indigo-500" />
+              <span>{lang === Language.VI ? 'AI đang phân tích & đối chiếu chi tiết 8 chỉ số chuyên sâu...' : 'AI is running multi-dimensional comparative analysis across 8 core metrics...'}</span>
             </div>
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 animate-pulse">
-              {lang === Language.VI ? 'Đang gọi AI phân tích sâu các khía cạnh...' : 'Gemini is running multi-dimensional comparison...'}
-            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
+              {[1, 2].map((idx) => (
+                <div key={idx} className="p-6 bg-white dark:bg-[#121215] border border-gray-200 dark:border-white/10 rounded-3xl space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-white/10" />
+                    <div className="h-5 w-20 bg-gray-100 dark:bg-white/5 rounded-full" />
+                  </div>
+                  <div className="h-7 w-48 bg-gray-200 dark:bg-white/10 rounded-lg" />
+                  <div className="space-y-2 pt-2">
+                    <div className="h-3.5 w-full bg-gray-100 dark:bg-white/5 rounded-md" />
+                    <div className="h-3.5 w-5/6 bg-gray-100 dark:bg-white/5 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-6 bg-white dark:bg-[#121215] border border-gray-200 dark:border-white/10 rounded-3xl space-y-3 animate-pulse">
+              <div className="h-4 w-40 bg-gray-200 dark:bg-white/10 rounded" />
+              <div className="h-3 w-full bg-gray-100 dark:bg-white/5 rounded" />
+              <div className="h-3 w-4/5 bg-gray-100 dark:bg-white/5 rounded" />
+            </div>
           </motion.div>
         )}
         
         {error && !isComparing && (
-          <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30 text-center text-sm font-medium">
-            {error}
+          <motion.div key="error" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="w-full bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 p-6 rounded-3xl border border-rose-200 dark:border-rose-900/40 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center">
+              <Icons.AlertCircle className="w-6 h-6" />
+            </div>
+            <h4 className="text-base font-bold">{lang === Language.VI ? 'Không thể thực hiện đối chiếu' : 'Comparison Request Failed'}</h4>
+            <p className="text-xs text-rose-600 dark:text-rose-400 max-w-md mx-auto leading-relaxed">{error}</p>
+            <button
+              onClick={() => handleCompare()}
+              className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2 cursor-pointer"
+            >
+              <Icons.RotateCcw className="w-3.5 h-3.5" />
+              <span>{lang === Language.VI ? 'Thử lại ngay' : 'Retry Now'}</span>
+            </button>
           </motion.div>
         )}
 

@@ -121,6 +121,7 @@ const Icons = {
   Square: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="3" rx="2"/></svg>,
   Settings: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
   Lock: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+  Database: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>,
 };
 
 // --- CAREER GUIDE AI LOGO ---
@@ -2739,12 +2740,80 @@ export default function App() {
           </div>
         </section>
 
-        <footer className="py-12 px-6 border-t border-gray-200 dark:border-white/5 text-center">
-             <div className="flex items-center justify-center gap-2 mb-6 opacity-50 hover:opacity-100 transition-opacity duration-300">
-                 <CareerGuideLogo className="w-6 h-6" />
-                 <span className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-gray-600 to-gray-900 dark:from-gray-400 dark:to-white">{t.appName}</span>
+        <footer className="py-16 px-6 border-t border-gray-200 dark:border-white/5 bg-gray-50/50 dark:bg-[#070709] transition-colors">
+             <div className="max-w-6xl mx-auto space-y-8 text-center md:text-left">
+                 <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-gray-200 dark:border-white/5">
+                     <div className="flex items-center gap-3">
+                         <CareerGuideLogo className="w-8 h-8" />
+                         <div>
+                             <span className="font-extrabold text-lg bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400">{t.appName}</span>
+                             <p className="text-xs text-gray-500">{lang === Language.VI ? 'Nền tảng Hướng nghiệp & Phát triển Năng lực Cá nhân hóa AI' : 'Personalized AI Career Guidance & Competency Platform'}</p>
+                         </div>
+                     </div>
+                     <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-gray-600 dark:text-gray-400">
+                         <button onClick={() => setHasAcceptedTerms(false)} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                             {lang === Language.VI ? 'Điều khoản sử dụng' : 'Terms of Service'}
+                         </button>
+                         <span>•</span>
+                         <button onClick={() => setHasAcceptedTerms(false)} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                             {lang === Language.VI ? 'Chính sách bảo mật (<18)' : 'Privacy Policy (<18)'}
+                         </button>
+                         <span>•</span>
+                         <button onClick={() => setIsFeedbackOpen(true)} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                             {lang === Language.VI ? 'Góp ý & Báo lỗi' : 'Feedback & Contact'}
+                         </button>
+                     </div>
+                 </div>
+
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                     <div className="space-y-1.5 bg-white dark:bg-white/[0.02] p-4 rounded-2xl border border-gray-200/60 dark:border-white/5">
+                         <p className="font-bold text-gray-900 dark:text-gray-200 flex items-center gap-1.5">
+                             <Icons.Shield className="w-3.5 h-3.5 text-indigo-500" />
+                             <span>{lang === Language.VI ? 'Tuân thủ Bảo mật Học sinh' : 'Youth Privacy Protection'}</span>
+                         </p>
+                         <p className="text-[11px]">
+                             {lang === Language.VI 
+                                 ? 'Dữ liệu cá nhân của học sinh & thanh thiếu niên (<18 tuổi) được bảo vệ nghiêm ngặt. Không bán, không chia sẻ cho bên thứ ba vì mục đích thương mại.' 
+                                 : 'Student & minor (<18) personal data is strictly protected. Never sold or shared for third-party commercial marketing.'}
+                         </p>
+                     </div>
+
+                     <div className="space-y-1.5 bg-white dark:bg-white/[0.02] p-4 rounded-2xl border border-gray-200/60 dark:border-white/5">
+                         <p className="font-bold text-gray-900 dark:text-gray-200 flex items-center gap-1.5">
+                             <Icons.Database className="w-3.5 h-3.5 text-emerald-500" />
+                             <span>{lang === Language.VI ? 'Nguồn Dữ Liệu Tham Chiếu' : 'Verified Data Sources'}</span>
+                         </p>
+                         <p className="text-[11px]">
+                             {lang === Language.VI 
+                                 ? 'Dữ liệu hướng nghiệp & điểm chuẩn tham chiếu từ Bộ GD&ĐT, Tổng cục Thống kê, ONET, và cổng tuyển sinh các trường ĐH chính quy.' 
+                                 : 'Career benchmarks aggregated from official education portals, MOET standards, ONET classifications, and live university admissions.'}
+                         </p>
+                     </div>
+
+                     <div className="space-y-1.5 bg-white dark:bg-white/[0.02] p-4 rounded-2xl border border-gray-200/60 dark:border-white/5">
+                         <p className="font-bold text-gray-900 dark:text-gray-200 flex items-center gap-1.5">
+                             <Icons.AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                             <span>{lang === Language.VI ? 'Miễn trừ Trách nhiệm AI' : 'AI Output Advisory'}</span>
+                         </p>
+                         <p className="text-[11px]">
+                             {lang === Language.VI 
+                                 ? 'Mô hình AI đưa ra các gợi ý định hướng mang tính chất tham khảo học tập. Người học nên đối chiếu với thầy cô, gia đình và quy chế chính thức.' 
+                                 : 'AI insights serve as guidance and personal development suggestions. Please verify with certified counselors and official admissions guidelines.'}
+                         </p>
+                     </div>
+                 </div>
+
+                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 text-[11px] text-gray-400">
+                     <p>© 2026 {t.appName}. {t.empoweringFutures}.</p>
+                     <div className="flex items-center gap-2">
+                         <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-mono font-bold">v2.4.0 (NextX 2026 Edition)</span>
+                         <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                             All Systems Operational
+                         </span>
+                     </div>
+                 </div>
              </div>
-             <p className="text-gray-500 text-sm">© 2025 {t.appName}. {t.empoweringFutures}.</p>
         </footer>
       </div>
     );
@@ -3412,6 +3481,42 @@ export default function App() {
             </motion.button>
         </header>
         
+        {/* 60-Second Onboarding Flow Banner for Guest / Judges */}
+        {auth.user?.isGuest && (
+          <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-emerald-500/10 border-b border-indigo-200/50 dark:border-indigo-900/30 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs z-20 shrink-0">
+            <div className="flex items-center gap-2 font-medium text-gray-700 dark:text-gray-200">
+              <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-black text-[10px] tracking-wide uppercase shadow-sm">
+                60s Flow
+              </span>
+              <span>
+                {lang === Language.VI 
+                  ? 'Bắt đầu nhanh: 1. Trắc nghiệm RIASEC → 2. Lộ trình (Roadmap) → 3. Phỏng vấn thử' 
+                  : 'Fast Flow: 1. RIASEC Quiz → 2. Career Roadmap → 3. Mock Interview'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setTab(DashboardTab.QUIZ)} 
+                className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${tab === DashboardTab.QUIZ ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white dark:bg-white/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-white/20'}`}
+              >
+                {lang === Language.VI ? '1. Trắc nghiệm' : '1. RIASEC Quiz'}
+              </button>
+              <button 
+                onClick={() => setTab(DashboardTab.PROGRESS)} 
+                className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${tab === DashboardTab.PROGRESS ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white dark:bg-white/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-white/20'}`}
+              >
+                {lang === Language.VI ? '2. Lộ trình' : '2. Roadmap'}
+              </button>
+              <button 
+                onClick={() => setTab(DashboardTab.MOCK_INTERVIEW)} 
+                className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer ${tab === DashboardTab.MOCK_INTERVIEW ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white dark:bg-white/10 text-purple-600 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-white/20'}`}
+              >
+                {lang === Language.VI ? '3. Phỏng vấn' : '3. Interview'}
+              </button>
+            </div>
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           <motion.div
             key={tab}

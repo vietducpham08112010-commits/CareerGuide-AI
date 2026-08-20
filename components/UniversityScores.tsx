@@ -5,7 +5,8 @@ import remarkGfm from 'remark-gfm';
 import { Language } from '../types';
 import { searchUniversityScores } from '../services/geminiService';
 import { InlineGuide } from './InlineGuide';
-import { Globe, ExternalLink, ShieldCheck, Search, BookOpen, GraduationCap, Award, RefreshCw, Sparkles, Landmark, Star, AlertCircle } from 'lucide-react';
+import { Globe, ExternalLink, ShieldCheck, Search, BookOpen, GraduationCap, Award, RefreshCw, Sparkles, Landmark, Star, AlertCircle, RotateCcw } from 'lucide-react';
+import { SkeletonCard } from './SkeletonLoader';
 
 const MOCK_DATA = [
   { id: 1, name: 'Đại học Bách Khoa Hà Nội', major: 'Khoa học Máy tính (IT1)', year: 2023, score: 29.42, group: 'A00, A01', type: 'Engineering' },
@@ -117,33 +118,36 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
             initial={{ opacity: 0, y: 10 }} 
             animate={{ opacity: 1, y: 0 }} 
             exit={{ opacity: 0, y: -10 }} 
-            className="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-white/[0.01] rounded-3xl border border-dashed border-gray-200 dark:border-white/5"
+            className="space-y-4"
           >
-            <div className="relative mb-4">
-              <div className="w-12 h-12 rounded-full border-4 border-indigo-200 dark:border-indigo-950/50 border-t-indigo-600 animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              </div>
+            <div className="flex items-center justify-center gap-2 py-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-200/40 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+              <Sparkles className="w-4 h-4 animate-spin text-indigo-500" />
+              <span>{lang === Language.VI ? 'AI đang tìm kiếm và tổng hợp điểm chuẩn từ cổng tuyển sinh chính thống...' : 'AI is querying and aggregating verified admissions data from official portals...'}</span>
             </div>
-            <p className="font-bold text-gray-800 dark:text-gray-200">
-              {lang === Language.VI ? 'Đang kết nối cơ sở dữ liệu & tìm kiếm thực tế...' : 'Connecting to admissions database...'}
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-sm text-center">
-              {lang === Language.VI ? 'AI đang tổng hợp dữ liệu điểm chuẩn mới nhất từ các nguồn chính thống.' : 'AI is compiling raw admission data from official school publications.'}
-            </p>
+            <SkeletonCard count={3} />
           </motion.div>
         )}
         
         {error && !isSearching && (
           <motion.div 
             key="error" 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }} 
             exit={{ opacity: 0 }} 
-            className="w-full bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 p-5 rounded-2xl border border-red-100 dark:border-red-950/20 text-center flex items-center justify-center gap-3"
+            className="w-full bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 p-6 rounded-3xl border border-rose-200 dark:border-rose-900/40 text-center space-y-3"
           >
-            <AlertCircle className="w-5 h-5 text-red-500" />
-            <span className="font-semibold">{error}</span>
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h4 className="text-base font-bold">{lang === Language.VI ? 'Không thể tải dữ liệu điểm chuẩn' : 'Admission Query Failed'}</h4>
+            <p className="text-xs text-rose-600 dark:text-rose-400 max-w-md mx-auto leading-relaxed">{error}</p>
+            <button
+              onClick={() => handleSearch()}
+              className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>{lang === Language.VI ? 'Thử lại ngay' : 'Retry Now'}</span>
+            </button>
           </motion.div>
         )}
 

@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../constants';
-import { Loader2, Search, GraduationCap, Award, Landmark, Calendar, Sparkles, ShieldCheck, ArrowUpRight, HelpCircle, AlertCircle, Heart } from 'lucide-react';
+import { Loader2, Search, GraduationCap, Award, Landmark, Calendar, Sparkles, ShieldCheck, ArrowUpRight, HelpCircle, AlertCircle, Heart, RotateCcw } from 'lucide-react';
 import { searchScholarships } from '../services/geminiService';
 import Markdown from 'react-markdown';
 import { InlineGuide } from './InlineGuide';
+import { SkeletonCard } from './SkeletonLoader';
 
 const CURATED_SCHOLARSHIPS = [
   {
@@ -151,20 +152,13 @@ export const Scholarships = ({
             initial={{ opacity: 0, y: 10 }} 
             animate={{ opacity: 1, y: 0 }} 
             exit={{ opacity: 0, y: -10 }} 
-            className="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-white/[0.01] rounded-3xl border border-dashed border-gray-200 dark:border-white/5"
+            className="space-y-4 mb-10"
           >
-            <div className="relative mb-4">
-              <div className="w-12 h-12 rounded-full border-4 border-indigo-200 dark:border-indigo-950/50 border-t-indigo-600 animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              </div>
+            <div className="flex items-center justify-center gap-2 py-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-200/40 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+              <Sparkles className="w-4 h-4 animate-spin text-indigo-500" />
+              <span>{isVi ? "AI đang tìm kiếm & quét danh sách học bổng phù hợp..." : "AI is scanning matching scholarship programs..."}</span>
             </div>
-            <p className="font-bold text-gray-800 dark:text-gray-200">
-              {isVi ? "Đang dò quét & kết nối nguồn lực học bổng thời gian thực..." : "Scanning & matching global live scholarships..."}
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-sm text-center">
-              {isVi ? 'AI đang liên kết với các quỹ giáo dục và các trang thông tin uy tín.' : 'AI is querying verified education ministries and institutional portals.'}
-            </p>
+            <SkeletonCard count={3} />
           </motion.div>
         )}
 
