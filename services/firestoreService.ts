@@ -20,7 +20,7 @@ if (configFiles.length > 0) {
 }
 
 const fallbackConfig = {
-  apiKey: "AIzaSyDRv2bfw0ncLYCUsjWrUeGoTwglyrpCRdU",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
   authDomain: "careerguideaiforeveryone-1.firebaseapp.com",
   projectId: "careerguideaiforeveryone-1",
   storageBucket: "careerguideaiforeveryone-1.firebasestorage.app",

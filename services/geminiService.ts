@@ -93,9 +93,7 @@ const generateClientContentWithFallback = async (
     throw new Error("All client model fallback attempts exhausted / Tất cả các phương án kết nối mô hình đều thất bại.");
 };
 
-const DEFAULT_GEMINI_API_KEY = "AIzaSyAWdZ7q2CJ7Th9IanoK_8EGF6W6S6TdUKo";
-
-// Get custom user API key from Settings if specified or fallback to server/system key
+// Get custom user API key from Settings if specified or fallback to server/system env key
 export const getGeminiApiKey = (userProfile?: UserProfile | null): string => {
     if (userProfile?.customGeminiApiKey && typeof userProfile.customGeminiApiKey === 'string' && userProfile.customGeminiApiKey.trim()) {
         return userProfile.customGeminiApiKey.trim();
@@ -111,7 +109,7 @@ export const getGeminiApiKey = (userProfile?: UserProfile | null): string => {
     } catch (e) {
         console.warn("Failed to check customGeminiApiKey from localStorage", e);
     }
-    return (import.meta.env?.VITE_GEMINI_API_KEY as string) || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY as string : '') || DEFAULT_GEMINI_API_KEY;
+    return (import.meta.env?.VITE_GEMINI_API_KEY as string) || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY as string : '') || '';
 };
 
 export const cleanFrontEndErrorMessage = (error: any, language: Language): string => {

@@ -1381,7 +1381,21 @@ export default function App() {
   
   // Listen for Firebase Auth State Changes
   useEffect(() => {
-      if (!firebaseAuth) return;
+      if (!firebaseAuth) {
+          const storedUser = localStorage.getItem('currentUser');
+          if (storedUser) {
+              try {
+                  let userObj = JSON.parse(storedUser);
+                  setAuth({ isAuthenticated: true, user: userObj });
+                  if (mode === AppMode.AUTH && !userObj.isGuest) {
+                      setMode(AppMode.DASHBOARD);
+                  }
+              } catch (e) {
+                  setAuth({ isAuthenticated: false, user: null });
+              }
+          }
+          return;
+      }
 
       const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
           if (firebaseUser) {
@@ -4283,7 +4297,7 @@ export default function App() {
                                     type="password"
                                     value={auth.user?.customGeminiApiKey || ''} 
                                     onChange={(e) => updateUserProfile({ customGeminiApiKey: e.target.value })} 
-                                    placeholder={lang === Language.VI ? "Dán khóa API Gemini (AIzaSy...) để vượt qua giới hạn dùng thử" : "Paste your Gemini API key (AIzaSy...) to bypass trial limits"} 
+                                    placeholder={lang === Language.VI ? "Dán khóa API Gemini của bạn để vượt qua giới hạn dùng thử" : "Paste your custom Gemini API key to bypass trial limits"} 
                                     className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-xl text-gray-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                                 />
                                 <p className="text-[10px] text-gray-500 mt-1">
