@@ -42,11 +42,11 @@ const generateClientContentWithFallback = async (
     }
 ): Promise<any> => {
     const modelsToTry = [
-        options.model || 'gemini-3.5-flash-lite',
-        'gemini-3.5-flash-lite',
-        'gemini-3.6-flash',
+        options.model || 'gemini-2.5-flash',
         'gemini-2.5-flash',
-        'gemini-3.7-flash'
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-8b'
     ];
 
     const uniqueModels = Array.from(new Set(modelsToTry));
@@ -187,7 +187,7 @@ export const requestAiContent = async (
     // Direct Client Fallback Execution
     const ai = new GoogleGenAI({ apiKey: activeKey });
     const aiResponse = await generateClientContentWithFallback(ai, {
-      model: 'gemini-3.5-flash-lite',
+      model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: { systemInstruction }
     });
@@ -247,7 +247,7 @@ export const generateRoadmap = async (
     const contents = chatHistory.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
     contents.push({ role: 'user', parts: [{ text: prompt }] });
     const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-3.5-flash-lite',
+        model: 'gemini-2.5-flash',
         contents,
         config: { systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text." }
     });
@@ -325,7 +325,7 @@ export const sendChatMessage = async (
     contents.push({ role: 'user', parts: userParts });
     
     const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-3.5-flash-lite',
+        model: 'gemini-2.5-flash',
         contents,
         config: { systemInstruction }
     });

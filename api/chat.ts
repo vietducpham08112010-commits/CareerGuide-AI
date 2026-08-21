@@ -50,10 +50,10 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
-        'gemini-3.5-flash-lite',
-        'gemini-3.6-flash',
         'gemini-2.5-flash',
-        'gemini-3.7-flash'
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-8b'
     ];
 
     if (options.tools && options.tools.length > 0) {
