@@ -42,11 +42,13 @@ const generateClientContentWithFallback = async (
     }
 ): Promise<any> => {
     const modelsToTry = [
-        options.model || 'gemini-2.5-flash',
+        options.model || 'gemini-3.5-flash',
+        'gemini-3.5-flash',
+        'gemini-3.6-flash',
+        'gemini-3.7-flash',
         'gemini-2.5-flash',
-        'gemini-2.0-flash',
-        'gemini-1.5-flash',
-        'gemini-1.5-flash-8b'
+        'gemini-3.5-flash-lite',
+        'gemini-flash-latest'
     ];
 
     const uniqueModels = Array.from(new Set(modelsToTry));
@@ -176,11 +178,17 @@ export const requestAiContent = async (
       const contentType = response.headers.get('content-type');
       const isJson = contentType && contentType.includes('application/json');
 
-      if (isJson && response.ok) {
+      if (isJson) {
         const resData = await response.json();
-        if (resData.text) return resData.text;
+        if (response.ok && resData.text) return resData.text;
+        if (!response.ok && resData.error) {
+          if (!activeKey) throw new Error(resData.error);
+        }
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.message && (e.message.includes("Chưa cấu hình khóa API") || e.message.includes("API key"))) {
+        throw e;
+      }
       console.warn("Backend chat proxy failed, executing client-side fallback generation:", e);
     }
 
@@ -229,16 +237,24 @@ export const generateRoadmap = async (
       const contentType = response.headers.get('content-type');
       const isJson = contentType && contentType.includes('application/json');
 
-      if (isJson && response.ok) {
+      if (isJson) {
         const text = await response.text();
         const data = JSON.parse(text);
-        let jsonStr = (data.text || '').trim();
-        if (jsonStr.startsWith('```json')) {
-            jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        if (response.ok && data.text) {
+          let jsonStr = (data.text || '').trim();
+          if (jsonStr.startsWith('```json')) {
+              jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          }
+          if (jsonStr) return JSON.parse(jsonStr);
         }
-        if (jsonStr) return JSON.parse(jsonStr);
+        if (!response.ok && data.error) {
+          if (!activeKey) throw new Error(data.error);
+        }
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.message && (e.message.includes("Chưa cấu hình khóa API") || e.message.includes("API key"))) {
+        throw e;
+      }
       console.warn("Backend roadmap proxy failed, executing client-side fallback roadmap generation:", e);
     }
 
@@ -309,11 +325,17 @@ export const sendChatMessage = async (
       const contentType = response.headers.get('content-type');
       const isJson = contentType && contentType.includes('application/json');
 
-      if (isJson && response.ok) {
+      if (isJson) {
           const data = await response.json();
-          if (data.text) return data.text;
+          if (response.ok && data.text) return data.text;
+          if (!response.ok && data.error) {
+              if (!activeKey) throw new Error(data.error);
+          }
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.message && (e.message.includes("Chưa cấu hình khóa API") || e.message.includes("API key"))) {
+        throw e;
+      }
       console.warn("Backend chat proxy fetch failed, switching to client-side SDK generation:", e);
     }
 
