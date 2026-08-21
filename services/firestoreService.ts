@@ -119,13 +119,18 @@ interface FirestoreErrorInfo {
 const isOfflineError = (error: unknown): boolean => {
   const msg = error instanceof Error ? error.message : String(error);
   const code = (error as any)?.code;
+  const msgLower = msg.toLowerCase();
   return (
-    msg.toLowerCase().includes('offline') ||
-    msg.toLowerCase().includes('network') ||
-    msg.toLowerCase().includes('unreachable') ||
-    msg.toLowerCase().includes('internet') ||
+    msgLower.includes('offline') ||
+    msgLower.includes('network') ||
+    msgLower.includes('unreachable') ||
+    msgLower.includes('internet') ||
+    msgLower.includes('not found') ||
+    msgLower.includes('database') ||
+    msgLower.includes('configuration') ||
     code === 'unavailable' ||
-    code === 'failed-precondition'
+    code === 'failed-precondition' ||
+    code === 'not-found'
   );
 };
 

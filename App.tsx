@@ -1761,7 +1761,7 @@ export default function App() {
         ? "Lớp 11 chuyên Tin học. Tổ hợp quan tâm: STEM (A00, A01). Năng lực thế mạnh: Lập trình, Toán Logic. Có điểm RIASEC ưu tiên cao ở tính cách Realistic (Kỹ thuật) dồi dào và Investigative (Nghiên cứu) nhạy bén."
         : "11th Grade STEM Student. Competency focus: Coding & Tech, Logical Math. High RIASEC prioritizations in Realistic and Investigative traits.",
       isGuest: true,
-      avatar: "https://avatar.iran.liara.run/public/boy",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
       streak: 7,
       points: 1550,
       level: 4,

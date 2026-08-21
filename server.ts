@@ -86,9 +86,9 @@ async function generateContentWithFallback(
 ) {
     const modelsToTry = [
         'gemini-3.5-flash-lite',
-        'gemini-1.5-flash',
-        'gemini-1.5-pro',
-        'gemini-3.1-pro-preview'
+        'gemini-3.6-flash',
+        'gemini-2.5-flash',
+        'gemini-3.7-flash'
     ];
 
     if (options.tools && options.tools.length > 0) {
@@ -344,7 +344,7 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-3.1-flash-live-preview'];
+        const liveModels = ['gemini-2.5-flash', 'gemini-1.5-flash'];
         let connected = false;
         for (const model of liveModels) {
           try {
