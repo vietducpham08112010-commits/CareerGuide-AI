@@ -5,7 +5,8 @@ import * as Icons from 'lucide-react';
 import { captureElementToCanvasDataUrl } from '../utils/exportUtils';
 import { Language, Theme, UserProfile } from '../types';
 import { requestAiContent } from '../services/geminiService';
-import { getSubscriptionDetails } from '../utils/subscriptionUtils';
+import { getSubscriptionDetails, isFeatureUnlocked } from '../utils/subscriptionUtils';
+import { LuxuryAiThinking } from './SkeletonLoader';
 
 interface CvBuilderProps {
   language: Language;
@@ -62,7 +63,9 @@ export const CvBuilder: React.FC<CvBuilderProps> = ({
 }) => {
   const isVi = language === Language.VI;
   const currentSub = getSubscriptionDetails(user?.subscription);
-  const isLockedForFree = currentSub.tier === 'free';
+  const hasAiPolish = isFeatureUnlocked(user, 'cvReview');
+  const hasJdAnalysis = isFeatureUnlocked(user, 'cvJdAnalysis');
+  const isLockedForFree = !hasAiPolish;
 
   const [cvTheme, setCvTheme] = useState<'ats' | 'modern' | 'executive' | 'creative'>('ats');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -247,8 +250,7 @@ Chỉ trả về duy nhất khối JSON nguyên bản, không dùng markdown cod
 
   // Max Feature: AI JD Analysis
   const handleAnalyzeJd = async () => {
-    const hasPermission = currentSub.unlockedFeatures?.cvJdAnalysis;
-    if (!hasPermission) {
+    if (!hasJdAnalysis) {
       onRequestUpgrade(isVi ? 'Phân tích CV theo JD (Gói CAREER MAX)' : 'AI JD Matching & ATS Audit (Career MAX Tier)');
       return;
     }
@@ -314,11 +316,20 @@ Hãy trả về duy nhất 1 JSON object với cấu trúc chính xác như sau 
   };
 
   const handleExportCvPdf = async () => {
-    if (!cvCardRef.current) return;
     setIsExportingCv(true);
-    showToast(isVi ? 'Đang xuất file PDF CV...' : 'Preparing CV PDF...', 'info');
+    showToast(isVi ? 'Đang chuẩn bị và xuất file PDF CV...' : 'Preparing and exporting CV as PDF...', 'info');
     try {
-      await new Promise(r => setTimeout(r, 200));
+      if (activeTab !== 'preview') {
+        setActiveTab('preview');
+        await new Promise(r => setTimeout(r, 400));
+      } else {
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      if (!cvCardRef.current) {
+        throw new Error(isVi ? 'Không tìm thấy mẫu CV để xuất.' : 'CV card element not found.');
+      }
+
       const dataUrl = await captureCvCanvas(cvCardRef.current);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -331,25 +342,50 @@ Hãy trả về duy nhất 1 JSON object với cấu trúc chính xác như sau 
       const imgWidth = pdfWidth;
       const imgHeight = (img.height * imgWidth) / img.width;
 
-      pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
+      if (imgHeight <= pdfHeight) {
+        pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidth, imgHeight);
+      } else {
+        // Multi-page slicing for longer CVs
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(dataUrl, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(dataUrl, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pdfHeight;
+        }
+      }
 
       const sanitizedName = cvData.fullName.trim().replace(/\s+/g, '_') || 'Applicant';
       pdf.save(`CV_${sanitizedName}.pdf`);
-      showToast(isVi ? '🎉 Xuất file PDF CV thành công!' : '🎉 CV PDF exported successfully!', 'success');
-    } catch (e) {
+      showToast(isVi ? '🎉 Xuất file PDF CV chuẩn in thành công!' : '🎉 CV PDF downloaded successfully!', 'success');
+    } catch (e: any) {
       console.error("Export CV PDF failed:", e);
-      showToast(isVi ? 'Xuất file PDF thất bại. Vui lòng thử lại.' : 'Failed to export CV PDF.', 'error');
+      showToast(e?.message || (isVi ? 'Xuất file PDF thất bại. Vui lòng thử lại.' : 'Failed to export CV PDF.'), 'error');
     } finally {
       setIsExportingCv(false);
     }
   };
 
   const handleExportCvImage = async () => {
-    if (!cvCardRef.current) return;
     setIsExportingCv(true);
     showToast(isVi ? 'Đang tạo ảnh CV...' : 'Generating CV image...', 'info');
     try {
-      await new Promise(r => setTimeout(r, 200));
+      if (activeTab !== 'preview') {
+        setActiveTab('preview');
+        await new Promise(r => setTimeout(r, 400));
+      } else {
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      if (!cvCardRef.current) {
+        throw new Error(isVi ? 'Không tìm thấy mẫu CV để xuất.' : 'CV card element not found.');
+      }
+
       const dataUrl = await captureCvCanvas(cvCardRef.current);
       const link = document.createElement('a');
       const sanitizedName = cvData.fullName.trim().replace(/\s+/g, '_') || 'Applicant';
@@ -359,9 +395,9 @@ Hãy trả về duy nhất 1 JSON object với cấu trúc chính xác như sau 
       link.click();
       document.body.removeChild(link);
       showToast(isVi ? '📸 Lưu ảnh CV thành công!' : '📸 CV image saved successfully!', 'success');
-    } catch (e) {
+    } catch (e: any) {
       console.error("Export CV Image failed:", e);
-      showToast(isVi ? 'Lưu ảnh CV thất bại. Vui lòng thử lại.' : 'Failed to save CV image.', 'error');
+      showToast(e?.message || (isVi ? 'Lưu ảnh CV thất bại. Vui lòng thử lại.' : 'Failed to save CV image.'), 'error');
     } finally {
       setIsExportingCv(false);
     }
@@ -405,7 +441,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-[#070707] overflow-y-auto p-4 md:p-8 space-y-6">
+    <div id="cv-builder" className="cv-builder flex-1 flex flex-col h-full bg-gray-50 dark:bg-[#070707] overflow-y-auto p-4 md:p-8 space-y-6">
       
       {/* Top Banner Header */}
       <div className="no-print flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm">
@@ -493,14 +529,15 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
           <button
             onClick={handleExportCvPdf}
             disabled={isExportingCv}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+            title={isVi ? "Tải toàn bộ nội dung CV xuống máy tính dưới dạng file PDF chuẩn in A4" : "Download CV as high-quality A4 printable PDF"}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50 hover:shadow-indigo-500/25"
           >
             {isExportingCv ? (
               <Icons.Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Icons.FileText className="w-4 h-4" />
+              <Icons.Download className="w-4 h-4" />
             )}
-            {isVi ? 'Xuất File PDF' : 'Export PDF'}
+            {isVi ? 'Tải về PDF (A4)' : 'Download as PDF'}
           </button>
 
           <button
@@ -581,6 +618,39 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
           </button>
         ))}
       </div>
+
+      {/* AI CV Polishing Loading State */}
+      <AnimatePresence>
+        {isAiLoading && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="no-print"
+          >
+            <LuxuryAiThinking
+              variant="cv"
+              title={isVi ? `CareerGuide AI Đang Tối Ưu Hóa Hồ Sơ CV Chuẩn ATS...` : `CareerGuide AI is Optimizing Your Resume for ATS...`}
+              subtitle={isVi ? `Đang kết hợp dữ liệu bài test Holland (${cvData.aiSources.quizCode || 'RIA'}), điểm phỏng vấn (${cvData.aiSources.interviewScore || 85}/100) và số hóa thành tích bằng công thức Action-Verb + Metrics.` : `Transforming assessment insights and interview scores into high-impact ATS bullet points.`}
+              badge="CareerGuide AI"
+              themeColor="purple"
+              stageSteps={
+                isVi ? [
+                  `Trích xuất dữ liệu năng lực từ bài test Holland (${cvData.aiSources.quizCode || 'RIA'}) & Mock Interview`,
+                  `Tái cấu trúc đoạn Tóm tắt sự nghiệp (Summary) cho vị trí "${cvData.jobTitle}"`,
+                  "Chuyển đổi kinh nghiệm làm việc theo chuẩn Action Verb + Outcome",
+                  "Kiểm tra mật độ từ khóa chuẩn ATS quốc tế & định dạng hồ sơ"
+                ] : [
+                  `Extracting competencies from Holland (${cvData.aiSources.quizCode || 'RIA'}) & Mock Interview`,
+                  `Restructuring Career Summary for target role "${cvData.jobTitle}"`,
+                  "Refining experience bullet points with Action-Verb + Metrics framework",
+                  "Auditing ATS keyword frequency and profile structure"
+                ]
+              }
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content Area */}
       {activeTab === 'edit' ? (
@@ -747,7 +817,34 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
                 </div>
               </div>
 
-              {jdResult && (
+              <AnimatePresence>
+                {isJdLoading && (
+                  <div className="pt-2">
+                    <LuxuryAiThinking
+                      variant="cv"
+                      title={isVi ? `CareerGuide AI Đang Quét & So Khớp CV Với Bản Mô Tả Công Việc (JD)...` : `CareerGuide AI is Parsing & Auditing CV Against Job Description...`}
+                      subtitle={isVi ? `Đang đối chiếu các từ khóa ATS, đánh giá % tương thích với ${targetCompany || 'Nhà tuyển dụng'} và tìm kiếm các lỗ hổng kỹ năng (Skill Gaps).` : `Auditing ATS keyword frequency and comparing candidate profile with ${targetCompany || 'Employer'} requirements.`}
+                      badge="CareerGuide AI"
+                      themeColor="amber"
+                      stageSteps={
+                        isVi ? [
+                          `Trích xuất bộ từ khóa cốt lõi (Keywords) từ Mô tả công việc ${targetCompany ? `của ${targetCompany}` : ''}`,
+                          "Quét & đối chiếu từ khóa với nội dung CV hiện tại của bạn",
+                          "Tính điểm phần trăm phù hợp ATS & phân loại lỗ hổng từ khóa",
+                          "Tạo bản tóm tắt tối ưu gợi ý chèn trực tiếp vào CV"
+                        ] : [
+                          `Extracting high-value keywords from ${targetCompany ? `${targetCompany}'s ` : ''}Job Description`,
+                          "Scanning your current resume against industry standard terms",
+                          "Calculating ATS match percentage & identifying missing keywords",
+                          "Drafting optimized contextual summary for instant application"
+                        ]
+                      }
+                    />
+                  </div>
+                )}
+              </AnimatePresence>
+
+              {jdResult && !isJdLoading && (
                 <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-5 animate-in fade-in duration-300">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-500/20">
                     <div>
@@ -775,7 +872,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
                       </span>
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {jdResult.matchedSkills?.map((sk, idx) => (
-                          <span key={idx} className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] rounded-md">
+                          <span key={`${sk}-${idx}`} className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] rounded-md">
                             {sk}
                           </span>
                         ))}
@@ -789,7 +886,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
                       </span>
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {jdResult.missingKeywords?.map((kw, idx) => (
-                          <span key={idx} className="px-2.5 py-1 bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold text-[11px] rounded-md">
+                          <span key={`${kw}-${idx}`} className="px-2.5 py-1 bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold text-[11px] rounded-md">
                             {kw}
                           </span>
                         ))}
@@ -805,7 +902,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
                       </span>
                       <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
                         {jdResult.suggestions.map((sug, idx) => (
-                          <li key={idx}>{sug}</li>
+                          <li key={`${sug.slice(0, 15)}-${idx}`}>{sug}</li>
                         ))}
                       </ul>
                     </div>
@@ -869,7 +966,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
               </h2>
               <div className="flex flex-wrap gap-2 pt-1">
                 {cvData.skills.map((skill, i) => (
-                  <span key={i} className="px-3 py-1 rounded-md bg-gray-100 text-gray-800 text-xs font-semibold border border-gray-200">
+                  <span key={`${skill}-${i}`} className="px-3 py-1 rounded-md bg-gray-100 text-gray-800 text-xs font-semibold border border-gray-200">
                     {skill}
                   </span>
                 ))}
@@ -882,7 +979,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
                 {isVi ? 'KINH NGHIỆM LÀM VIỆC & THỰC HÀNH AI' : 'WORK EXPERIENCE & AI PRACTICAL PROJECTS'}
               </h2>
               {cvData.experience.map((exp, idx) => (
-                <div key={idx} className="mb-4">
+                <div key={`${exp.title}-${idx}`} className="mb-4">
                   <div className="flex justify-between items-baseline">
                     <h3 className="text-sm font-bold text-gray-900">{exp.title}</h3>
                     <span className="text-xs font-medium text-gray-500">{exp.period}</span>
@@ -890,7 +987,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
                   <p className="text-xs font-semibold text-indigo-600 mb-2">{exp.company}</p>
                   <ul className="list-disc list-inside text-xs text-gray-700 space-y-1 pl-1">
                     {exp.highlights.map((hl, i) => (
-                      <li key={i}>{hl}</li>
+                      <li key={`${hl.slice(0, 15)}-${i}`}>{hl}</li>
                     ))}
                   </ul>
                 </div>
@@ -903,7 +1000,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
                 {isVi ? 'DỰ ÁN NỔI BẬT' : 'FEATURED PROJECTS'}
               </h2>
               {cvData.projects.map((proj, idx) => (
-                <div key={idx} className="mb-3">
+                <div key={`${proj.name}-${idx}`} className="mb-3">
                   <div className="flex justify-between items-baseline">
                     <h3 className="text-sm font-bold text-gray-900">{proj.name}</h3>
                     <span className="text-[11px] font-mono text-gray-500">{proj.tech}</span>
@@ -920,7 +1017,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
                   {isVi ? 'HỌC VẤN' : 'EDUCATION'}
                 </h2>
                 {cvData.education.map((edu, idx) => (
-                  <div key={idx} className="space-y-0.5">
+                  <div key={`${edu.degree}-${idx}`} className="space-y-0.5">
                     <p className="text-xs font-bold text-gray-900">{edu.degree}</p>
                     <p className="text-xs font-semibold text-indigo-600">{edu.school} ({edu.year})</p>
                     <p className="text-[11px] text-gray-600">{edu.details}</p>
@@ -934,7 +1031,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
                 </h2>
                 <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
                   {cvData.certifications.map((cert, idx) => (
-                    <li key={idx}>{cert}</li>
+                    <li key={`${cert.slice(0, 15)}-${idx}`}>{cert}</li>
                   ))}
                 </ul>
               </div>

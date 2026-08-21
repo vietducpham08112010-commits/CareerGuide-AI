@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Language } from '../types';
 import { compareCareers } from '../services/geminiService';
 import { InlineGuide } from './InlineGuide';
+import { LuxuryAiThinking } from './SkeletonLoader';
 
 const PRESETS_VI = [
   { c1: 'Kỹ sư Phần mềm', c2: 'Thiết kế UI/UX', label: 'Công nghệ vs Thiết kế' },
@@ -240,32 +241,28 @@ export const CareerCompare = ({ lang, t, Icons }: { lang: Language, t: any, Icon
 
       <AnimatePresence mode="wait">
         {isComparing && (
-          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
-            <div className="flex items-center justify-center gap-2 py-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-200/40 text-xs font-bold text-indigo-700 dark:text-indigo-300">
-              <Icons.Activity className="w-4 h-4 animate-spin text-indigo-500" />
-              <span>{lang === Language.VI ? 'AI đang phân tích & đối chiếu chi tiết 8 chỉ số chuyên sâu...' : 'AI is running multi-dimensional comparative analysis across 8 core metrics...'}</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
-              {[1, 2].map((idx) => (
-                <div key={idx} className="p-6 bg-white dark:bg-[#121215] border border-gray-200 dark:border-white/10 rounded-3xl space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-white/10" />
-                    <div className="h-5 w-20 bg-gray-100 dark:bg-white/5 rounded-full" />
-                  </div>
-                  <div className="h-7 w-48 bg-gray-200 dark:bg-white/10 rounded-lg" />
-                  <div className="space-y-2 pt-2">
-                    <div className="h-3.5 w-full bg-gray-100 dark:bg-white/5 rounded-md" />
-                    <div className="h-3.5 w-5/6 bg-gray-100 dark:bg-white/5 rounded-md" />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="p-6 bg-white dark:bg-[#121215] border border-gray-200 dark:border-white/10 rounded-3xl space-y-3 animate-pulse">
-              <div className="h-4 w-40 bg-gray-200 dark:bg-white/10 rounded" />
-              <div className="h-3 w-full bg-gray-100 dark:bg-white/5 rounded" />
-              <div className="h-3 w-4/5 bg-gray-100 dark:bg-white/5 rounded" />
-            </div>
-          </motion.div>
+          <LuxuryAiThinking
+            variant="compare"
+            title={lang === Language.VI ? `CareerGuide AI Đang So Sánh Chi Tiết Giữa "${career1}" & "${career2}"...` : `CareerGuide AI is Performing In-Depth Comparison Between "${career1}" & "${career2}"...`}
+            subtitle={lang === Language.VI ? "Hệ thống đang đối chiếu ma trận 8 khía cạnh cốt lõi: Dải lương, độ cạnh tranh, tự động hóa AI, độ khó thăng tiến và rào cản chuyển ngành." : "Cross-referencing 8 core dimensions: Salary bands, market competition, AI disruption index, promotion velocity and transition difficulty."}
+            badge="CareerGuide AI"
+            themeColor="purple"
+            stageSteps={
+              lang === Language.VI ? [
+                `Phân tích dữ liệu ngành "${career1}" & "${career2}"`,
+                "Đối chiếu bảng lương thị trường & tốc độ tăng trưởng 2026-2030",
+                "Tính toán chỉ số ảnh hưởng bởi AI & tự động hóa",
+                "Xác định lộ trình thăng tiến & ma trận kỹ năng tương ứng",
+                "Tổng hợp bảng cân nhắc đưa ra phán quyết & lời khuyên tối ưu"
+              ] : [
+                `Analyzing career data for "${career1}" & "${career2}"`,
+                "Cross-referencing market salary bands and 2026-2030 growth velocity",
+                "Computing AI disruption and automation resilience scores",
+                "Mapping promotion ladders and skill overlap matrices",
+                "Synthesizing final verdict and actionable recommendations"
+              ]
+            }
+          />
         )}
         
         {error && !isComparing && (

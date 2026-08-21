@@ -26,27 +26,11 @@ const cleanGeminiErrorMessage = (error: any): string => {
   return errMsg;
 };
 
-const formatHistoryForGemini = (history: { role: string; text: string }[], newMessage: string) => {
-  const raw = [...history, { role: 'user', text: newMessage }];
-  const formatted: { role: string; parts: { text: string }[] }[] = [];
-  
-  for (const msg of raw) {
-      const role = msg.role === 'model' ? 'model' : 'user';
-      if (formatted.length > 0 && formatted[formatted.length - 1].role === role) {
-          formatted[formatted.length - 1].parts[0].text += `\n\n${msg.text}`;
-      } else {
-          formatted.push({ role, parts: [{ text: msg.text }] });
-      }
-  }
-  return formatted;
-};
-
 async function generateContentWithFallback(
     aiInstance: GoogleGenAI,
     options: {
         contents: any;
         systemInstruction?: string;
-        tools?: any[];
     }
 ) {
     const modelsToTry = [
@@ -57,28 +41,6 @@ async function generateContentWithFallback(
         'gemini-3.7-flash'
     ];
 
-    if (options.tools && options.tools.length > 0) {
-        for (const model of modelsToTry) {
-            try {
-                const response = await aiInstance.models.generateContent({
-                    model: model,
-                    contents: options.contents,
-                    config: {
-                        systemInstruction: options.systemInstruction || "You are a helpful assistant.",
-                        tools: options.tools
-                    }
-                });
-                return response;
-            } catch (error: any) {
-                console.warn(`[Fallback API] Attempt WITH tools failed for model ${model}:`, error.message || error);
-                if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("403")) {
-                    throw error;
-                }
-            }
-        }
-    }
-
-    // Try without tools
     for (const model of modelsToTry) {
         try {
             const response = await aiInstance.models.generateContent({
@@ -90,7 +52,7 @@ async function generateContentWithFallback(
             });
             return response;
         } catch (error: any) {
-            console.warn(`[Fallback API] Attempt WITHOUT tools failed for model ${model}:`, error.message || error);
+            console.warn(`[Fallback API] Attempt failed for model ${model}:`, error.message || error);
             if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("403")) {
                 throw error;
             }
@@ -106,14 +68,11 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { history, message, systemInstruction, file, image, apiKey } = req.body;
-    const attachment = file || image;
-
-    if (!message && !attachment) {
-      return res.status(400).json({ error: "Message or attachment is required" });
+    const { career, apiKey } = req.body;
+    if (!career) {
+      return res.status(400).json({ error: "Career name is required" });
     }
 
-    // Securely resolve API key: User custom key takes precedence if provided, otherwise server environment variable
     const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
     if (!finalApiKey) {
       return res.status(500).json({ 
@@ -121,30 +80,46 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    const ai = new GoogleGenAI({ apiKey: finalApiKey });
-    const contents = formatHistoryForGemini(history || [], message || "");
+    const aiInstance = new GoogleGenAI({ apiKey: finalApiKey });
 
-    // Add file if present
-    if (attachment && attachment.data && attachment.mimeType) {
-      const lastTurn = contents[contents.length - 1];
-      if (lastTurn && lastTurn.role === 'user') {
-        lastTurn.parts.push({
-          inlineData: {
-            data: attachment.data,
-            mimeType: attachment.mimeType
-          }
-        } as any);
-      }
+    const careerId = "ai-gen-" + Math.random().toString(36).substring(2, 9);
+    const systemInstruction = "You are a professional industrial and career mapping expert. You specialize in analyzing job roles and decomposing them into clean, structural learning levels (junior, mid, senior).";
+    
+    const prompt = `Hãy thiết kế bản đồ kỹ năng (Skill Map) chuyên sâu cho nghề nghiệp: "${career}".
+Bản đồ kỹ năng phải chia làm 3 cấp độ: junior (cơ bản/nhập môn), mid (trung cấp/thực hành), senior (cao cấp/hoạch định).
+Hãy tạo từ 6 đến 9 kỹ năng trải dài trên cả 3 cấp độ này.
+
+Bạn BẮT BUỘC phải trả về dữ liệu dưới định dạng JSON thuần túy, KHÔNG được có ký tự bọc markdown như \`\`\`json hay bất kỳ ký tự thừa nào ngoài JSON.
+Cấu trúc JSON chính xác như sau:
+{
+  "id": "${careerId}",
+  "title_vi": "Tên tiếng Việt của nghề nghiệp",
+  "title_en": "Tên tiếng Anh của nghề nghiệp",
+  "category": "Lĩnh vực (ví dụ: Y tế, Kinh tế, Công nghệ, Nghệ thuật, Dịch vụ, Kỹ thuật...)",
+  "skills": [
+    {
+      "id": "viet-lien-khong-dau-vi-du-skill1",
+      "name": "Tên kỹ năng",
+      "level": "junior",
+      "description_vi": "Mô tả ngắn gọn bằng tiếng Việt về kỹ năng này và vì sao cần thiết",
+      "description_en": "Brief English description of this skill and why it is required"
     }
+  ]
+}`;
 
-    const response = await generateContentWithFallback(ai, {
-        contents,
-        systemInstruction: systemInstruction || "You are an expert career counselor."
+    const response = await generateContentWithFallback(aiInstance, {
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        systemInstruction
     });
-    return res.status(200).json({ text: response.text });
+
+    let text = response.text || "";
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    const parsed = JSON.parse(text);
+    return res.status(200).json(parsed);
 
   } catch (error: any) {
-    console.error("Chat API Error:", error);
+    console.error("Generate Skill Map API Error:", error);
     const errorMessage = cleanGeminiErrorMessage(error);
     return res.status(500).json({ error: errorMessage });
   }

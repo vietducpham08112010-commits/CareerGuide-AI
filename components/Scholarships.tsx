@@ -6,7 +6,7 @@ import { Loader2, Search, GraduationCap, Award, Landmark, Calendar, Sparkles, Sh
 import { searchScholarships } from '../services/geminiService';
 import Markdown from 'react-markdown';
 import { InlineGuide } from './InlineGuide';
-import { SkeletonCard } from './SkeletonLoader';
+import { SkeletonCard, LuxuryAiThinking } from './SkeletonLoader';
 
 const CURATED_SCHOLARSHIPS = [
   {
@@ -152,13 +152,28 @@ export const Scholarships = ({
             initial={{ opacity: 0, y: 10 }} 
             animate={{ opacity: 1, y: 0 }} 
             exit={{ opacity: 0, y: -10 }} 
-            className="space-y-4 mb-10"
+            className="w-full mb-10"
           >
-            <div className="flex items-center justify-center gap-2 py-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-200/40 text-xs font-bold text-indigo-700 dark:text-indigo-300">
-              <Sparkles className="w-4 h-4 animate-spin text-indigo-500" />
-              <span>{isVi ? "AI đang tìm kiếm & quét danh sách học bổng phù hợp..." : "AI is scanning matching scholarship programs..."}</span>
-            </div>
-            <SkeletonCard count={3} />
+            <LuxuryAiThinking
+              variant="scholarship"
+              title={isVi ? `CareerGuide AI Đang Tìm Kiếm & So Khớp Học Bổng Cho "${query}"...` : `CareerGuide AI is Scanning & Matching Scholarships for "${query}"...`}
+              subtitle={isVi ? `Rà soát các quỹ học bổng Chính phủ, Tập đoàn & Tổ chức Quốc tế phù hợp với mục tiêu và hồ sơ học thuật.` : `Searching government, corporate, and university grant databases tailored to your academic profile.`}
+              badge="CareerGuide AI"
+              themeColor="emerald"
+              stageSteps={
+                isVi ? [
+                  `Tìm kiếm các chương trình học bổng ngành "${query}" trong nước & quốc tế`,
+                  "Phân tích điều kiện ứng tuyển (GPA, IELTS/TOEFL, bài luận)",
+                  "Kiểm tra giá trị học bổng (Toàn phần, bán phần, trợ cấp sinh hoạt)",
+                  "Tổng hợp danh mục học bổng khả thi nhất kèm mốc thời gian nộp đơn"
+                ] : [
+                  `Querying global scholarship databases for "${query}"`,
+                  "Auditing eligibility criteria (GPA, English proficiency, essays)",
+                  "Evaluating funding value (Full tuition, partial, living stipends)",
+                  "Compiling targeted scholarship list with application timelines"
+                ]
+              }
+            />
           </motion.div>
         )}
 

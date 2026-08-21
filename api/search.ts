@@ -51,8 +51,10 @@ async function generateContentWithFallback(
 ) {
     const modelsToTry = [
         'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
         'gemini-2.5-pro',
-        'gemini-2.0-flash'
+        'gemini-3.7-flash'
     ];
 
     if (options.tools && options.tools.length > 0) {
@@ -110,7 +112,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: "Message is required" });
     }
 
-    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || process.env.GEMINI_API_KEY || "";
+    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
     if (!finalApiKey) {
       return res.status(500).json({ 
         error: "Chưa cấu hình khóa API Gemini trên máy chủ. Vui lòng cấu hình biến môi trường GEMINI_API_KEY hoặc dán khóa cá nhân trong Cài đặt." 

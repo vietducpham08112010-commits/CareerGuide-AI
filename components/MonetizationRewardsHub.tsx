@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import * as Icons from 'lucide-react';
 import { Language, UserProfile, SubscriptionTier } from '../types';
 import { getSubscriptionDetails, createUpdatedSubscription } from '../utils/subscriptionUtils';
+import { UpgradeModal, PackageOption } from './UpgradeModal';
 
 interface MonetizationRewardsHubProps {
   language: Language;
@@ -12,6 +13,7 @@ interface MonetizationRewardsHubProps {
   onUpdateUser?: (updates: Partial<UserProfile>) => void;
   onClose?: () => void;
   isModal?: boolean;
+  onOpenUpgradeModal?: (pkg?: PackageOption) => void;
 }
 
 interface PartnerOffer {
@@ -130,7 +132,8 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
   onNavigateToChat,
   onUpdateUser,
   onClose,
-  isModal
+  isModal,
+  onOpenUpgradeModal
 }) => {
   const isVi = language === Language.VI;
   const [activeTab, setActiveTab] = useState<'active_sub' | 'b2c_pricing' | 'northstar_trial' | 'regional' | 'b2b_school' | 'b2b_affiliate' | 'rewards'>('active_sub');
@@ -264,6 +267,18 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
     showToast(isVi ? `🎉 Đã đổi thành công ${rewardTitleVi}! -${cost} CP` : `🎉 Redeemed ${rewardTitleVi}! -${cost} CP`, "success");
   };
 
+  const [internalUpgradePkg, setInternalUpgradePkg] = useState<PackageOption | undefined>(undefined);
+  const [showInternalUpgradeModal, setShowInternalUpgradeModal] = useState<boolean>(false);
+
+  const handleStartPayment = (pkg: PackageOption) => {
+    if (onOpenUpgradeModal) {
+      onOpenUpgradeModal(pkg);
+    } else {
+      setInternalUpgradePkg(pkg);
+      setShowInternalUpgradeModal(true);
+    }
+  };
+
   const handleClaimVoucher = (code: string) => {
     navigator.clipboard.writeText(code);
     showToast(
@@ -273,16 +288,32 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
   };
 
   const handleSimulatePurchase = (packageName: string, price: string, tierKey?: SubscriptionTier) => {
-    if (tierKey && onUpdateUser) {
-      const updatedSub = createUpdatedSubscription(currentSub, tierKey);
-      onUpdateUser({ subscription: updatedSub });
-    }
-    showToast(
-      isVi 
-        ? `🎉 Đã đăng ký thành công ${packageName} (${price})! Tính năng đã được mở khóa ngay lập tức.` 
-        : `🎉 Successfully activated ${packageName} (${price})! Features unlocked immediately.`,
-      "success"
-    );
+    const amountNum = price.includes('129') 
+      ? 129000 
+      : price.includes('999') 
+      ? 999000 
+      : price.includes('399') 
+      ? 399000 
+      : price.includes('29') 
+      ? 29000 
+      : price.includes('8.000') || price.includes('8k')
+      ? 8000 
+      : price.includes('5.000') || price.includes('5k')
+      ? 5000 
+      : price.includes('15.000') || price.includes('15k')
+      ? 15000 
+      : price.includes('25.000') || price.includes('25k')
+      ? 25000 
+      : 99000;
+
+    const mappedTier = tierKey || (price.includes('129') ? 'max_monthly' : price.includes('999') ? 'max_yearly' : price.includes('399') ? 'premium_yearly' : 'premium_monthly');
+    handleStartPayment({
+      tier: mappedTier,
+      nameVi: packageName,
+      nameEn: packageName,
+      amount: amountNum,
+      priceFormatted: price
+    });
   };
 
   const calculateSchoolPricing = (students: number) => {
@@ -454,15 +485,15 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                 {/* Quick Action Switcher */}
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => handleSwitchTier('premium_monthly', 'CareerGuide Premium')}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                    onClick={() => handleSimulatePurchase("CareerGuide Premium Tháng", "99.000 VNĐ", "premium_monthly")}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <Icons.Zap className="w-3.5 h-3.5 text-amber-300" />
                     {isVi ? "Gói Premium (99k)" : "Premium (99k)"}
                   </button>
                   <button
-                    onClick={() => handleSwitchTier('max_monthly', 'CareerGuide Max')}
-                    className="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                    onClick={() => handleSimulatePurchase("CareerGuide Max Tháng", "129.000 VNĐ", "max_monthly")}
+                    className="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     🔥 {isVi ? "Gói Max (129k)" : "Max Pass (129k)"}
                   </button>
@@ -493,8 +524,8 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                     +{currentSub.extraQueriesCredits} {isVi ? "câu" : "queries"}
                   </span>
                   <button
-                    onClick={() => handleSwitchTier('micro5', 'Nạp Gói 5 Câu (15k)')}
-                    className="text-[10px] text-amber-300 underline font-bold block mt-1 hover:text-amber-200"
+                    onClick={() => handleSimulatePurchase("Gói Lẻ 5 Câu Chat AI", "15.000 VNĐ", "micro5")}
+                    className="text-[10px] text-amber-300 underline font-bold block mt-1 hover:text-amber-200 cursor-pointer"
                   >
                     + Nạp thêm gói 15k
                   </button>
@@ -1569,9 +1600,31 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
             </div>
           </motion.div>
         </div>
+        <UpgradeModal
+          isOpen={showInternalUpgradeModal}
+          onClose={() => setShowInternalUpgradeModal(false)}
+          language={language}
+          user={user}
+          onUpdateUser={onUpdateUser || (() => {})}
+          showToast={showToast}
+          initialPackage={internalUpgradePkg}
+        />
       </AnimatePresence>
     );
   }
 
-  return mainContent;
+  return (
+    <div className="space-y-6">
+      {mainContent}
+      <UpgradeModal
+        isOpen={showInternalUpgradeModal}
+        onClose={() => setShowInternalUpgradeModal(false)}
+        language={language}
+        user={user}
+        onUpdateUser={onUpdateUser || (() => {})}
+        showToast={showToast}
+        initialPackage={internalUpgradePkg}
+      />
+    </div>
+  );
 };

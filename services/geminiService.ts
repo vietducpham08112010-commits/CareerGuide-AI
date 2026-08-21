@@ -44,8 +44,10 @@ const generateClientContentWithFallback = async (
     const modelsToTry = [
         options.model || 'gemini-2.5-flash',
         'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
         'gemini-2.5-pro',
-        'gemini-2.0-flash'
+        'gemini-3.7-flash'
     ];
 
     const uniqueModels = Array.from(new Set(modelsToTry));
@@ -105,7 +107,7 @@ export const getGeminiApiKey = (): string => {
     } catch (e) {
         console.warn("Failed to check customGeminiApiKey from localStorage", e);
     }
-    return '';
+    return (import.meta.env?.VITE_GEMINI_API_KEY as string) || '';
 };
 
 export const cleanFrontEndErrorMessage = (error: any, language: Language): string => {
@@ -522,8 +524,20 @@ export class LiveSessionManager {
       if (this.inputContext.state === 'suspended') { await this.inputContext.resume(); }
       if (this.outputContext.state === 'suspended') { await this.outputContext.resume(); }
 
-      const constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      try {
+        const constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
+        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (micErr: any) {
+        console.warn("Microphone access denied or unavailable:", micErr);
+        const isVi = this.language === Language.VI;
+        const msg = (micErr?.name === 'NotAllowedError' || micErr?.message?.includes('Permission denied') || micErr?.message?.includes('denied'))
+          ? (isVi ? 'Trình duyệt chưa được cấp quyền truy cập Micro. Vui lòng cho phép quyền micro trên trình duyệt để tiếp tục.' : 'Microphone permission was denied. Please allow microphone access in your browser to proceed.')
+          : (micErr?.message || t.micPermission);
+        if (this.onError) this.onError(msg);
+        this.cleanup();
+        if (this.onDisconnect) this.onDisconnect();
+        return;
+      }
 
       if (this.inputContext.sampleRate !== 16000) {
           console.warn(`AudioContext sample rate is ${this.inputContext.sampleRate}, expected 16000.`);
@@ -534,7 +548,7 @@ export class LiveSessionManager {
       // If user has custom key, connect via client SDK, otherwise connect via backend WebSocket
       if (customKey) {
         const ai = new GoogleGenAI({ apiKey: customKey });
-        const liveModels = ['gemini-2.0-flash-realtime-exp', 'gemini-2.0-flash'];
+        const liveModels = ['gemini-3.1-flash-live-preview'];
         let modelIndex = 0;
 
         const attemptNextModel = async (): Promise<any> => {

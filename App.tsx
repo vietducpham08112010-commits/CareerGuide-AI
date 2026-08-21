@@ -49,6 +49,7 @@ import {
   GoogleAuthProvider
 } from 'firebase/auth';
 import { storage } from './utils/storage';
+import { THE_NEXTX_USER_PROFILE, THE_NEXTX_MILESTONES, THE_NEXTX_CHAT_SESSIONS } from './src/utils/nextxSampleData';
 
 // --- CONFIGURATION ---
 const EMAILJS_CONFIG = {
@@ -1232,6 +1233,22 @@ export default function App() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  const handleLoadTheNextXPreset = () => {
+    setAuth({
+      isAuthenticated: true,
+      user: THE_NEXTX_USER_PROFILE
+    });
+    setMilestones(THE_NEXTX_MILESTONES);
+    setChatHistory(THE_NEXTX_CHAT_SESSIONS);
+    if (THE_NEXTX_CHAT_SESSIONS.length > 0) {
+      setMessages(THE_NEXTX_CHAT_SESSIONS[0].messages);
+      setCurrentSessionId(THE_NEXTX_CHAT_SESSIONS[0].id);
+      setCurrentChatTitle(THE_NEXTX_CHAT_SESSIONS[0].title);
+    }
+    setTab(DashboardTab.CHAT);
+    showToast('🌟 Đã tải toàn bộ mẫu số liệu tài khoản THE NEXTX (Đấu trường AI Kinh doanh 2026) thành công!', 'success');
+  };
+
   const startCamera = async () => {
     try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -2090,8 +2107,10 @@ export default function App() {
           });
       };
       session.onError = (err: any) => { 
-          console.error("Session Error:", err); 
-          setVoiceStatus(typeof err === 'string' ? err : (err.message || t.error)); 
+          const isVi = lang === Language.VI;
+          const errMsg = typeof err === 'string' ? err : (err?.message || (isVi ? 'Không thể kết nối dịch vụ thoại.' : 'Voice connection error.'));
+          console.warn("Session Error / Notice:", errMsg); 
+          setVoiceStatus(errMsg); 
           setIsVoiceActive(false); 
       };
       session.onAudioLevel = (level: number) => { setAudioLevel(level); };
@@ -2105,9 +2124,13 @@ export default function App() {
       liveSessionRef.current = session;
       try {
           await session.connect(selectedDeviceId, decodeAudioData, createPcmBlob, decode);
-      } catch (err) {
-          console.error("Mic connection error:", err);
-          setVoiceStatus(t.micPermission);
+      } catch (err: any) {
+          console.warn("Mic connection notice:", err);
+          const isVi = lang === Language.VI;
+          const msg = (err?.name === 'NotAllowedError' || err?.message?.includes('Permission denied') || err?.message?.includes('denied'))
+            ? (isVi ? 'Trình duyệt chưa được cấp quyền micro. Vui lòng cho phép quyền micro trên trình duyệt.' : 'Microphone permission denied. Please allow microphone access in your browser.')
+            : (err?.message || t.micPermission);
+          setVoiceStatus(msg);
           setIsVoiceActive(false);
       }
     }
@@ -2392,7 +2415,7 @@ export default function App() {
             <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-gray-50 via-transparent to-gray-50 dark:from-[#0a0a0a] dark:via-transparent dark:to-[#0a0a0a] z-10"></div>
             <div className="flex gap-8 whitespace-nowrap animate-marquee">
                 {[...CAREER_TAGS, ...CAREER_TAGS].map((tag, i) => (
-                    <div key={i} className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-gray-300 to-gray-400 dark:from-white/20 dark:to-white/5 uppercase tracking-widest">{lang === Language.EN ? tag.en : tag.vi}</div>
+                    <div key={`${tag.en}-${i}`} className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-gray-300 to-gray-400 dark:from-white/20 dark:to-white/5 uppercase tracking-widest">{lang === Language.EN ? tag.en : tag.vi}</div>
                 ))}
             </div>
         </div>
@@ -4083,6 +4106,8 @@ export default function App() {
                 theme={theme} 
                 user={auth.user} 
                 onAddEarnedPoints={awardExperiencePoints} 
+                onRequestUpgrade={triggerUpgradeModal}
+                onUpdateUser={updateUserProfile}
             />
         )}
         {tab === DashboardTab.PORTFOLIO && (

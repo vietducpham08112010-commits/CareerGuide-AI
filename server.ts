@@ -21,7 +21,9 @@ wss.on('error', (err) => {
 });
 
 const PORT = 3000;
-const SERVER_API_KEY = process.env.GEMINI_API_KEY || "";
+const getResolvedApiKey = (customApiKey?: string) => {
+  return (customApiKey && typeof customApiKey === 'string' && customApiKey.trim()) || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+};
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -50,8 +52,8 @@ const formatHistoryForGemini = (history: { role: string; text: string }[], newMe
 
 const cleanGeminiErrorMessage = (error: any): string => {
   const errMsg = error?.message || String(error);
-  if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded")) {
-    return "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt. / The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
+  if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded") || errMsg.includes("tokens_per_model_per_user")) {
+    return "Hệ thống AI đang tạm thời đạt giới hạn hạn ngạch (AI Quota / Rate Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt. / The AI service has temporarily reached its quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
   }
   if (errMsg.includes("503") || errMsg.includes("overloaded") || errMsg.includes("busy") || errMsg.includes("UNAVAILABLE")) {
     return "Hệ thống AI hiện đang xử lý nhiều yêu cầu, vui lòng ấn gửi lại sau giây lát. / The AI model is currently busy. Please retry in a moment.";
@@ -83,9 +85,10 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
-        'gemini-2.5-flash',
-        'gemini-2.5-pro',
-        'gemini-2.0-flash'
+        'gemini-3.5-flash-lite',
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-3.1-pro-preview'
     ];
 
     if (options.tools && options.tools.length > 0) {
@@ -142,7 +145,7 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Message or file is required" });
     }
 
-    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || SERVER_API_KEY;
+    const finalApiKey = getResolvedApiKey(apiKey);
     if (!finalApiKey) {
       return res.status(500).json({ 
         error: "Chưa cấu hình khóa API Gemini trên máy chủ. Vui lòng cấu hình biến môi trường GEMINI_API_KEY hoặc dán khóa cá nhân trong Cài đặt." 
@@ -185,7 +188,7 @@ app.post("/api/search", async (req, res) => {
       return res.status(400).json({ error: "Message is required" });
     }
 
-    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || SERVER_API_KEY;
+    const finalApiKey = getResolvedApiKey(apiKey);
     if (!finalApiKey) {
       return res.status(500).json({ 
         error: "Chưa cấu hình khóa API Gemini trên máy chủ. Vui lòng cấu hình biến môi trường GEMINI_API_KEY hoặc dán khóa cá nhân trong Cài đặt." 
@@ -220,7 +223,7 @@ app.post("/api/generate-skill-map", async (req, res) => {
       return res.status(400).json({ error: "Career name is required" });
     }
 
-    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || SERVER_API_KEY;
+    const finalApiKey = getResolvedApiKey(apiKey);
     if (!finalApiKey) {
       return res.status(500).json({ 
         error: "Chưa cấu hình khóa API Gemini trên máy chủ. Vui lòng cấu hình biến môi trường GEMINI_API_KEY hoặc dán khóa cá nhân trong Cài đặt." 
@@ -289,7 +292,7 @@ wss.on("connection", (ws: WebSocket) => {
       const msg = JSON.parse(data.toString());
 
       if (msg.type === "config") {
-        const liveApiKey = (msg.apiKey && typeof msg.apiKey === 'string' && msg.apiKey.trim()) || SERVER_API_KEY;
+        const liveApiKey = getResolvedApiKey(msg.apiKey);
         if (!liveApiKey) {
           ws.send(JSON.stringify({ error: "Gemini API Key is missing for Live Session." }));
           return;
@@ -332,7 +335,7 @@ wss.on("connection", (ws: WebSocket) => {
                   systemInstruction: msg.systemInstruction || "You are a helpful assistant.",
                   speechConfig: { 
                     voiceConfig: { 
-                      prebuiltVoiceConfig: { 
+                       prebuiltVoiceConfig: { 
                         voiceName: msg.voiceName || 'Kore' 
                       } 
                     } 
@@ -341,7 +344,7 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-2.0-flash-realtime-exp', 'gemini-2.0-flash'];
+        const liveModels = ['gemini-3.1-flash-live-preview'];
         let connected = false;
         for (const model of liveModels) {
           try {

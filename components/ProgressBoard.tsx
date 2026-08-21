@@ -4,11 +4,12 @@ import { jsPDF } from 'jspdf';
 import * as Icons from 'lucide-react';
 import { captureElementToCanvasDataUrl } from '../utils/exportUtils';
 import { ChatSession, UserProfile, Language, ChatMessage, Milestone, Theme } from '../types';
-import { generateRoadmap, requestAiContent } from '../services/geminiService';
+import { generateRoadmap, requestAiContent, getGeminiApiKey } from '../services/geminiService';
 import { getSubscriptionDetails } from '../utils/subscriptionUtils';
 import emailjs from '@emailjs/browser';
 import { InlineGuide } from './InlineGuide';
 import { CareerLifecycleManager } from './CareerLifecycleManager';
+import { LuxuryAiThinking } from './SkeletonLoader';
 
 interface ProgressBoardProps {
   chatHistory: ChatSession[];
@@ -368,12 +369,16 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
     if (!aiCareerInput.trim()) return;
     setIsGeneratingMap(true);
     try {
+      const customKey = getGeminiApiKey();
       const response = await fetch('/api/generate-skill-map', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ career: aiCareerInput }),
+        body: JSON.stringify({ 
+          career: aiCareerInput,
+          apiKey: customKey || undefined
+        }),
       });
       if (!response.ok) {
         throw new Error('API failed');
@@ -527,6 +532,12 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
 
   // 🔔 Google Calendar Sync API
   const handleSyncGoogleCalendar = async (milestone: Milestone) => {
+    if (!currentSub.unlockedFeatures?.googleCalendarSync) {
+      onRequestUpgrade?.(language === Language.VI ? 'Đồng bộ Lịch Google Calendar (Gói Pro/MAX)' : 'Google Calendar Sync (Pro/MAX Tier)');
+      showToast(language === Language.VI ? 'Đồng bộ Google Calendar là đặc quyền của gói Pro/MAX. Vui lòng nâng cấp để sử dụng.' : 'Google Calendar Sync requires Pro/MAX tier.', 'info');
+      return;
+    }
+
     if (!milestone.deadline) {
       showToast(language === Language.VI ? "Vui lòng đặt Deadline trước khi đồng bộ!" : "Please choose a deadline date first!", 'error');
       return;
@@ -917,6 +928,29 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
               )}
             </div>
 
+            {!currentSub.unlockedFeatures?.careerPathSalaryInsight ? (
+              <div className="p-8 md:p-12 rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-amber-950/20 border-2 border-amber-500/30 text-center space-y-5">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto shadow-inner">
+                  <Icons.Lock className="w-8 h-8" />
+                </div>
+                <div className="max-w-md mx-auto space-y-2">
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white">
+                    {language === Language.VI ? 'Mở Khóa Dải Lương & Benchmark Thị Trường (Gói MAX)' : 'Unlock Salary Insights (Career MAX Tier)'}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                    {language === Language.VI 
+                      ? 'Nâng cấp lên gói VIP Career MAX để truy cập cơ sở dữ liệu dải lương thời gian thực theo từng cấp bậc (Junior/Mid/Senior), lộ trình thăng tiến và đòn bẩy kỹ năng tăng thu nhập.' 
+                      : 'Upgrade to Career MAX to access real-time salary benchmarks, advancement milestones, and high-impact skill levers.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => onRequestUpgrade?.(language === Language.VI ? 'Phân tích Dải Lương & Lộ Trình Thăng Tiến (Gói CAREER MAX)' : 'Salary Insights & Career Ladder (Career MAX)')}
+                  className="px-6 py-3.5 rounded-2xl font-black text-xs bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 text-slate-950 hover:brightness-110 shadow-lg transition-all cursor-pointer"
+                >
+                  {language === Language.VI ? '🔥 Nâng Cấp Gói Career MAX' : '🔥 Upgrade to MAX Tier'}
+                </button>
+              </div>
+            ) : (
             <div className="p-6 rounded-3xl bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 space-y-6 shadow-sm">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
@@ -973,7 +1007,33 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                 <span>{language === Language.VI ? '📊 AI Phân Tích Dải Lương & Benchmark Thị Trường' : '📊 Analyze Salary Benchmark'}</span>
               </button>
 
-              {salaryResult && (
+              <AnimatePresence>
+                {isSalaryLoading && (
+                  <div className="pt-4">
+                    <LuxuryAiThinking
+                      title={language === Language.VI ? `AI Đang Soi Dải Lương & Lộ Trình Thăng Tiến Cho "${salaryJobRole}"...` : `AI is Benchmarking Salary Bands & Ladder for "${salaryJobRole}"...`}
+                      subtitle={language === Language.VI ? `Đang tổng hợp báo cáo thu nhập cấp độ ${salaryExpLevel} tại khu vực ${salaryLocation} theo chuẩn tuyển dụng 2026.` : `Aggregating ${salaryExpLevel} level compensation data in ${salaryLocation} across Vietnamese labor reports.`}
+                      badge="The NEXTx • Compensation Analytics"
+                      themeColor="emerald"
+                      stageSteps={
+                        language === Language.VI ? [
+                          `Quét báo cáo khảo sát lương ngành ${salaryJobRole} năm 2026`,
+                          `Đối chiếu chênh lệch cấp độ ${salaryExpLevel} & khu vực ${salaryLocation}`,
+                          "Phân tích đòn bẩy kỹ năng tạo đột phá tăng lương 30-50%",
+                          "Tổng hợp dự báo cột mốc thăng tiến và triển vọng thị trường"
+                        ] : [
+                          `Querying 2026 salary survey data for ${salaryJobRole}`,
+                          `Benchmarking ${salaryExpLevel} experience in ${salaryLocation}`,
+                          "Analyzing key skill levers for 30-50% income acceleration",
+                          "Synthesizing promotion milestones and industry outlook"
+                        ]
+                      }
+                    />
+                  </div>
+                )}
+              </AnimatePresence>
+
+              {salaryResult && !isSalaryLoading && (
                 <div className="pt-6 border-t border-gray-100 dark:border-white/10 space-y-6 animate-in fade-in duration-300">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-500/20 text-center space-y-1">
@@ -1022,6 +1082,7 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                 </div>
               )}
             </div>
+            )}
           </div>
         )}
 
@@ -1053,6 +1114,29 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
               )}
             </div>
 
+            {!currentSub.unlockedFeatures?.monthlyGoalTracking ? (
+              <div className="p-8 md:p-12 rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-amber-950/20 border-2 border-amber-500/30 text-center space-y-5">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto shadow-inner">
+                  <Icons.Lock className="w-8 h-8" />
+                </div>
+                <div className="max-w-md mx-auto space-y-2">
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white">
+                    {language === Language.VI ? 'Mở Khóa Quản Trị Mục Tiêu & OKR Tháng (Gói MAX)' : 'Unlock Monthly OKR & Goal Tracking (Career MAX)'}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                    {language === Language.VI 
+                      ? 'Nâng cấp lên gói VIP Career MAX để thiết lập mục tiêu Sprint hàng tháng, đo lường tỷ lệ hoàn thành Key Results và nhận cố vấn chiến lược từ AI Mentor.' 
+                      : 'Upgrade to Career MAX to set monthly Sprint objectives, measure Key Results progress, and get strategic guidance from AI Goal Mentor.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => onRequestUpgrade?.(language === Language.VI ? 'Theo Dõi Mục Tiêu & OKR Hàng Tháng (Gói CAREER MAX)' : 'Monthly Goal & OKR Tracking (Career MAX)')}
+                  className="px-6 py-3.5 rounded-2xl font-black text-xs bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 text-slate-950 hover:brightness-110 shadow-lg transition-all cursor-pointer"
+                >
+                  {language === Language.VI ? '🔥 Nâng Cấp Gói Career MAX' : '🔥 Upgrade to MAX Tier'}
+                </button>
+              </div>
+            ) : (
             <div className="p-6 rounded-3xl bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 space-y-6 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-white/5">
                 <span className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
@@ -1132,7 +1216,33 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                 <span>{language === Language.VI ? '🤖 AI Phân Tích & Tinh Chỉnh OKR Tháng' : '🤖 Evaluate OKRs with AI'}</span>
               </button>
 
-              {okrFeedback && (
+              <AnimatePresence>
+                {isOkrAnalyzing && (
+                  <div className="pt-4">
+                    <LuxuryAiThinking
+                      title={language === Language.VI ? `AI Đang Đánh Giá Chiến Lược OKR Cho ${selectedMonth}...` : `AI is Analyzing OKRs & Sprint Strategy for ${selectedMonth}...`}
+                      subtitle={language === Language.VI ? `Đang rà soát tính khả thi của Objective "${okrObjective}" và đo lường trọng số phân bổ của từng Key Result.` : `Reviewing feasibility of "${okrObjective}" and checking key result milestone weights.`}
+                      badge="The NEXTx • OKR Performance Lab"
+                      themeColor="cyan"
+                      stageSteps={
+                        language === Language.VI ? [
+                          `Kiểm tra tính cụ thể & độ SMART của mục tiêu "${selectedMonth}"`,
+                          "Đo lường tiến độ các Key Results và xác định điểm nghẽn (bottleneck)",
+                          "Mô phỏng tốc độ tăng trưởng và rủi ro trễ hạn",
+                          "Hoàn thiện khuyến nghị hành động ưu tiên cho tuần tiếp theo"
+                        ] : [
+                          `Evaluating SMART criteria for ${selectedMonth} goals`,
+                          "Tracking Key Result progress and identifying project bottlenecks",
+                          "Simulating completion velocity and risk factors",
+                          "Synthesizing actionable high-priority sprint recommendations"
+                        ]
+                      }
+                    />
+                  </div>
+                )}
+              </AnimatePresence>
+
+              {okrFeedback && !isOkrAnalyzing && (
                 <div className="p-5 rounded-2xl bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-500/20 text-xs text-gray-800 dark:text-gray-200 leading-relaxed space-y-2 animate-in fade-in duration-300">
                   <span className="font-extrabold text-cyan-700 dark:text-cyan-400 flex items-center gap-1.5">
                     <Icons.Sparkles className="w-4 h-4 text-cyan-500" />
@@ -1142,6 +1252,7 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                 </div>
               )}
             </div>
+            )}
           </div>
         )}
 
@@ -1532,7 +1643,7 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                 </div>
 
                 {/* AI Custom Career Generator */}
-                <div className="mt-4 pt-4 border-t border-dashed border-gray-250 dark:border-white/10">
+                <div className="mt-4 pt-4 border-t border-dashed border-gray-250 dark:border-white/10 space-y-4">
                   <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-gray-400">
                       <Icons.Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
@@ -1567,6 +1678,30 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                       </button>
                     </div>
                   </div>
+
+                  <AnimatePresence>
+                    {isGeneratingMap && (
+                      <LuxuryAiThinking
+                        title={language === Language.VI ? `AI Đang Xây Dựng Bản Đồ Kỹ Năng Cho "${aiCareerInput || 'Nghề nghiệp mới'}"...` : `AI is Structuring Competency Map for "${aiCareerInput || 'Target Career'}"...`}
+                        subtitle={language === Language.VI ? "Phân tích 3 tầng năng lực Junior, Midweight và Senior theo chuẩn JD quốc tế và thị trường Việt Nam." : "Structuring multi-tier skill competencies (Junior, Mid, Senior) aligned with global job descriptions."}
+                        badge="The NEXTx • AI Curriculum Architect"
+                        themeColor="indigo"
+                        stageSteps={
+                          language === Language.VI ? [
+                            `Giải mã mô tả công việc & chuẩn đầu ra cho "${aiCareerInput}"`,
+                            "Phân bổ kỹ năng nền tảng Cấp độ 1 (Junior Level)",
+                            "Định hình kỹ năng chuyên sâu Cấp độ 2 (Midweight Level)",
+                            "Hoàn thiện kỹ năng kiến trúc & lãnh đạo Cấp độ 3 (Senior Level)"
+                          ] : [
+                            `Deconstructing role requirements for "${aiCareerInput}"`,
+                            "Structuring foundational competencies (Junior Level)",
+                            "Mapping intermediate core capabilities (Midweight Level)",
+                            "Synthesizing advanced architectural skills (Senior Level)"
+                          ]
+                        }
+                      />
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Overall Progress Indicator Bar */}

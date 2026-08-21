@@ -2,7 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Language, Theme, UserProfile } from '../types';
 import { getSubscriptionDetails } from '../utils/subscriptionUtils';
+import { getGeminiApiKey, cleanFrontEndErrorMessage } from '../services/geminiService';
 import { InlineGuide } from './InlineGuide';
+import { LuxuryAiThinking } from './SkeletonLoader';
 
 // Standard simple SVG icons for inline usage (matches lucide style)
 const Icons = {
@@ -53,6 +55,7 @@ interface MockInterviewProps {
   user: UserProfile | null;
   onAddEarnedPoints?: (pts: number) => void;
   onRequestUpgrade?: (featureName: string) => void;
+  onUpdateUser?: (updated: Partial<UserProfile>) => void;
 }
 
 interface InterviewResult {
@@ -74,10 +77,13 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
   theme,
   user,
   onAddEarnedPoints,
-  onRequestUpgrade
+  onRequestUpgrade,
+  onUpdateUser
 }) => {
   const isEn = language === Language.EN;
+  const isVi = language === Language.VI;
   const currentSub = getSubscriptionDetails(user?.subscription);
+
 
   // Translation constants
   const t = {
@@ -228,6 +234,26 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
       setErrorMsg(isEn ? "Please enter a target career first." : "Vui lòng nhập ngành nghề mục tiêu.");
       return;
     }
+
+    // Check Mock Interview Subscription / Micro Credit permissions
+    const hasMockInterviewPermission = Boolean(currentSub.unlockedFeatures?.fullMockInterview) || (currentSub.mockInterviewCredits || 0) > 0;
+    if (!hasMockInterviewPermission) {
+      if (onRequestUpgrade) {
+        onRequestUpgrade(isVi ? 'Phỏng vấn thử AI Mock Interview (Gói Premium/Max hoặc Mua lượt lẻ 19k)' : 'AI Mock Interview (Premium/Max or 19k micro-pack)');
+      }
+      setErrorMsg(isEn ? 'AI Mock Interview is a Premium/Max feature. Please upgrade or purchase a 19k VNĐ single-use credit.' : 'Phỏng vấn thử AI là tính năng của gói Premium/Max hoặc mua lẻ (19.000 VNĐ). Vui lòng nâng cấp để bắt đầu.');
+      return;
+    }
+
+    // Check MAX tier for Target Company feature
+    if (targetCompany.trim() && !currentSub.unlockedFeatures?.positionInterviewAI) {
+      if (onRequestUpgrade) {
+        onRequestUpgrade(isVi ? 'Phỏng vấn AI theo từng Doanh nghiệp & Vị trí cụ thể (Đặc quyền Gói CAREER MAX)' : 'Company-Specific AI Interview (Career MAX Exclusive)');
+      }
+      setErrorMsg(isEn ? 'Company-specific interview simulation is exclusively available in the Career MAX Tier.' : 'Mô phỏng phỏng vấn theo từng doanh nghiệp là đặc quyền độc quyền của Gói Career MAX. Vui lòng nâng cấp gói MAX.');
+      return;
+    }
+
     setErrorMsg('');
     setIsLoading(true);
 
@@ -240,13 +266,15 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
       ${user?.careerProfile ? `Consider the candidate's RIASEC profile: ${user.careerProfile}.` : ''}
       Return the output strictly as a JSON array of 4 string questions. Do not write anything else. Do not use markdown \`\`\`json.`;
 
+      const customKey = getGeminiApiKey();
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           history: [],
           message: userMessage,
-          systemInstruction: systemPrompt
+          systemInstruction: systemPrompt,
+          apiKey: customKey || undefined
         })
       });
 
@@ -341,13 +369,15 @@ Return a valid JSON object matching this structure EXACTLY:
 
 Rule: Do NOT output anything other than this JSON structure. Do NOT write markdown code fences. Respond in ${language === Language.VI ? "Vietnamese" : "English"}.`;
 
+      const customKey = getGeminiApiKey();
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           history: [],
           message: evaluationGoal,
-          systemInstruction
+          systemInstruction,
+          apiKey: customKey || undefined
         })
       });
 
@@ -372,6 +402,16 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
       }
       
       setResult(parsedRes);
+
+      // Deduct mock interview credit if on limited plan
+      if (onUpdateUser && (currentSub.mockInterviewCredits || 0) > 0 && currentSub.tier !== 'max_monthly' && currentSub.tier !== 'max_yearly') {
+        onUpdateUser({
+          subscription: {
+            ...currentSub,
+            mockInterviewCredits: Math.max(0, (currentSub.mockInterviewCredits || 0) - 1)
+          }
+        });
+      }
 
       // Add points as micro interaction reward
       if (onAddEarnedPoints) {
@@ -424,9 +464,29 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
         {/* Header decoration */}
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/10 text-xs font-bold text-indigo-600 dark:text-indigo-300 uppercase tracking-wider mb-2">
-              <Icons.Sparkles className="w-3.5 h-3.5" />
-              <span>{isEn ? "AI Interactive Lab" : "Phòng Thử Nghiệm Tương Tác AI"}</span>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/10 text-xs font-bold text-indigo-600 dark:text-indigo-300 uppercase tracking-wider">
+                <Icons.Sparkles className="w-3.5 h-3.5" />
+                <span>{isEn ? "AI Interactive Lab" : "Phòng Thử Nghiệm Tương Tác AI"}</span>
+              </div>
+              {currentSub.tier === 'max_monthly' || currentSub.tier === 'max_yearly' ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 uppercase tracking-wider">
+                  👑 VIP MAX (Không giới hạn)
+                </span>
+              ) : currentSub.unlockedFeatures?.fullMockInterview ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                  ✨ Gói Premium ({currentSub.mockInterviewCredits || 0} lượt còn lại)
+                </span>
+              ) : (currentSub.mockInterviewCredits || 0) > 0 ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  🎟️ Còn {currentSub.mockInterviewCredits} lượt mua lẻ
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 flex items-center gap-1">
+                  <Icons.AlertCircle className="w-3 h-3" />
+                  {isVi ? 'Gói Miễn Phí (0 lượt phỏng vấn AI)' : 'Free Tier (0 AI Sessions)'}
+                </span>
+              )}
             </div>
             <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               {t.title}
@@ -690,69 +750,29 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
           )}
 
           {step === 'evaluating' && (
-            <motion.div
-              key="evaluating-view"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              className="bg-white dark:bg-[#0c0c0c] border border-gray-150 dark:border-white/5 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col items-center justify-center text-center py-12 space-y-6"
-            >
-              {/* Spinning AI Brain/CPU icon with pulses */}
-              <div className="relative">
-                <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-xl animate-pulse" />
-                <div className="relative w-20 h-20 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-3xl flex items-center justify-center shadow-md animate-bounce">
-                  <Icons.Cpu className="w-10 h-10 animate-spin" style={{ animationDuration: '6s' }} />
-                </div>
-              </div>
-
-              <div className="space-y-2 max-w-md">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {isEn ? "AI Expert is Analyzing Your Interview..." : "Chuyên gia AI đang phân tích buổi phỏng vấn..."}
-                </h2>
-                <p className="text-sm text-gray-400 dark:text-gray-500">
-                  {isEn ? "We are evaluating your answers against Vietnamese market standards and professional rubrics." : "AI đang rà soát câu trả lời của bạn đối chiếu với yêu cầu thực tế thị trường lao động 2026."}
-                </p>
-              </div>
-
-              {/* Progress visual list */}
-              <div className="w-full max-w-md text-left bg-gray-50 dark:bg-white/5 border border-gray-150 dark:border-white/5 rounded-2xl p-5 space-y-3.5">
-                {[
-                  { vi: "Thu thập & xâu chuỗi biên bản phỏng vấn", en: "Extracting & compiling interview transcript" },
-                  { vi: "Đánh giá kiến thức nghiệp vụ & chuyên môn", en: "Assessing domain expertise & professional terms" },
-                  { vi: "Kiểm tra kỹ năng diễn đạt & độ mạch lạc", en: "Analyzing communication style & narrative flow" },
-                  { vi: "Đo lường độ tương thích tính cách RIASEC", en: "Mapping behavioral match with RIASEC benchmarks" },
-                  { vi: "Tổng hợp phiếu điểm chi tiết & lời khuyên", en: "Synthesizing detailed scorecard & action plan" }
-                ].map((item, idx) => {
-                  const isDone = evalStep > idx;
-                  const isCurrent = evalStep === idx;
-                  return (
-                    <div key={idx} className="flex items-center gap-3">
-                      {isDone ? (
-                        <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      ) : isCurrent ? (
-                        <div className="w-5 h-5 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin shrink-0" />
-                      ) : (
-                        <div className="w-5 h-5 rounded-full border-2 border-gray-200 dark:border-white/10 shrink-0" />
-                      )}
-                      <span className={`text-xs font-semibold ${isDone ? "text-gray-500 dark:text-gray-400 line-through" : isCurrent ? "text-indigo-600 dark:text-indigo-400 font-bold" : "text-gray-400 dark:text-gray-600"}`}>
-                        {isEn ? item.en : item.vi}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="w-full max-w-md h-1.5 bg-gray-150 dark:bg-white/5 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-indigo-600 transition-all duration-500"
-                  style={{ width: `${Math.min(100, (evalStep + 1) * 20)}%` }}
-                />
-              </div>
-            </motion.div>
+            <LuxuryAiThinking
+              variant="interview"
+              title={isEn ? "CareerGuide AI Expert is Analyzing Your Interview..." : "Chuyên Gia CareerGuide AI Đang Phân Tích Buổi Phỏng Vấn..."}
+              subtitle={isEn ? "Evaluating your answers against Vietnamese market standards and professional interview rubrics." : "AI đang rà soát câu trả lời đối chiếu với yêu cầu thực tế thị trường lao động 2026 và tiêu chuẩn tuyển dụng."}
+              badge={isEn ? "CareerGuide AI • Mock Lab" : "CareerGuide AI • Phòng Phỏng Vấn AI"}
+              currentStepIndex={evalStep}
+              themeColor="indigo"
+              stageSteps={
+                isEn ? [
+                  "Extracting & compiling interview transcript",
+                  "Assessing domain expertise & professional terms",
+                  "Analyzing communication style & narrative flow",
+                  "Mapping behavioral match with RIASEC benchmarks",
+                  "Synthesizing detailed scorecard & action plan"
+                ] : [
+                  "Thu thập & xâu chuỗi biên bản phỏng vấn",
+                  "Đánh giá kiến thức nghiệp vụ & chuyên môn",
+                  "Kiểm tra kỹ năng diễn đạt & độ mạch lạc",
+                  "Đo lường độ tương thích tính cách RIASEC",
+                  "Tổng hợp phiếu điểm chi tiết & lời khuyên chiến lược"
+                ]
+              }
+            />
           )}
 
           {step === 'results' && result && (

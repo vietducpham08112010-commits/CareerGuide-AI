@@ -166,3 +166,23 @@ export interface Milestone {
   isSyncedCalendar?: boolean;
   isSyncedEmail?: boolean;
 }
+
+export interface PaymentOrder {
+  id: string;
+  orderCode: string; // e.g. CGAI-PREM-260821-X8Y2
+  userId?: string;
+  userEmail: string;
+  userName?: string;
+  packageTier: SubscriptionTier;
+  packageName: string;
+  amount: number;
+  formattedAmount: string;
+  currency?: string;
+  billingCycle: 'monthly' | 'yearly' | 'one-time';
+  status: 'pending' | 'completed' | 'cancelled';
+  createdAt: string;
+  expiresAt?: string;
+  completedAt?: string;
+  qrUrl?: string;
+  note?: string;
+}
