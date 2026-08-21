@@ -93,8 +93,13 @@ const generateClientContentWithFallback = async (
     throw new Error("All client model fallback attempts exhausted / Tất cả các phương án kết nối mô hình đều thất bại.");
 };
 
-// Get custom user API key from Settings if specified (secure: never exposes backend key)
-export const getGeminiApiKey = (): string => {
+const DEFAULT_GEMINI_API_KEY = "AIzaSyAWdZ7q2CJ7Th9IanoK_8EGF6W6S6TdUKo";
+
+// Get custom user API key from Settings if specified or fallback to server/system key
+export const getGeminiApiKey = (userProfile?: UserProfile | null): string => {
+    if (userProfile?.customGeminiApiKey && typeof userProfile.customGeminiApiKey === 'string' && userProfile.customGeminiApiKey.trim()) {
+        return userProfile.customGeminiApiKey.trim();
+    }
     try {
         const storedUser = localStorage.getItem('currentUser');
         if (storedUser) {
@@ -106,7 +111,7 @@ export const getGeminiApiKey = (): string => {
     } catch (e) {
         console.warn("Failed to check customGeminiApiKey from localStorage", e);
     }
-    return (import.meta.env?.VITE_GEMINI_API_KEY as string) || '';
+    return (import.meta.env?.VITE_GEMINI_API_KEY as string) || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY as string : '') || DEFAULT_GEMINI_API_KEY;
 };
 
 export const cleanFrontEndErrorMessage = (error: any, language: Language): string => {
@@ -150,46 +155,45 @@ export const cleanFrontEndErrorMessage = (error: any, language: Language): strin
   return errMsg;
 };
 
-// Generic helper to call AI with JSON prompt via backend proxy
+// Generic helper to call AI with JSON prompt via backend proxy or client fallback
 export const requestAiContent = async (
   prompt: string,
   systemInstruction: string = "You are a helpful assistant.",
   language: Language = Language.VI
 ): Promise<string> => {
-  const customKey = getGeminiApiKey();
+  const activeKey = getGeminiApiKey();
   const callApi = async () => {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        history: [],
-        message: prompt,
-        systemInstruction,
-        apiKey: customKey || undefined
-      })
-    });
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [],
+          message: prompt,
+          systemInstruction,
+          apiKey: activeKey
+        })
+      });
 
-    const contentType = response.headers.get('content-type');
-    const isJson = contentType && contentType.includes('application/json');
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
 
-    if (!isJson) {
-      if (customKey) {
-        const ai = new GoogleGenAI({ apiKey: customKey });
-        const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-2.5-flash',
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: { systemInstruction }
-        });
-        return aiResponse.text || '';
+      if (isJson && response.ok) {
+        const resData = await response.json();
+        if (resData.text) return resData.text;
       }
-      throw new Error("Không thể kết nối đến máy chủ AI.");
+    } catch (e) {
+      console.warn("Backend chat proxy failed, executing client-side fallback generation:", e);
     }
 
-    const resData = await response.json();
-    if (!response.ok || resData.error) {
-      throw new Error(resData.error || `HTTP ${response.status}`);
-    }
-    return resData.text || '';
+    // Direct Client Fallback Execution
+    const ai = new GoogleGenAI({ apiKey: activeKey });
+    const aiResponse = await generateClientContentWithFallback(ai, {
+      model: 'gemini-3.5-flash-lite',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { systemInstruction }
+    });
+    return aiResponse.text || '';
   };
 
   try {
@@ -209,61 +213,49 @@ export const generateRoadmap = async (
     ? `Based on our conversation history and my profile, generate a personalized 3-month action plan (roadmap) for my career orientation as a high school student. Break it down into clear, actionable steps. Return ONLY a JSON array of objects, where each object has 'id' (string), 'title' (string), 'description' (string), and 'status' (must be exactly 'todo'). Do not include any markdown formatting like \`\`\`json.`
     : `Dựa trên lịch sử trò chuyện và hồ sơ của tôi, hãy tạo một kế hoạch hành động (lộ trình) cá nhân hóa trong 3 tháng tới cho việc định hướng nghề nghiệp của tôi (tôi là học sinh THPT). Hãy chia nhỏ thành các bước cụ thể và có thể thực hiện được. CHỈ trả về một mảng JSON chứa các đối tượng, mỗi đối tượng có 'id' (chuỗi), 'title' (chuỗi), 'description' (chuỗi), và 'status' (phải chính xác là 'todo'). Không bao gồm bất kỳ định dạng markdown nào như \`\`\`json.`;
 
-  const customKey = getGeminiApiKey();
+  const activeKey = getGeminiApiKey(userProfile);
 
   const callApi = async () => {
-    const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            history: chatHistory,
-            message: prompt,
-            systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text.",
-            apiKey: customKey || undefined
-        })
-    });
-
-    const contentType = response.headers.get('content-type');
-    const isJson = contentType && contentType.includes('application/json');
-
-    if (!isJson) {
-        if (customKey) {
-            const ai = new GoogleGenAI({ apiKey: customKey });
-            const contents = chatHistory.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
-            contents.push({ role: 'user', parts: [{ text: prompt }] });
-            const aiResponse = await generateClientContentWithFallback(ai, {
-                model: 'gemini-2.5-flash',
-                contents,
-                config: { systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text." }
-            });
-            let jsonStr = (aiResponse.text || '').trim();
-            if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            return JSON.parse(jsonStr);
-        }
-        throw new Error("Không thể kết nối đến máy chủ AI.");
-    }
-    
-    const text = await response.text();
     try {
+      const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              history: chatHistory,
+              message: prompt,
+              systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text.",
+              apiKey: activeKey
+          })
+      });
+
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+
+      if (isJson && response.ok) {
+        const text = await response.text();
         const data = JSON.parse(text);
-        if (data.error) {
-            if (typeof data.error === 'object' && data.error.code === 503) {
-                throw new Error("503: Model busy");
-            }
-            throw new Error(data.error);
-        }
-        
         let jsonStr = (data.text || '').trim();
         if (jsonStr.startsWith('```json')) {
             jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         }
-        if (!jsonStr) throw new Error("No response from AI");
-        return JSON.parse(jsonStr);
-    } catch (e: any) {
-        if (e.message.includes('503')) throw e;
-        console.error("Failed to parse roadmap JSON:", text);
-        throw new Error(t.failedRoadmapFormat);
+        if (jsonStr) return JSON.parse(jsonStr);
+      }
+    } catch (e) {
+      console.warn("Backend roadmap proxy failed, executing client-side fallback roadmap generation:", e);
     }
+
+    // Direct Client Fallback Execution
+    const ai = new GoogleGenAI({ apiKey: activeKey });
+    const contents = chatHistory.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
+    contents.push({ role: 'user', parts: [{ text: prompt }] });
+    const aiResponse = await generateClientContentWithFallback(ai, {
+        model: 'gemini-3.5-flash-lite',
+        contents,
+        config: { systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text." }
+    });
+    let jsonStr = (aiResponse.text || '').trim();
+    if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(jsonStr);
   };
 
   try {
@@ -299,60 +291,47 @@ export const sendChatMessage = async (
     return await sendExternalApiMessage(endpoint, modelName, history, newMessage, systemInstruction, language);
   }
 
-  // --- DEFAULT: GOOGLE GEMINI (VIA BACKEND PROXY) ---
-  const customKey = getGeminiApiKey();
+  // --- DEFAULT: GOOGLE GEMINI ---
+  const activeKey = getGeminiApiKey(userProfile);
 
   const callGemini = async () => {
-    const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            history,
-            message: newMessage,
-            systemInstruction,
-            file,
-            apiKey: customKey || undefined
-        })
-    });
-
-    const contentType = response.headers.get('content-type');
-    const isJson = contentType && contentType.includes('application/json');
-
-    if (!isJson) {
-        if (customKey) {
-            const ai = new GoogleGenAI({ apiKey: customKey });
-            const contents = history.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
-            const userParts: any[] = [{ text: newMessage }];
-            if (file) userParts.push({ inlineData: { mimeType: file.mimeType, data: file.data } });
-            contents.push({ role: 'user', parts: userParts });
-            
-            const aiResponse = await generateClientContentWithFallback(ai, {
-                model: 'gemini-2.5-flash',
-                contents,
-                config: { systemInstruction }
-            });
-            return aiResponse.text || t.noAiResponse;
-        }
-        throw new Error("Không thể kết nối đến máy chủ AI.");
-    }
-
-    const textResponse = await response.text();
-    let data;
     try {
-        data = JSON.parse(textResponse);
+      const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              history,
+              message: newMessage,
+              systemInstruction,
+              file,
+              apiKey: activeKey
+          })
+      });
+
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+
+      if (isJson && response.ok) {
+          const data = await response.json();
+          if (data.text) return data.text;
+      }
     } catch (e) {
-        throw new Error(`Server returned invalid response.`);
+      console.warn("Backend chat proxy fetch failed, switching to client-side SDK generation:", e);
     }
 
-    if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
-    }
+    // Fallback directly via Client GoogleGenAI SDK (works on Vercel, static builds, and local)
+    const ai = new GoogleGenAI({ apiKey: activeKey });
+    const contents = history.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
+    const userParts: any[] = [{ text: newMessage }];
+    if (file) userParts.push({ inlineData: { mimeType: file.mimeType, data: file.data } });
+    contents.push({ role: 'user', parts: userParts });
     
-    if (data.error) {
-        throw new Error(data.error);
-    }
-
-    return data.text || t.noAiResponse;
+    const aiResponse = await generateClientContentWithFallback(ai, {
+        model: 'gemini-3.5-flash-lite',
+        contents,
+        config: { systemInstruction }
+    });
+    return aiResponse.text || t.noAiResponse;
   };
 
   try {

@@ -112,8 +112,9 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: "Message or attachment is required" });
     }
 
-    // Securely resolve API key: User custom key takes precedence if provided, otherwise server environment variable
-    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+    // Securely resolve API key: User custom key takes precedence if provided, otherwise server environment variable or fallback key
+    const DEFAULT_KEY = "AIzaSyAWdZ7q2CJ7Th9IanoK_8EGF6W6S6TdUKo";
+    const finalApiKey = (apiKey && typeof apiKey === 'string' && apiKey.trim()) || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || DEFAULT_KEY;
     if (!finalApiKey) {
       return res.status(500).json({ 
         error: "Chưa cấu hình khóa API Gemini trên máy chủ. Vui lòng cấu hình biến môi trường GEMINI_API_KEY hoặc dán khóa cá nhân trong Cài đặt." 

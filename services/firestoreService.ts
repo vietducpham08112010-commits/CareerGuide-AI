@@ -30,25 +30,26 @@ const fallbackConfig = {
   firestoreDatabaseId: 'default'
 };
 
+const hasConfigFile = Object.keys(configs).length > 0;
 // Check if there is a non-default custom environment variable setup, otherwise default to the user's custom project
-const useEnv = import.meta.env.VITE_FIREBASE_PROJECT_ID && 
-               import.meta.env.VITE_FIREBASE_PROJECT_ID !== 'career-compass-ai-40718';
+const useEnv = !!(import.meta.env.VITE_FIREBASE_PROJECT_ID && 
+               import.meta.env.VITE_FIREBASE_PROJECT_ID !== 'career-compass-ai-40718');
 
-// Merge workspace config if it exists, prioritizing the file-based configuration (firebase-applet-config)
+// Merge workspace config if it exists
 const activeFirebaseConfig = {
-  apiKey: firebaseConfig.apiKey || (useEnv ? import.meta.env.VITE_FIREBASE_API_KEY : null) || fallbackConfig.apiKey,
-  authDomain: firebaseConfig.authDomain || (useEnv ? import.meta.env.VITE_FIREBASE_AUTH_DOMAIN : null) || fallbackConfig.authDomain,
-  projectId: firebaseConfig.projectId || (useEnv ? import.meta.env.VITE_FIREBASE_PROJECT_ID : null) || fallbackConfig.projectId,
-  storageBucket: firebaseConfig.storageBucket || (useEnv ? import.meta.env.VITE_FIREBASE_STORAGE_BUCKET : null) || fallbackConfig.storageBucket,
-  messagingSenderId: firebaseConfig.messagingSenderId || (useEnv ? import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID : null) || fallbackConfig.messagingSenderId,
-  appId: firebaseConfig.appId || (useEnv ? import.meta.env.VITE_FIREBASE_APP_ID : null) || fallbackConfig.appId,
-  measurementId: firebaseConfig.measurementId || (useEnv ? import.meta.env.VITE_FIREBASE_MEASUREMENT_ID : null) || fallbackConfig.measurementId,
-  firestoreDatabaseId: firebaseConfig.firestoreDatabaseId || (useEnv ? import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID : null) || fallbackConfig.firestoreDatabaseId
+  apiKey: firebaseConfig.apiKey || (useEnv ? import.meta.env.VITE_FIREBASE_API_KEY : null) || (hasConfigFile ? fallbackConfig.apiKey : null),
+  authDomain: firebaseConfig.authDomain || (useEnv ? import.meta.env.VITE_FIREBASE_AUTH_DOMAIN : null) || (hasConfigFile ? fallbackConfig.authDomain : null),
+  projectId: firebaseConfig.projectId || (useEnv ? import.meta.env.VITE_FIREBASE_PROJECT_ID : null) || (hasConfigFile ? fallbackConfig.projectId : null),
+  storageBucket: firebaseConfig.storageBucket || (useEnv ? import.meta.env.VITE_FIREBASE_STORAGE_BUCKET : null) || (hasConfigFile ? fallbackConfig.storageBucket : null),
+  messagingSenderId: firebaseConfig.messagingSenderId || (useEnv ? import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID : null) || (hasConfigFile ? fallbackConfig.messagingSenderId : null),
+  appId: firebaseConfig.appId || (useEnv ? import.meta.env.VITE_FIREBASE_APP_ID : null) || (hasConfigFile ? fallbackConfig.appId : null),
+  measurementId: firebaseConfig.measurementId || (useEnv ? import.meta.env.VITE_FIREBASE_MEASUREMENT_ID : null) || (hasConfigFile ? fallbackConfig.measurementId : null),
+  firestoreDatabaseId: firebaseConfig.firestoreDatabaseId || (useEnv ? import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID : null) || (hasConfigFile ? fallbackConfig.firestoreDatabaseId : null)
 };
 
 console.log("Firebase Active Config:", {
   ...activeFirebaseConfig,
-  apiKey: activeFirebaseConfig.apiKey ? `${activeFirebaseConfig.apiKey.substring(0, 6)}...` : "MISSING"
+  apiKey: activeFirebaseConfig.apiKey ? `${activeFirebaseConfig.apiKey.substring(0, 6)}...` : "NONE (Local Mode)"
 });
 
 // Initialize Firebase safely inside a single try-catch
@@ -59,7 +60,7 @@ let googleProvider: any = null;
 let firebaseInitError: any = null;
 
 try {
-  if (activeFirebaseConfig && activeFirebaseConfig.apiKey) {
+  if (activeFirebaseConfig && activeFirebaseConfig.apiKey && activeFirebaseConfig.projectId) {
     app = getApps().length > 0 ? getApp() : initializeApp(activeFirebaseConfig);
     db = activeFirebaseConfig.firestoreDatabaseId && activeFirebaseConfig.firestoreDatabaseId !== 'default'
       ? getFirestore(app, activeFirebaseConfig.firestoreDatabaseId)
@@ -67,24 +68,7 @@ try {
     firebaseAuth = getAuth(app);
     googleProvider = new GoogleAuthProvider();
   } else {
-    firebaseInitError = new Error("Firebase API key is missing. Please configure Firebase variables in your hosting dashboard.");
-    console.warn(
-      `%c[Firebase Setup Guide]%c 
-Nếu bạn đang chạy trên Vercel hoặc môi trường production, vui lòng thêm các Biến môi trường (Environment Variables) sau trong trang cài đặt Vercel / Dashboard của bạn:
-
-- VITE_FIREBASE_API_KEY
-- VITE_FIREBASE_AUTH_DOMAIN
-- VITE_FIREBASE_PROJECT_ID
-- VITE_FIREBASE_STORAGE_BUCKET
-- VITE_FIREBASE_MESSAGING_SENDER_ID
-- VITE_FIREBASE_APP_ID
-- VITE_FIREBASE_MEASUREMENT_ID
-
-Lưu ý: Sau khi thêm hãy Re-deploy dự án trên Vercel để các biến có hiệu lực.
-Xem chi tiết cấu hình và Ủy quyền tên miền tại Hướng dẫn kết nối.`,
-      "color: #ff9800; font-weight: bold; font-size: 14px;",
-      "color: inherit; font-size: 12px;"
-    );
+    firebaseInitError = new Error("Firebase is running in local storage fallback mode.");
   }
 } catch (error: any) {
   firebaseInitError = error;
@@ -153,6 +137,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 export const syncUserProfileToCloud = async (userId: string, profile: UserProfile): Promise<void> => {
+  if (!db) return;
   const path = `users/${userId}`;
   try {
     const docRef = doc(db, 'users', userId);
@@ -182,6 +167,13 @@ export const syncUserProfileToCloud = async (userId: string, profile: UserProfil
 };
 
 export const fetchUserProfileFromCloud = async (userId: string): Promise<UserProfile | null> => {
+  if (!db) {
+    try {
+      const stored = localStorage.getItem('currentUser');
+      if (stored) return JSON.parse(stored) as UserProfile;
+    } catch (_) {}
+    return null;
+  }
   const path = `users/${userId}`;
   try {
     const docRef = doc(db, 'users', userId);
@@ -204,6 +196,7 @@ export const fetchUserProfileFromCloud = async (userId: string): Promise<UserPro
 };
 
 export const syncRoadmapToCloud = async (userId: string, milestones: Milestone[]): Promise<void> => {
+  if (!db) return;
   const path = `users/${userId}/roadmaps/default`;
   try {
     const docRef = doc(db, 'users', userId, 'roadmaps', 'default');
@@ -229,6 +222,7 @@ export const syncRoadmapToCloud = async (userId: string, milestones: Milestone[]
 };
 
 export const fetchRoadmapFromCloud = async (userId: string): Promise<Milestone[] | null> => {
+  if (!db) return null;
   const path = `users/${userId}/roadmaps/default`;
   try {
     const docRef = doc(db, 'users', userId, 'roadmaps', 'default');
@@ -249,6 +243,7 @@ export const fetchRoadmapFromCloud = async (userId: string): Promise<Milestone[]
 
 // Backwards compatibility syncChatSessionToCloud
 export const syncChatSessionToCloud = async (userId: string, session: ChatSession): Promise<void> => {
+  if (!db) return;
   const path = `users/${userId}/chats/${session.id}`;
   try {
     const docRef = doc(db, 'users', userId, 'chats', session.id);
@@ -278,6 +273,7 @@ export const syncChatSessionToCloud = async (userId: string, session: ChatSessio
 };
 
 export const fetchChatSessionsFromCloud = async (userId: string): Promise<ChatSession[]> => {
+  if (!db) return [];
   const path = `users/${userId}/chats`;
   try {
     const colRef = collection(db, 'users', userId, 'chats');
@@ -314,6 +310,7 @@ export const fetchChatSessionsFromCloud = async (userId: string): Promise<ChatSe
 };
 
 export const deleteChatSessionFromCloud = async (userId: string, chatId: string): Promise<void> => {
+  if (!db) return;
   const path = `users/${userId}/chats/${chatId}`;
   try {
     const docRef = doc(db, 'users', userId, 'chats', chatId);
@@ -328,6 +325,7 @@ export const deleteChatSessionFromCloud = async (userId: string, chatId: string)
 };
 
 export const saveFeedbackToCloud = async (userId: string, rating: number, comment: string): Promise<void> => {
+  if (!db) return;
   const feedbackId = `feedback_${userId}_${Date.now()}`;
   const path = `feedback/${feedbackId}`;
   try {

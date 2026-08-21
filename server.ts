@@ -21,8 +21,13 @@ wss.on('error', (err) => {
 });
 
 const PORT = 3000;
+const DEFAULT_GEMINI_API_KEY = "AIzaSyAWdZ7q2CJ7Th9IanoK_8EGF6W6S6TdUKo";
+
 const getResolvedApiKey = (customApiKey?: string) => {
-  return (customApiKey && typeof customApiKey === 'string' && customApiKey.trim()) || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+  return (customApiKey && typeof customApiKey === 'string' && customApiKey.trim()) 
+    || process.env.GEMINI_API_KEY 
+    || process.env.VITE_GEMINI_API_KEY 
+    || DEFAULT_GEMINI_API_KEY;
 };
 
 app.use(express.json({ limit: '50mb' }));
