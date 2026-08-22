@@ -464,9 +464,15 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
-        'gemini-3.7-flash',
-        'gemini-3.1-flash-lite',
-        'gemini-flash-latest'
+        'gemini-3-flash-preview',
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+        'gemini-2.5-pro',
+        'gemma-3-27b-instruct',
+        'gemma-3-12b-instruct',
+        'gemma-3-4b-instruct'
     ];
 
     let lastError: any = null;
@@ -515,11 +521,29 @@ async function generateContentWithFallback(
 }
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { history, message, systemInstruction, file, image, apiKey } = req.body || {};
+  let body = req.body;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  const { history, message, systemInstruction, file, image, apiKey } = body || {};
   const attachment = file || image;
 
   if (!message && !attachment) {
@@ -543,6 +567,7 @@ export default async function handler(req: any, res: any) {
     addKey(process.env.GEMINI_API_KEY);
     addKey(process.env.GOOGLE_GENAI_API_KEY);
     addKey(process.env.GOOGLE_API_KEY);
+    addKey(process.env.API_KEY);
     addKey(process.env.VITE_GEMINI_API_KEY);
 
     const contents = formatHistoryForGemini(history || [], message || "");

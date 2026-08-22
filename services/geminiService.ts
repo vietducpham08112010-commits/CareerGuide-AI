@@ -63,7 +63,17 @@ const generateClientContentWithFallback = async (
         contents: any;
         config?: any;
     }): Promise<any> => {
-    const defaultModels = ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"];
+    const defaultModels = [
+        "gemini-3-flash-preview",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-2.5-pro",
+        "gemma-3-27b-instruct",
+        "gemma-3-12b-instruct",
+        "gemma-3-4b-instruct"
+    ];
     const modelsToTry = options.model ? [options.model, ...defaultModels] : defaultModels;
     const uniqueModels = Array.from(new Set(modelsToTry));
 
@@ -230,7 +240,7 @@ export const requestAiContent = async (
       try {
         const ai = new GoogleGenAI({ apiKey: key });
         const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-3.7-flash',
+          model: 'gemini-3-flash-preview',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { systemInstruction }
         });
@@ -369,7 +379,7 @@ export const generateRoadmap = async (
       const contents = chatHistory.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
       contents.push({ role: 'user', parts: [{ text: prompt }] });
       const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-3.7-flash',
+          model: 'gemini-2.5-pro',
           contents,
           config: { systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text." }
       });
@@ -461,7 +471,7 @@ export const sendChatMessage = async (
         contents.push({ role: 'user', parts: userParts });
         
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.7-flash',
+            model: 'gemini-3-flash-preview',
             contents,
             config: { systemInstruction }
         });
@@ -688,7 +698,7 @@ export class LiveSessionManager {
       // If user has custom key, connect via client SDK Live API
       if (customKey) {
         const ai = new GoogleGenAI({ apiKey: customKey });
-        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-3.7-flash'];
+        const liveModels = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-3-flash-preview'];
         let modelIndex = 0;
 
         const attemptNextModel = async (): Promise<any> => {
@@ -1169,7 +1179,7 @@ export const generateChatTitle = async (message: string, language: Language) => 
         if (customKey) {
             const ai = new GoogleGenAI({ apiKey: customKey });
             const aiResponse = await generateClientContentWithFallback(ai, {
-                model: 'gemini-3.7-flash',
+                model: 'gemini-2.5-flash-lite',
                 contents: [{ role: 'user', parts: [{ text: `Generate a 2-4 word title: "${firstMsg.slice(0, 50)}"` }] }],
                 config: { systemInstruction: "Return only 2 to 4 words" }
             });
@@ -1238,7 +1248,7 @@ export const searchUniversityScores = async (query: string, language: Language) 
       try {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.7-flash',
+            model: 'gemini-2.5-flash',
             contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
             config: { 
                 systemInstruction,
@@ -1344,7 +1354,7 @@ Do NOT include any markdown formatting like \`\`\`json. Ensure all strings are t
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-3.7-flash',
+          model: 'gemini-2.5-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { systemInstruction }
       });
@@ -1438,7 +1448,7 @@ Provide deep, factual, and actionable details without generic templates.`;
       try {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.7-flash',
+            model: 'gemini-2.5-flash',
             contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
             config: { 
               systemInstruction,
@@ -1628,7 +1638,7 @@ Return the output strictly as a JSON array of 4 string questions. Do not write a
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-3.7-flash',
+        model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         config: { systemInstruction: systemPrompt }
       });
@@ -1722,7 +1732,7 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-3.7-flash',
+        model: 'gemini-2.5-pro',
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         config: { systemInstruction }
       });

@@ -97,7 +97,16 @@ async function generateContentWithFallback(
         tools?: any[];
     }
 ) {
-    const modelsToTry = ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"];
+    const modelsToTry = [
+        "gemini-3-flash-preview",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-2.5-pro",
+        "gemma-3-27b-instruct",
+        "gemma-3-12b-instruct"
+    ];
 
     let lastError: any = null;
 
@@ -401,7 +410,7 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-3.7-flash'];
+        const liveModels = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-3-flash-preview'];
         let connected = false;
         for (const model of liveModels) {
           try {
