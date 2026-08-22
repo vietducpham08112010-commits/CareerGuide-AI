@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -6,18 +6,18 @@ import { Language } from '../types';
 import { searchUniversityScores } from '../services/geminiService';
 import { InlineGuide } from './InlineGuide';
 import { 
-  Globe, ExternalLink, ShieldCheck, Search, BookOpen, GraduationCap, 
-  Award, RefreshCw, Sparkles, Landmark, Star, AlertCircle, RotateCcw,
-  CheckCircle2, Compass, TrendingUp, Layers, HelpCircle, Share2, Copy
+  Globe, ExternalLink, ShieldCheck, Search, GraduationCap, 
+  RefreshCw, Sparkles, AlertCircle, RotateCcw, CheckCircle2, Copy
 } from 'lucide-react';
-import { SkeletonCard, LuxuryAiThinking } from './SkeletonLoader';
+import { LuxuryAiThinking } from './SkeletonLoader';
 
-const MOCK_DATA = [
-  { id: 1, name: 'Đại học Bách Khoa Hà Nội', major: 'Khoa học Máy tính (IT1)', year: 2023, score: 29.42, group: 'A00, A01', type: 'Engineering' },
-  { id: 2, name: 'Đại học Bách Khoa Hà Nội', major: 'Kỹ thuật Máy tính (IT2)', year: 2023, score: 28.29, group: 'A00, A01', type: 'Engineering' },
-  { id: 3, name: 'Đại học Công nghệ - ĐHQGHN', major: 'Công nghệ Thông tin', year: 2023, score: 27.85, group: 'A00, A01', type: 'Technology' },
-  { id: 4, name: 'Đại học Kinh tế Quốc dân', major: 'Logistics và QLCCTU', year: 2023, score: 27.4, group: 'A00, A01, D01, D07', type: 'Business' },
-  { id: 5, name: 'Đại học Ngoại thương', major: 'Kinh tế đối ngoại', year: 2023, score: 28.3, group: 'A00, A01, D01', type: 'Business' },
+const QUICK_CHIPS = [
+  'Đại học Bách Khoa Hà Nội',
+  'Đại học Ngoại Thương',
+  'Đại học Kinh tế Quốc dân',
+  'Đại học Y Hà Nội',
+  'Đại học Bách Khoa TP.HCM',
+  'Ngành Công nghệ Thông tin (IT)'
 ];
 
 export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, Icons: any }) => {
@@ -29,8 +29,7 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
   const [copied, setCopied] = useState(false);
 
   const handleSearch = async (overrideQuery?: string) => {
-    const term = (overrideQuery !== undefined ? overrideQuery : searchTerm).trim();
-    if (!term) return;
+    const term = (overrideQuery !== undefined ? overrideQuery : searchTerm).trim() || 'Điểm chuẩn các trường Đại học Bách Khoa, Ngoại Thương, Kinh tế Quốc dân, Y Hà Nội 2024-2025';
     if (overrideQuery !== undefined) {
       setSearchTerm(overrideQuery);
     }
@@ -49,21 +48,17 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
     }
   };
 
+  useEffect(() => {
+    if (!aiResult && !isSearching && !error) {
+      handleSearch('Điểm chuẩn các trường Đại học hàng đầu Việt Nam Bách Khoa, Ngoại Thương, Kinh Tế Quốc Dân');
+    }
+  }, []);
+
   const copyResult = () => {
     if (!aiResult) return;
     navigator.clipboard.writeText(aiResult);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const getTypeLabel = (type: string) => {
-    if (lang === Language.EN) return type;
-    const map: Record<string, string> = {
-      'Engineering': 'Kỹ thuật',
-      'Technology': 'Công nghệ',
-      'Business': 'Kinh doanh',
-    };
-    return map[type] || type;
   };
 
   return (
@@ -118,12 +113,29 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
           />
           <button
             onClick={() => handleSearch()}
-            disabled={isSearching || !searchTerm.trim()}
+            disabled={isSearching}
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl transition-all duration-200 disabled:opacity-50 text-sm md:text-base flex items-center gap-2 shrink-0 shadow-md hover:shadow-indigo-600/10 cursor-pointer"
           >
             {isSearching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            <span>{isSearching ? (lang === Language.VI ? 'Đang tra...' : 'Searching...') : (lang === Language.VI ? 'Tra cứu' : 'Search')}</span>
+            <span>{isSearching ? (lang === Language.VI ? 'Đang tra...' : 'Searching...') : (lang === Language.VI ? 'Tra cứu AI' : 'AI Search')}</span>
           </button>
+        </div>
+
+        {/* Quick Search Chips */}
+        <div className="flex items-center gap-2 mt-3 flex-wrap px-1">
+          <span className="text-xs font-bold text-gray-400 dark:text-gray-500 mr-1 flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-indigo-500" />
+            {lang === Language.VI ? 'Gợi ý tìm kiếm AI:' : 'AI Suggestions:'}
+          </span>
+          {QUICK_CHIPS.map((chip, idx) => (
+            <button
+              key={`chip-${idx}`}
+              onClick={() => handleSearch(chip)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 hover:bg-indigo-50 dark:bg-white/5 dark:hover:bg-indigo-950/40 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-gray-200/80 dark:border-white/10 transition-all cursor-pointer"
+            >
+              {chip}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -307,74 +319,27 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
             key="empty" 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
-            className="w-full space-y-4"
+            className="w-full bg-white dark:bg-[#0c0c0e] border border-gray-200 dark:border-white/10 rounded-3xl p-8 text-center space-y-4"
           >
-            <div className="flex items-center justify-between pl-1">
-              <h3 className="text-lg font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
-                <Landmark className="w-5 h-5 text-indigo-500" />
-                <span>{lang === Language.VI ? 'Điểm chuẩn tham khảo tiêu biểu' : 'Featured Baseline Scores'}</span>
-              </h3>
-              <span className="text-xs font-bold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-white/5 px-2.5 py-1 rounded-lg">
-                {lang === Language.VI ? 'Dữ liệu: Năm 2023 - 2024' : 'Year: 2023 - 2024'}
-              </span>
+            <div className="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center mx-auto shadow-md">
+              <GraduationCap className="w-7 h-7" />
             </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {MOCK_DATA.map((item) => (
-                <div 
-                  key={item.id}
-                  onClick={() => {
-                    const query = `${item.name} ${item.major}`;
-                    handleSearch(query);
-                  }}
-                  className="bg-white dark:bg-[#0c0c0c] border border-gray-200 dark:border-white/10 rounded-2xl p-5 hover:border-indigo-400 dark:hover:border-indigo-800 transition-all shadow-sm hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer group"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 flex-shrink-0 group-hover:scale-110 transition-transform">
-                      <GraduationCap className="w-6 h-6" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-gray-900 dark:text-white text-md group-hover:text-indigo-600 transition-colors">
-                          {item.name}
-                        </span>
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400">
-                          {getTypeLabel(item.type)}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-                        {item.major}
-                      </p>
-                      <div className="flex gap-1.5 flex-wrap pt-1">
-                        {item.group.split(',').map((gp, gIdx) => (
-                          <span key={`${item.id}-${gp.trim()}-${gIdx}`} className="text-[10px] font-mono font-bold bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded border border-gray-100 dark:border-white/5">
-                            {gp.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-gray-100 dark:border-white/5">
-                    <span className="text-xs text-gray-400 dark:text-gray-500 font-medium md:hidden">
-                      {lang === Language.VI ? 'Điểm chuẩn:' : 'Score:'}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <div className="text-2xl font-black text-gray-950 dark:text-white leading-tight">
-                          {item.score}
-                        </div>
-                        <span className="text-[9px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold">
-                          {lang === Language.VI ? 'Điểm xét tuyển' : 'Admission Point'}
-                        </span>
-                      </div>
-                      <div className="p-1 rounded-full bg-amber-50 dark:bg-amber-950/20 text-amber-500">
-                        <Star className="w-5 h-5 fill-current" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <h3 className="text-xl font-extrabold text-gray-950 dark:text-white">
+              {lang === Language.VI ? 'Tra cứu điểm chuẩn đại học bằng AI thời gian thực' : 'Real-time AI University Admission Search'}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+              {lang === Language.VI 
+                ? 'Nhập tên trường, ngành học hoặc chọn các từ khóa gợi ý phía trên để CareerGuide AI truy vấn dữ liệu điểm chuẩn mới nhất cùng trích dẫn nguồn uy tín.' 
+                : 'Enter target school, major, or click suggestion chips above to let CareerGuide AI pull live cutoff metrics.'}
+            </p>
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => handleSearch('Điểm chuẩn các trường Đại học Bách Khoa, Ngoại Thương, Kinh tế Quốc dân 2024-2025')}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg inline-flex items-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>{lang === Language.VI ? 'Xem tổng hợp điểm chuẩn các trường Top' : 'Search Top University Cutoff Scores'}</span>
+              </button>
             </div>
           </motion.div>
         )}

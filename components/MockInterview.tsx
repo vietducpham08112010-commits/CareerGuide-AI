@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Language, Theme, UserProfile } from '../types';
 import { getSubscriptionDetails } from '../utils/subscriptionUtils';
-import { getGeminiApiKey, cleanFrontEndErrorMessage, cleanMarkdownAsterisks } from '../services/geminiService';
+import { getGeminiApiKey, cleanFrontEndErrorMessage, cleanMarkdownAsterisks, generateMockInterviewQuestions, evaluateMockInterviewTranscript } from '../services/geminiService';
 import { InlineGuide } from './InlineGuide';
 import { LuxuryAiThinking } from './SkeletonLoader';
 
@@ -258,77 +258,15 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
     setIsLoading(true);
 
     try {
-      const systemPrompt = "You are an expert HR Manager and artificial career interviewer. You must generate EXACTLY 4 highly relevant and customized interview questions for a candidate.";
-      
-      const userMessage = `Create 4 tailored interview questions for the position of "${job}" with "${level}" experience level.
-      The interviewer tone should be "${tone}".
-      ${targetCompany ? `Target Hiring Company: "${targetCompany}". Adapt questions to the specific culture and hiring process of ${targetCompany}.` : ''}
-      ${user?.careerProfile ? `Consider the candidate's RIASEC profile: ${user.careerProfile}.` : ''}
-      Return the output strictly as a JSON array of 4 string questions. Do not write anything else. Do not use markdown \`\`\`json.`;
-
-      const customKey = getGeminiApiKey();
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          history: [],
-          message: userMessage,
-          systemInstruction: systemPrompt,
-          apiKey: customKey || undefined
-        })
-      });
-
-      if (!response.ok) throw new Error(isEn ? "Failed to generate interview questions" : "Không thể khởi tạo câu hỏi phỏng vấn");
-      const resData = await response.json();
-      let text = resData.text || '';
-      
-      // Strip markdown code fences if present & safe extraction
-      const extractJson = (rawText: string) => {
-        let clean = rawText.trim();
-        clean = clean.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-        try {
-          return JSON.parse(clean);
-        } catch (e) {}
-        const s = clean.indexOf('[');
-        const e = clean.lastIndexOf(']');
-        if (s !== -1 && e !== -1 && e > s) {
-          try {
-            return JSON.parse(clean.substring(s, e + 1));
-          } catch (err) {}
-        }
-        return null;
-      };
-
-      const parsedQuestions = extractJson(text);
-      if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-        setQuestions(parsedQuestions.map((q: string) => cleanMarkdownAsterisks(q)));
-        setAnswers([]);
-        setCurrentIdx(0);
-        setCurrentAnswer('');
-        setStep('interview');
-      } else {
-        throw new Error("Invalid format returned by AI");
-      }
-    } catch (err: any) {
-      console.error(err);
-      setErrorMsg(isEn ? "High system load or invalid model output. Falling back to default orientation questions..." : "Máy chủ bận hoặc phản hồi lỗi. Sử dụng các câu hỏi mẫu chuẩn hóa...");
-      // Fallback questions to prevent block
-      const fallbackQuestions = isEn ? [
-        `What sparked your interest in becoming a ${job}, and how fits with your skill map?`,
-        `Describe a personal project or grade/score you achieved that reflects your readiness for this role.`,
-        `How do you handle learning complex new tools or skills under pressure?`,
-        `Where do you see yourself in 3 years in this career path, and what resources do you need?`
-      ] : [
-        `Điều gì đã khơi dậy niềm đam mê của bạn đối với ngành ${job}, và nó khớp với thế mạnh bản thân ra sao?`,
-        `Hãy mô tả một dự án cá nhân, môn học hoặc điểm số nổi bật giúp chứng minh bạn phù hợp với lĩnh vực này.`,
-        `Làm cách nào để bạn thích nghi và học hỏi các kỹ năng mới phức tạp trong thời gian ngắn?`,
-        `Bạn mong muốn đạt được cột mốc nào trong lộ trình sự nghiệp này trong 3 năm tới?`
-      ];
-      setQuestions(fallbackQuestions);
+      const generatedQs = await generateMockInterviewQuestions(job, level, tone, targetCompany, language);
+      setQuestions(generatedQs);
       setAnswers([]);
       setCurrentIdx(0);
       setCurrentAnswer('');
       setStep('interview');
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(isEn ? "Failed to generate interview questions." : "Không thể khởi tạo câu hỏi phỏng vấn.");
     } finally {
       setIsLoading(false);
     }
@@ -355,99 +293,9 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
     setStep('evaluating');
     setIsLoading(true);
     try {
-      const systemInstruction = "You are an elite HR consultant analyzing interview transcripts. You must analyze the questions and candidates answers then evaluate performance objectively. You must return EXACTLY a JSON string matching the specified schema.";
-
-      const transcript = questions.map((q, i) => `Question ${i + 1}: ${q}\nAnswer: ${completedAnswers[i] || 'No answer'}`).join('\n\n');
-
-      const evaluationGoal = `Role: ${job} (Level: ${level})
-Interviewer Tone: ${tone}
-
-Evaluate this interview transcript:
-${transcript}
-
-Return a valid JSON object matching this structure EXACTLY:
-{
-  "score": <number from 0 to 100>,
-  "overallFeedback": "<string details summarizing performance with constructive advice in Vietnamese (or English if candidate chose English)>",
-  "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
-  "weaknesses": ["<weakness 1>", "<weakness 2>"],
-  "recommendations": ["<recommendation 1>", "<recommendation 2>"],
-  "categories": {
-    "knowledge": <number from 0 to 100 representing Professional Knowledge / Kiến thức chuyên môn>,
-    "communication": <number from 0 to 100 representing Communication & Clarity / Kỹ năng giao tiếp>,
-    "problemSolving": <number from 0 to 100 representing Problem Solving Context / Giải quyết vấn đề>,
-    "riasecFit": <number from 0 to 100 representing RIASEC & Career Alignment / Sự thích ứng nghề nghiệp>
-  }
-}
-
-Rule: Do NOT output anything other than this JSON structure. Do NOT write markdown code fences. Respond in ${language === Language.VI ? "Vietnamese" : "English"}.`;
-
-      const customKey = getGeminiApiKey();
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          history: [],
-          message: evaluationGoal,
-          systemInstruction,
-          apiKey: customKey || undefined
-        })
-      });
-
-      if (!response.ok) throw new Error("Evaluation request failed");
-      const resData = await response.json();
-      let text = resData.text || '';
-
-      const extractJsonObj = (rawText: string) => {
-        let clean = rawText.trim();
-        clean = clean.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-        try {
-          return JSON.parse(clean);
-        } catch (e) {}
-        const s = clean.indexOf('{');
-        const e = clean.lastIndexOf('}');
-        if (s !== -1 && e !== -1 && e > s) {
-          try {
-            return JSON.parse(clean.substring(s, e + 1));
-          } catch (err) {}
-        }
-        return null;
-      };
-
-      const fallbackRubric: InterviewResult = {
-        score: 85,
-        overallFeedback: language === Language.VI 
-          ? "Ứng viên thể hiện phong thái tự tin, diễn đạt rõ ràng và có tư duy nghiệp vụ phù hợp với vị trí."
-          : "Candidate demonstrated clear communication and strong role-aligned analytical thinking.",
-        strengths: language === Language.VI 
-          ? ["Tư duy logic tốt và câu trả lời có cấu trúc", "Thái độ học hỏi và cầu tiến", "Định hướng phát triển rõ ràng"]
-          : ["Logical structured thinking", "Proactive learning attitude", "Clear growth orientation"],
-        weaknesses: language === Language.VI 
-          ? ["Có thể đưa thêm số liệu định lượng để tăng sức thuyết phục", "Cần đào sâu hơn vào một số công cụ thực chiến"]
-          : ["Could quantify achievements with more metrics", "Deep dive further into practical tooling"],
-        recommendations: language === Language.VI 
-          ? ["Tiếp tục thực hành phỏng vấn thử định kỳ để duy trì phản xạ", "Bổ sung các dự án cá nhân vào portfolio"]
-          : ["Continue regular mock interviews", "Add hands-on case studies to portfolio"],
-        categories: {
-          knowledge: 85,
-          communication: 88,
-          problemSolving: 84,
-          riasecFit: 86
-        }
-      };
-
-      const parsedRes: InterviewResult = cleanMarkdownAsterisks(extractJsonObj(text) || fallbackRubric);
-      
-      // Calculate categories dynamically if fallback required
-      if (!parsedRes.categories) {
-        const sc = parsedRes.score || 80;
-        parsedRes.categories = {
-          knowledge: Math.min(100, Math.max(50, sc + Math.floor(Math.random() * 12 - 6))),
-          communication: Math.min(100, Math.max(50, sc + Math.floor(Math.random() * 12 - 6))),
-          problemSolving: Math.min(100, Math.max(50, sc + Math.floor(Math.random() * 12 - 6))),
-          riasecFit: Math.min(100, Math.max(50, sc + Math.floor(Math.random() * 12 - 6)))
-        };
-      }
+      const rubricResult = await evaluateMockInterviewTranscript(job, level, tone, questions, completedAnswers, language);
+      setResult(rubricResult);
+      setStep('results');
       
       setResult(parsedRes);
 

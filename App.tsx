@@ -1188,6 +1188,7 @@ export default function App() {
   }, [milestones, auth.user?.email]);
 
   const extractRoadmapJson = (text: string): Milestone[] | null => {
+    // 1. Try parsing JSON block first
     const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\[\s*\{\s*"id":[\s\S]*?\}\s*\]/);
     if (jsonMatch) {
       try {
@@ -1197,10 +1198,64 @@ export default function App() {
           return data;
         }
       } catch (e) {
-        return null;
+        // Fall through to markdown parsing
       }
     }
-    return null;
+
+    // 2. Try parsing Markdown text for roadmap/steps
+    const lower = text.toLowerCase();
+    const isRoadmapContext = lower.includes("lộ trình") || lower.includes("roadmap") || lower.includes("giai đoạn") || lower.includes("kế hoạch") || lower.includes("bước 1") || lower.includes("phase 1") || lower.includes("step 1");
+    if (!isRoadmapContext) return null;
+
+    const lines = text.split('\n');
+    const parsedMilestones: Milestone[] = [];
+    let currentTitle = '';
+    let currentDesc: string[] = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      const isHeaderLine = (
+        /^#{1,4}\s+/.test(trimmed) || 
+        /^\*\*(?:giai đoạn|bước|phase|step)\s*\d+.*?\*\*/i.test(trimmed) ||
+        /^(?:giai đoạn|bước|phase|step)\s*\d+[:\.\-]/i.test(trimmed) ||
+        /^\d+[\.\)]\s+[A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴ]/i.test(trimmed)
+      ) && trimmed.length < 120;
+
+      if (isHeaderLine) {
+        if (currentTitle) {
+          parsedMilestones.push({
+            id: `ms-gen-${parsedMilestones.length + 1}`,
+            title: currentTitle.replace(/\*+/g, '').replace(/^#+\s*/, '').trim(),
+            description: currentDesc.join(' ').replace(/\*+/g, '').trim() || currentTitle,
+            status: parsedMilestones.length === 0 ? 'in-progress' : 'todo'
+          });
+        }
+        currentTitle = trimmed.replace(/^#+\s*/, '').replace(/\*+/g, '').trim();
+        currentDesc = [];
+      } else if (currentTitle && trimmed && !trimmed.startsWith('```')) {
+        currentDesc.push(trimmed);
+      }
+    }
+
+    if (currentTitle) {
+      parsedMilestones.push({
+        id: `ms-gen-${parsedMilestones.length + 1}`,
+        title: currentTitle.replace(/\*+/g, '').replace(/^#+\s*/, '').trim(),
+        description: currentDesc.join(' ').replace(/\*+/g, '').trim() || currentTitle,
+        status: parsedMilestones.length === 0 ? 'in-progress' : 'todo'
+      });
+    }
+
+    if (parsedMilestones.length >= 2) {
+      return parsedMilestones.slice(0, 6);
+    }
+
+    // Fallback default structure if context is roadmap but lines were unstructured
+    return [
+      { id: 'ms-f1', title: 'Giai đoạn 1: Đánh giá vị thế & Khám phá thế mạnh', description: 'Đánh giá năng lực cá nhân, làm rõ định hướng RIASEC và xác định ngành nghề mục tiêu.', status: 'in-progress' },
+      { id: 'ms-f2', title: 'Giai đoạn 2: Luyện tập kỹ năng & Hoàn thiện dự án', description: 'Tích lũy chứng chỉ chuyên môn, thực hiện dự án thực tế và xây dựng CV/Portfolio.', status: 'todo' },
+      { id: 'ms-f3', title: 'Giai đoạn 3: Thực hành phỏng vấn AI & Ứng tuyển', description: 'Luyện tập phỏng vấn giả lập AI và tự tin kết nối với các cơ hội việc làm mơ ước.', status: 'todo' }
+    ];
   };
 
   const extractClarificationJson = (text: string): Clarification | null => {
@@ -3589,16 +3644,15 @@ export default function App() {
             className="flex-1 flex flex-col min-h-0 overflow-hidden relative"
           >
             {tab === DashboardTab.CHAT && (
-            <div className={`flex-1 flex flex-col h-full overflow-hidden relative ${messages.length === 0 ? 'w-full max-w-3xl mx-auto' : ''}`}>
+            <div className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
                 {/* Chat Top Bar with Live Model / API Key Connection Indicator */}
                 <div className="w-full bg-white/80 dark:bg-[#111]/80 backdrop-blur-md border-b border-gray-200/80 dark:border-white/5 px-4 py-2.5 flex items-center justify-between gap-3 text-xs z-10 shrink-0">
                     <div className="flex items-center gap-2 min-w-0">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                         <span className="font-bold text-gray-800 dark:text-gray-200 truncate">
-                            {currentChatTitle || (lang === Language.VI ? 'Trợ lý Hướng nghiệp AI' : 'AI Career Assistant')}
-                        </span>
-                        <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px]">
-                            CareerGuide AI
+                            {(currentChatTitle && !currentChatTitle.includes('Generate title') && !currentChatTitle.includes('Chào bạn') && currentChatTitle.length <= 50) 
+                                ? currentChatTitle 
+                                : (lang === Language.VI ? 'Trợ lý Hướng nghiệp AI' : 'AI Career Assistant')}
                         </span>
                     </div>
 
@@ -3636,7 +3690,8 @@ export default function App() {
                         </button>
                     </div>
                 )}
-                <div className={`overflow-y-auto p-4 md:p-8 space-y-4 md:space-y-6 scroll-smooth ${messages.length === 0 ? 'flex-1 flex flex-col items-center justify-center' : 'flex-1'}`}>
+                <div className={`overflow-y-auto p-4 md:p-8 scroll-smooth flex-1 ${messages.length === 0 ? 'flex flex-col items-center justify-center' : ''}`}>
+                    <div className="w-full max-w-4xl mx-auto space-y-4 md:space-y-6 flex flex-col">
                     {isLoadingData ? (
                         <div className="w-full h-full flex flex-col justify-end gap-6 p-4">
                             <div className="flex items-start gap-4 animate-pulse">
@@ -3653,22 +3708,11 @@ export default function App() {
                     ) : (
                         <>
                             {messages.length === 0 && (
-                                <div className="w-full max-w-3xl flex-col flex justify-center items-center py-6 sm:py-12">
-                                    <motion.div 
-                                        initial={{ opacity: 0, y: 40 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                                        className="w-full flex justify-center items-center gap-3 text-center px-4"
-                                    >
-                                        <CareerGuideLogo className="w-8 h-8 md:w-12 md:h-12 text-[#E3AA8B] dark:text-[#D4A373] flex-shrink-0" />
-                                        <h1 className="text-2xl sm:text-3xl md:text-5xl font-sans font-medium text-[#E3AA8B] dark:text-[#D4A373] tracking-tight text-center">
-                                            {greeting.text}, {greeting.name}
-                                        </h1>
-                                    </motion.div>
+                                <div className="w-full max-w-3xl mx-auto flex-col flex justify-center items-center py-6 sm:py-12">
                                     <motion.p
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                                         className="text-gray-500 dark:text-gray-400 text-sm sm:text-base md:text-lg text-center max-w-xl mt-3 px-4"
                                     >
                                         {welcomePhrase}
@@ -3684,7 +3728,7 @@ export default function App() {
                             className={`flex w-full ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                             {m.role === 'model' && (<div className="hidden md:flex w-8 h-8 mr-4 flex-shrink-0 bg-indigo-600 rounded-full items-center justify-center text-white shadow-sm mt-1"><CareerGuideLogo className="w-5 h-5 text-white" /></div>)}
-                            <div className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} max-w-[95%] md:max-w-[70%]`}>
+                            <div className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} max-w-[95%] md:max-w-[75%]`}>
                                  <div className={`px-4 md:px-6 py-2.5 md:py-3.5 rounded-2xl shadow-sm relative transition-all duration-300 ${m.role === 'user' ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-tr-none' : 'bg-white dark:bg-white/10 text-gray-900 dark:text-white border border-gray-200 dark:border-white/5 rounded-tl-none shadow-sm'}`}>
                                     {m.pastedTexts && m.pastedTexts.length > 0 && (
                                         <div className="flex flex-wrap gap-1.5 md:gap-2 mb-2 md:mb-3">
@@ -3722,13 +3766,13 @@ export default function App() {
                                     )}
                                     {m.role === 'model' && extractRoadmapJson(m.text) && (
                                         <motion.button
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
+                                            whileHover={{ scale: 1.03 }}
+                                            whileTap={{ scale: 0.97 }}
                                             onClick={() => handleSyncRoadmap(extractRoadmapJson(m.text)!)}
-                                            className="mt-3 flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg active:scale-95"
+                                            className="mt-4 flex items-center gap-2.5 px-5 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-2xl text-xs md:text-sm font-extrabold transition-all shadow-lg shadow-indigo-600/30 cursor-pointer"
                                         >
-                                            <Icons.RefreshCw className="w-3.5 h-3.5" />
-                                            {t.syncToProgress}
+                                            <Icons.Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                                            <span>{lang === Language.VI ? '🚀 Đồng bộ Lộ trình này vào Tiến độ AI' : '🚀 Sync Roadmap to Progress Board'}</span>
                                         </motion.button>
                                     )}
                                 </div>
@@ -3740,20 +3784,26 @@ export default function App() {
                     )}
                     {isChatLoading && (
                         <motion.div 
-                            initial={{ opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, y: 15 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-                            className="flex w-full justify-start items-center"
+                            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+                            className="flex w-full justify-start items-start gap-3 mt-2"
                         >
-                            <div className="hidden md:flex w-8 h-8 mr-4 flex-shrink-0 bg-indigo-600 rounded-full items-center justify-center mt-1">
+                            <div className="flex w-8 h-8 flex-shrink-0 bg-indigo-600 rounded-full items-center justify-center text-white shadow-sm mt-0.5">
                                 <CareerGuideLogo className="w-5 h-5 text-white" isThinking={true} />
                             </div>
-                            <div className="px-6 py-4 bg-gray-50 dark:bg-white/5 rounded-2xl rounded-tl-none border border-gray-100 dark:border-white/5">
+                            <div className="px-5 py-3.5 bg-white dark:bg-white/10 rounded-2xl rounded-tl-none border border-gray-200/80 dark:border-white/10 shadow-sm flex items-center gap-3">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
+                                    <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse delay-75"></span>
+                                    <span className="w-2 h-2 rounded-full bg-pink-500 animate-pulse delay-150"></span>
+                                </div>
                                 <ShimmerText text={thinkingText} />
                             </div>
                         </motion.div>
                     )}
                     <div ref={messagesEndRef} className="h-4" />
+                    </div>
                 </div>
                 <div className="p-4 bg-white dark:bg-[#050505] w-full flex flex-col items-center border-t border-gray-200 dark:border-white/5 relative">
                     {showCamera && (

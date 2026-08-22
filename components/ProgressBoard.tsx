@@ -300,9 +300,9 @@ export const ProgressBoard: React.FC<ProgressBoardProps> = ({
   const [salaryLocation, setSalaryLocation] = useState<'Hà Nội' | 'TP.HCM' | 'Đà Nẵng' | 'Remote'>('TP.HCM');
   const [isSalaryLoading, setIsSalaryLoading] = useState(false);
   const [salaryResult, setSalaryResult] = useState<{
-    minSalaryVnd: string;
-    medianSalaryVnd: string;
-    maxSalaryVnd: string;
+    minSalaryVnd: string | number;
+    medianSalaryVnd: string | number;
+    maxSalaryVnd: string | number;
     promotionLevers: string[];
     nextRoleTitle: string;
     marketOutlook: string;
@@ -484,8 +484,9 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
   const [filterLocation, setFilterLocation] = useState<'All' | 'Hà Nội' | 'TP. HCM' | 'Đà Nẵng'>('All');
   const [skillProgress, setSkillProgress] = useState<Record<string, number>>({});
 
-  const handleGenerateCustomMap = async () => {
-    if (!aiCareerInput.trim()) return;
+  const handleGenerateCustomMap = async (overrideQuery?: string) => {
+    const targetCareer = (overrideQuery !== undefined ? overrideQuery : aiCareerInput).trim();
+    if (!targetCareer) return;
     setIsGeneratingMap(true);
     try {
       const customKey = getGeminiApiKey();
@@ -495,7 +496,7 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          career: aiCareerInput,
+          career: targetCareer,
           apiKey: customKey || undefined
         }),
       });
@@ -510,8 +511,8 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
         setAiCareerInput('');
         showToast(
           language === Language.VI 
-            ? `🎉 Đã tạo sơ đồ kỹ năng cho "${newMap.title_vi}" bằng AI thành công!` 
-            : `🎉 Created skill map for "${newMap.title_en}" using AI!`, 
+            ? `🎉 Đã tìm kiếm thông tin và tự động vẽ sơ đồ kỹ năng cho "${newMap.title_vi}" bằng AI!` 
+            : `🎉 Researched and generated skill map for "${newMap.title_en}" using AI!`, 
           'success'
         );
       } else {
@@ -1164,15 +1165,21 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-500/20 text-center space-y-1">
                       <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider">Lương Tối Thiểu (Min)</span>
-                      <h4 className="text-xl font-black text-emerald-700 dark:text-emerald-400">{salaryResult.minSalaryVnd}</h4>
+                      <h4 className="text-xl font-black text-emerald-700 dark:text-emerald-400">
+                        {typeof salaryResult.minSalaryVnd === 'number' ? salaryResult.minSalaryVnd.toLocaleString('vi-VN') + ' VNĐ' : String(salaryResult.minSalaryVnd).endsWith('VNĐ') ? salaryResult.minSalaryVnd : salaryResult.minSalaryVnd + ' VNĐ'}
+                      </h4>
                     </div>
                     <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-500/20 text-center space-y-1">
                       <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider">Lương Trung Bình (Median)</span>
-                      <h4 className="text-xl font-black text-indigo-700 dark:text-indigo-400">{salaryResult.medianSalaryVnd}</h4>
+                      <h4 className="text-xl font-black text-indigo-700 dark:text-indigo-400">
+                        {typeof salaryResult.medianSalaryVnd === 'number' ? salaryResult.medianSalaryVnd.toLocaleString('vi-VN') + ' VNĐ' : String(salaryResult.medianSalaryVnd).endsWith('VNĐ') ? salaryResult.medianSalaryVnd : salaryResult.medianSalaryVnd + ' VNĐ'}
+                      </h4>
                     </div>
                     <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/20 border border-purple-500/20 text-center space-y-1">
                       <span className="text-[10px] font-extrabold text-purple-600 uppercase tracking-wider">Lương Đỉnh Cao (Max)</span>
-                      <h4 className="text-xl font-black text-purple-700 dark:text-purple-400">{salaryResult.maxSalaryVnd}</h4>
+                      <h4 className="text-xl font-black text-purple-700 dark:text-purple-400">
+                        {typeof salaryResult.maxSalaryVnd === 'number' ? salaryResult.maxSalaryVnd.toLocaleString('vi-VN') + ' VNĐ' : String(salaryResult.maxSalaryVnd).endsWith('VNĐ') ? salaryResult.maxSalaryVnd : salaryResult.maxSalaryVnd + ' VNĐ'}
+                      </h4>
                     </div>
                   </div>
 
@@ -1780,11 +1787,11 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                 </div>
 
                 {/* AI Custom Career Generator */}
-                <div className="mt-4 pt-4 border-t border-dashed border-gray-250 dark:border-white/10 space-y-4">
+                <div className="mt-4 pt-4 border-t border-dashed border-gray-250 dark:border-white/10 space-y-3">
                   <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-gray-400">
                       <Icons.Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
-                      <span>{language === Language.VI ? "Hoặc để AI tự động vẽ sơ đồ kỹ năng cho ngành bất kỳ:" : "Or let AI auto-generate skill map for any job:"}</span>
+                      <span>{language === Language.VI ? "Hoặc nhập ngành bất kỳ để AI tự động vẽ sơ đồ kỹ năng riêng:" : "Or type any job for AI to auto-build skill map:"}</span>
                     </div>
                     
                     <div className="flex gap-2 flex-1 max-w-md">
@@ -1792,14 +1799,15 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                         type="text"
                         value={aiCareerInput}
                         onChange={(e) => setAiCareerInput(e.target.value)}
-                        placeholder={language === Language.VI ? "Ví dụ: Lập trình game, Thiết kế thời trang, Tâm lý học..." : "E.g., Game dev, Fashion designer, Psychology..."}
+                        onKeyDown={(e) => e.key === 'Enter' && handleGenerateCustomMap()}
+                        placeholder={language === Language.VI ? "Nhập ngành nghề (vd: Lập trình game, Bác sĩ thú y, KOL Marketing)..." : "Enter career (e.g., Game dev, Veterinary, KOL Marketing)..."}
                         className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-250 dark:border-white/15 rounded-xl px-3 py-1.5 text-xs font-medium text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500"
                         disabled={isGeneratingMap}
                       />
                       <button
-                        onClick={handleGenerateCustomMap}
+                        onClick={() => handleGenerateCustomMap()}
                         disabled={isGeneratingMap || !aiCareerInput.trim()}
-                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-sm"
                       >
                         {isGeneratingMap ? (
                           <>
@@ -1809,11 +1817,36 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                         ) : (
                           <>
                             <Icons.Cpu className="w-3.5 h-3.5" />
-                            <span>{language === Language.VI ? "AI Tạo Sơ Đồ" : "AI Map"}</span>
+                            <span>{language === Language.VI ? "AI Tìm & Vẽ Sơ Đồ" : "AI Map"}</span>
                           </>
                         )}
                       </button>
                     </div>
+                  </div>
+
+                  {/* AI Quick Prompt Chips for Skill Maps */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">
+                      {language === Language.VI ? 'Gợi ý vẽ sơ đồ AI:' : 'AI Suggestions:'}
+                    </span>
+                    {[
+                      'Lập trình Game & Unity',
+                      'Kỹ sư Chip & Bán dẫn',
+                      'Bác sĩ Thú y',
+                      'Chuyên viên Tâm lý học',
+                      'Kế toán trưởng & Kiểm toán',
+                      'Năng lượng xanh & Bền vững',
+                      'KOL & Creator Marketing'
+                    ].map((chipName, chipIdx) => (
+                      <button
+                        key={`map-chip-${chipIdx}`}
+                        onClick={() => handleGenerateCustomMap(chipName)}
+                        disabled={isGeneratingMap}
+                        className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-gray-200/80 dark:border-white/10 transition-all cursor-pointer"
+                      >
+                        + {chipName}
+                      </button>
+                    ))}
                   </div>
 
                   <AnimatePresence>

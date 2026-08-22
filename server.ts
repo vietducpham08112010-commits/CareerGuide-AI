@@ -94,30 +94,13 @@ function synthesizeFallbackChatResponse(message: string, systemInstruction?: str
   const query = (message || "").toLowerCase();
   const sysInst = (systemInstruction || "").toLowerCase();
 
-  // 1. Salary & Promotion Analysis (ProgressBoard)
-  if (
-    sysInst.includes("labor market analyst") ||
-    query.includes("minsalaryvnd") ||
-    query.includes("dải lương") ||
-    query.includes("thăng tiến cho vị trí") ||
-    (query.includes("lương") && query.includes("json"))
-  ) {
-    let jobRole = "Chuyên viên";
-    const jobMatch = message.match(/vị trí:\s*"([^"]+)"/i) || message.match(/position:\s*"([^"]+)"/i);
-    if (jobMatch) jobRole = jobMatch[1];
-
-    return JSON.stringify({
-      minSalaryVnd: "16.000.000 VNĐ",
-      medianSalaryVnd: "28.000.000 VNĐ",
-      maxSalaryVnd: "55.000.000 VNĐ",
-      promotionLevers: [
-        `Làm chủ công cụ & kiến trúc thực chiến chuẩn doanh nghiệp cho vị trí ${jobRole}`,
-        "Xây dựng tư duy giải quyết vấn đề phức tạp và tối ưu hóa hiệu năng",
-        "Rèn luyện kỹ năng quản trị nhóm, đàm phán và tiếng Anh chuyên ngành"
-      ],
-      nextRoleTitle: `Senior / Lead ${jobRole}`,
-      marketOutlook: `Nhu cầu thị trường cho vị trí ${jobRole} duy trì mức tăng trưởng cao với cơ hội thăng tiến rộng mở.`
-    });
+  // 0. Chat Title Generation Request
+  if (query.includes("generate title for this message") || query.includes("generate a very short") || sysInst.includes("title generator")) {
+    const rawClean = message.replace(/generate title for this message:?\s*"?/i, '').replace(/".*$/i, '').trim();
+    if (rawClean.length > 0 && rawClean.length <= 30) {
+      return rawClean;
+    }
+    return "Tư vấn sự nghiệp";
   }
 
   // 2. Reskilling & 90-Day Transition Roadmap (CareerLifecycleManager)
@@ -230,59 +213,7 @@ function synthesizeFallbackChatResponse(message: string, systemInstruction?: str
     });
   }
 
-  // 5. If the request asks for Mock Interview Questions (Array of questions)
-  if (
-    sysInst.includes("interview questions") ||
-    sysInst.includes("artificial career interviewer") ||
-    query.includes("tailored interview questions") ||
-    (query.includes("json array of 4 string questions") || (query.includes("câu hỏi phỏng vấn") && query.includes("json")))
-  ) {
-    let jobTitle = "ứng viên";
-    const jobMatch = message.match(/position of\s+"([^"]+)"/i) || message.match(/vị trí\s+"([^"]+)"/i);
-    if (jobMatch) {
-      jobTitle = jobMatch[1];
-    }
 
-    return JSON.stringify([
-      `Hãy giới thiệu ngắn gọn về bản thân, thế mạnh nổi bật và lý do bạn muốn theo đuổi vị trí "${jobTitle}"?`,
-      `Hãy chia sẻ về một thử thách, dự án hoặc bài toán khó khăn nhất bạn từng gặp phải và cách bạn đã giải quyết nó?`,
-      `Theo bạn, tố chất hoặc kỹ năng chuyên môn quan trọng nhất để đạt hiệu suất xuất sắc ở vị trí "${jobTitle}" là gì?`,
-      `Bạn có định hướng phát triển bản thân và mục tiêu nghề nghiệp cụ thể như thế nào trong 2-3 năm tới?`
-    ]);
-  }
-
-  // 6. If the request asks for Mock Interview Evaluation / Rubric
-  if (
-    sysInst.includes("analyzing interview transcripts") ||
-    query.includes("evaluate this interview transcript") ||
-    query.includes("overallfeedback") ||
-    (query.includes("rubric") && query.includes("score"))
-  ) {
-    return JSON.stringify({
-      score: 86,
-      overallFeedback: "Ứng viên thể hiện phong thái tự tin, câu trả lời có cấu trúc mạch lạc và làm nổi bật được năng lực tư duy chuyên môn. Có tinh thần trách nhiệm, phản xạ tình huống tốt và định hướng nghề nghiệp rất rõ ràng.",
-      strengths: [
-        "Tư duy logic tốt, cấu trúc câu trả lời theo phương pháp STAR rõ ràng, đi thẳng vào trọng tâm",
-        "Có kiến thức thực tế và thái độ học tập cầu tiến, sẵn sàng đón nhận thử thách",
-        "Khả năng thích ứng nhanh và thể hiện sự phù hợp cao với văn hóa doanh nghiệp"
-      ],
-      weaknesses: [
-        "Có thể bổ sung thêm các số liệu đo lường định lượng cụ thể để tăng tính thuyết phục của thành tựu",
-        "Cần đào sâu hơn về một số công cụ hoặc chuẩn mực quy trình nâng cao trong ngành"
-      ],
-      recommendations: [
-        "Tiếp tục thực hành phỏng vấn thử định kỳ để duy trì phản xạ chuyên môn sắc bén",
-        "Bổ sung các chứng chỉ nghề nghiệp hoặc dự án cá nhân thực tế vào hồ sơ năng lực (Portfolio)",
-        "Rèn luyện kỹ năng thuyết trình tự tin trước hội đồng tuyển dụng"
-      ],
-      categories: {
-        knowledge: 86,
-        communication: 88,
-        problemSolving: 84,
-        riasecFit: 88
-      }
-    });
-  }
 
   // 7. If the request asks for OKR & Goal Management Mentor
   if (
@@ -553,9 +484,7 @@ async function generateContentWithFallback(
 ) {
     const modelsToTry = [
         'gemini-3.7-flash',
-        'gemini-2.5-flash',
-        'gemini-flash-latest',
-        'gemini-3.1-flash-lite'
+        'gemini-3.6-flash'
     ];
 
     let lastError: any = null;
@@ -760,8 +689,11 @@ Cấu trúc JSON chính xác như sau:
     });
 
     let text = response.text || "";
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      text = text.substring(firstBrace, lastBrace + 1);
+    }
     const parsed = JSON.parse(text);
     return res.json(parsed);
 

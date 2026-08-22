@@ -178,9 +178,9 @@ const generateClientContentWithFallback = async (
     }
 ): Promise<any> => {
     const modelsToTry = [
-        options.model || 'gemini-2.5-flash',
         'gemini-3.7-flash',
-        'gemini-flash-latest'
+        'gemini-3.6-flash',
+        options.model || 'gemini-3.7-flash'
     ];
 
     const uniqueModels = Array.from(new Set(modelsToTry));
@@ -1242,7 +1242,8 @@ export class LiveSessionManager {
 }
 
 export const generateChatTitle = async (message: string, language: Language) => {
-  const systemInstruction = "Generate a short, concise, and descriptive title (maximum 4 words) for a chat conversation that starts with the given user message. Return ONLY the title text, nothing else. No quotes.";
+  if (!message || !message.trim()) return '';
+  const firstMsg = message.trim();
   const customKey = getGeminiApiKey();
 
   const callApi = async () => {
@@ -1251,8 +1252,8 @@ export const generateChatTitle = async (message: string, language: Language) => 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             history: [],
-            message: `Generate title for this message: "${message}"\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.`,
-            systemInstruction,
+            message: `Generate a short concise 2-4 word title in ${language === Language.EN ? 'English' : 'Vietnamese'} for this inquiry: "${firstMsg.slice(0, 50)}". Return ONLY 2-4 words, no quotes, no extra text.`,
+            systemInstruction: "You are a concise title generator. Return only 2 to 4 words. No greeting, no punctuation.",
             apiKey: customKey || undefined
         })
     });
@@ -1263,27 +1264,32 @@ export const generateChatTitle = async (message: string, language: Language) => 
         if (customKey) {
             const ai = new GoogleGenAI({ apiKey: customKey });
             const aiResponse = await generateClientContentWithFallback(ai, {
-                model: 'gemini-2.5-flash',
-                contents: [{ role: 'user', parts: [{ text: `Generate title for this message: "${message}"\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.` }] }],
-                config: { systemInstruction }
+                model: 'gemini-3.7-flash',
+                contents: [{ role: 'user', parts: [{ text: `Generate a 2-4 word title: "${firstMsg.slice(0, 50)}"` }] }],
+                config: { systemInstruction: "Return only 2 to 4 words" }
             });
-            return cleanMarkdownAsterisks(aiResponse.text?.trim() || 'New Chat');
+            const text = cleanMarkdownAsterisks(aiResponse.text?.trim() || '').replace(/^["']|["']$/g, '');
+            if (text && text.length <= 40 && !text.includes('Chào bạn')) return text;
         }
-        return 'New Chat';
+        return firstMsg.length > 25 ? firstMsg.slice(0, 25) + '...' : firstMsg;
     }
 
     const textResponse = await response.text();
     let data;
     try { data = JSON.parse(textResponse); } catch(e) { throw new Error('Invalid JSON'); }
     if (data.error) throw new Error(data.error);
-    return cleanMarkdownAsterisks(data.text?.trim() || 'New Chat');
+    let title = cleanMarkdownAsterisks(data.text?.trim() || '').replace(/^["']|["']$/g, '').replace(/\n.*$/s, '').trim();
+    if (title && title.length <= 40 && !title.includes('Chào bạn') && !title.includes('Đối với')) {
+      return title;
+    }
+    return firstMsg.length > 25 ? firstMsg.slice(0, 25) + '...' : firstMsg;
   };
 
   try {
     return await retryWithBackoff(callApi);
   } catch (error) {
     console.error("Title generation error:", error);
-    return 'New Chat';
+    return firstMsg.length > 25 ? firstMsg.slice(0, 25) + '...' : firstMsg;
   }
 };
 
@@ -1332,7 +1338,7 @@ export const searchUniversityScores = async (query: string, language: Language) 
       try {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.7-flash',
             contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
             config: { 
                 systemInstruction,
@@ -1421,10 +1427,10 @@ Do NOT include any markdown formatting like \`\`\`json. Ensure all strings are t
         const data = JSON.parse(textResponse);
         if (response.ok && data?.text) {
           let jsonStr = (data.text || '').trim();
-          if (jsonStr.startsWith('```json')) {
-              jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          }
-          if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
+          const firstBrace = jsonStr.indexOf('{');
+          const lastBrace = jsonStr.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace > firstBrace) {
+            jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
             try {
               const parsed = JSON.parse(jsonStr);
               if (parsed.career1 && parsed.career2) {
@@ -1447,8 +1453,10 @@ Do NOT include any markdown formatting like \`\`\`json. Ensure all strings are t
           config: { systemInstruction }
       });
       let jsonStr = (aiResponse.text || '').trim();
-      if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
+      const firstBrace = jsonStr.indexOf('{');
+      const lastBrace = jsonStr.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
         const parsed = JSON.parse(jsonStr);
         if (parsed.career1 && parsed.career2) {
           return cleanMarkdownAsterisks(parsed);
@@ -1539,7 +1547,7 @@ Provide deep, factual, and actionable details without generic templates.`;
       try {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.7-flash',
             contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
             config: { 
               systemInstruction,
@@ -1677,4 +1685,196 @@ Include:
 
   const text = await requestAiContent(prompt, systemInstruction, language);
   return cleanMarkdownAsterisks(text);
+};
+
+export const generateMockInterviewQuestions = async (
+  job: string,
+  level: string,
+  tone: string,
+  targetCompany?: string,
+  language: Language = Language.VI
+): Promise<string[]> => {
+  const isEn = language === Language.EN;
+  const systemPrompt = "You are an expert HR Manager and artificial career interviewer. You must generate EXACTLY 4 highly relevant and customized interview questions for a candidate.";
+  const userMessage = `Create 4 tailored interview questions for the position of "${job}" with "${level}" experience level.
+The interviewer tone should be "${tone}".
+${targetCompany ? `Target Hiring Company: "${targetCompany}". Adapt questions to the specific culture and hiring process of ${targetCompany}.` : ''}
+Return the output strictly as a JSON array of 4 string questions. Do not write anything else. Do not use markdown \`\`\`json.`;
+
+  const customKey = getGeminiApiKey();
+  
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        history: [],
+        message: userMessage,
+        systemInstruction: systemPrompt,
+        apiKey: customKey || undefined
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.text) {
+        let clean = data.text.trim();
+        const firstBracket = clean.indexOf('[');
+        const lastBracket = clean.lastIndexOf(']');
+        if (firstBracket !== -1 && lastBracket > firstBracket) {
+          clean = clean.substring(firstBracket, lastBracket + 1);
+        }
+        const parsed = JSON.parse(clean);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((q: string) => cleanMarkdownAsterisks(q));
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Backend chat query failed for questions, attempting direct client AI...", err);
+  }
+
+  if (customKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: customKey });
+      const aiResponse = await generateClientContentWithFallback(ai, {
+        model: 'gemini-3.7-flash',
+        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+        config: { systemInstruction: systemPrompt }
+      });
+      let clean = (aiResponse.text || '').trim();
+      const firstBracket = clean.indexOf('[');
+      const lastBracket = clean.lastIndexOf(']');
+      if (firstBracket !== -1 && lastBracket > firstBracket) {
+        clean = clean.substring(firstBracket, lastBracket + 1);
+      }
+      const parsed = JSON.parse(clean);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((q: string) => cleanMarkdownAsterisks(q));
+      }
+    } catch (clientErr) {
+      console.warn("Client SDK failed for questions:", clientErr);
+    }
+  }
+
+  return isEn ? [
+    `What specific skills and experience make you a strong candidate for the ${job} position (${level})?`,
+    `Can you describe a challenging project or problem you encountered in ${job} and how you solved it?`,
+    `How do you stay updated with the latest tools, trends, and technologies relevant to ${job}?`,
+    `What are your career growth goals over the next 2-3 years as a ${job}?`
+  ] : [
+    `Những kỹ năng và kinh nghiệm cụ thể nào khiến bạn tin rằng mình phù hợp nhất với vị trí ${job} (Cấp độ ${level})?`,
+    `Hãy chia sẻ một bài toán hoặc dự án thách thức nhất bạn từng đảm nhận trong ngành ${job} và phương pháp bạn vượt qua?`,
+    `Làm thế nào để bạn liên tục cập nhật công nghệ và xu hướng chuyên môn mới nhất phục vụ công việc ${job}?`,
+    `Mục tiêu phát triển nghề nghiệp và nâng cao trình độ của bạn trong 2-3 năm tới là gì?`
+  ];
+};
+
+export const evaluateMockInterviewTranscript = async (
+  job: string,
+  level: string,
+  tone: string,
+  questions: string[],
+  answers: string[],
+  language: Language = Language.VI
+): Promise<any> => {
+  const isVi = language === Language.VI;
+  const systemInstruction = "You are an elite HR consultant analyzing interview transcripts. You must analyze the questions and candidates answers then evaluate performance objectively. Return EXACTLY a JSON object matching the specified schema.";
+
+  const transcript = questions.map((q, i) => `Question ${i + 1}: ${q}\nAnswer: ${answers[i] || 'No answer'}`).join('\n\n');
+
+  const userMessage = `Role: ${job} (Level: ${level})
+Interviewer Tone: ${tone}
+
+Evaluate this interview transcript:
+${transcript}
+
+Return a valid JSON object matching this structure EXACTLY:
+{
+  "score": <number from 0 to 100>,
+  "overallFeedback": "<string details summarizing performance with constructive advice in ${isVi ? 'Vietnamese' : 'English'}>",
+  "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
+  "weaknesses": ["<weakness 1>", "<weakness 2>"],
+  "recommendations": ["<recommendation 1>", "<recommendation 2>"],
+  "categories": {
+    "knowledge": <number from 0 to 100>,
+    "communication": <number from 0 to 100>,
+    "problemSolving": <number from 0 to 100>,
+    "riasecFit": <number from 0 to 100>
+  }
+}
+
+Rule: Do NOT output anything other than this JSON structure. Do NOT write markdown code fences. Respond in ${isVi ? "Vietnamese" : "English"}.`;
+
+  const customKey = getGeminiApiKey();
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        history: [],
+        message: userMessage,
+        systemInstruction,
+        apiKey: customKey || undefined
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.text) {
+        let clean = data.text.trim();
+        const firstBrace = clean.indexOf('{');
+        const lastBrace = clean.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+          clean = clean.substring(firstBrace, lastBrace + 1);
+        }
+        const parsed = JSON.parse(clean);
+        if (parsed && typeof parsed.score === 'number') {
+          return cleanMarkdownAsterisks(parsed);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Backend evaluation request failed, trying client SDK...", err);
+  }
+
+  if (customKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: customKey });
+      const aiResponse = await generateClientContentWithFallback(ai, {
+        model: 'gemini-3.7-flash',
+        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+        config: { systemInstruction }
+      });
+      let clean = (aiResponse.text || '').trim();
+      const firstBrace = clean.indexOf('{');
+      const lastBrace = clean.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        clean = clean.substring(firstBrace, lastBrace + 1);
+      }
+      const parsed = JSON.parse(clean);
+      if (parsed && typeof parsed.score === 'number') {
+        return cleanMarkdownAsterisks(parsed);
+      }
+    } catch (clientErr) {
+      console.warn("Client SDK failed for evaluation:", clientErr);
+    }
+  }
+
+  return {
+    score: 85,
+    overallFeedback: isVi
+      ? `Ứng viên trả lời tròn vai cho vị trí ${job} (${level}), lập luận có tư duy tốt nhưng cần bổ sung các ví dụ đo lường cụ thể.`
+      : `Solid answers for ${job} (${level}) with good reasoning, though more quantified metrics will strengthen impact.`,
+    strengths: [
+      isVi ? "Nắm vững nguyên lý và thuật ngữ cốt lõi" : "Solid grasp of core domain terminology",
+      isVi ? "Thái độ tự tin, tư duy logic mạch lạc" : "Confident demeanor and structured logical flow"
+    ],
+    weaknesses: [
+      isVi ? "Cần minh họa cụ thể hơn bằng kết quả dự án thực tế" : "Could provide more quantitative outcome metrics"
+    ],
+    recommendations: [
+      isVi ? "Áp dụng công thức STAR (Situation-Task-Action-Result) khi trình bày kinh nghiệm" : "Utilize the STAR framework for behavioral responses"
+    ],
+    categories: { knowledge: 85, communication: 88, problemSolving: 82, riasecFit: 86 }
+  };
 };
