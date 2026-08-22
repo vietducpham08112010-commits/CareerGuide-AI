@@ -4421,47 +4421,20 @@ export default function App() {
                             </select>
                         </div>
 
-                        {/* CareerGuide AI Built-in Engine Indicator & Optional API Key input */}
+                        {/* CareerGuide AI Built-in Engine Indicator */}
                         {(auth.user?.aiProvider === AIProvider.GEMINI || !auth.user?.aiProvider) && (
-                            <div className="space-y-3">
-                                <div className="p-3.5 bg-gradient-to-r from-indigo-50/80 via-purple-50/80 to-emerald-50/80 dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-emerald-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
-                                        ⚡
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-gray-900 dark:text-white">
-                                            {lang === Language.VI ? "Động Cơ CareerGuide AI (Tự động tích hợp sẵn)" : "CareerGuide AI Engine (Built-in Active)"}
-                                        </p>
-                                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                                            {lang === Language.VI 
-                                                ? "Hệ thống tự động kết nối mô hình Gemini thông minh qua Serverless/Máy chủ." 
-                                                : "The system automatically connects to Gemini models via built-in Serverless proxy."}
-                                        </p>
-                                    </div>
+                            <div className="p-3.5 bg-gradient-to-r from-indigo-50/80 via-purple-50/80 to-emerald-50/80 dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-emerald-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
+                                    ⚡
                                 </div>
-
                                 <div>
-                                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">
-                                        {lang === Language.VI ? "Khóa Gemini API Key cá nhân (Tùy chọn / Dự phòng)" : "Custom Gemini API Key (Optional / Fallback)"}
-                                    </label>
-                                    <input 
-                                        type="password"
-                                        value={auth.user?.customGeminiApiKey || ''} 
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            updateUserProfile({ customGeminiApiKey: val });
-                                            try {
-                                                if (val) localStorage.setItem('custom_gemini_api_key', val.trim());
-                                                else localStorage.removeItem('custom_gemini_api_key');
-                                            } catch (err) {}
-                                        }} 
-                                        placeholder="AIzaSy..." 
-                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-xl text-gray-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono"
-                                    />
-                                    <p className="text-[10px] text-gray-400 mt-1">
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white">
+                                        {lang === Language.VI ? "Động Cơ CareerGuide AI (Tự động tích hợp sẵn)" : "CareerGuide AI Engine (Built-in Active)"}
+                                    </p>
+                                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
                                         {lang === Language.VI 
-                                            ? "Nếu bạn muốn dùng tài khoản Google AI Studio riêng hoặc chạy độc lập khi deploy lên Vercel, hãy dán API Key của bạn tại đây."
-                                            : "If you want to use your personal Google AI Studio account or run standalone on Vercel, paste your API Key here."}
+                                            ? "Hệ thống tự động kết nối và xử lý toàn bộ các yêu cầu qua máy chủ AI bảo mật." 
+                                            : "The system automatically connects and handles all requests via secure built-in AI servers."}
                                     </p>
                                 </div>
                             </div>

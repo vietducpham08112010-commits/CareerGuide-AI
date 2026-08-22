@@ -19,7 +19,7 @@ function getResolvedApiKeysList(clientKey?: string): string[] {
   const keys: string[] = [];
   const addKey = (k?: string) => {
     if (!k || typeof k !== 'string') return;
-    const parts = k.split(/[\n,;]+/).map(p => p.trim()).filter(p => p.length >= 10);
+    const parts = k.split(/[\n,;]+/).map(p => p.trim()).filter(p => p.length >= 10 && !p.startsWith("AQ."));
     for (const part of parts) {
       if (!keys.includes(part)) {
         keys.push(part);
@@ -98,14 +98,9 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
-        "gemini-3-flash-preview",
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-2.5-pro",
-        "gemma-3-27b-instruct",
-        "gemma-3-12b-instruct"
+        "gemini-3.7-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-flash-latest"
     ];
 
     let lastError: any = null;
@@ -410,7 +405,7 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-3-flash-preview'];
+        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-3.7-flash', 'gemini-flash-latest'];
         let connected = false;
         for (const model of liveModels) {
           try {

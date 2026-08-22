@@ -464,15 +464,9 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
-        'gemini-3-flash-preview',
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite',
-        'gemini-2.0-flash',
-        'gemini-2.0-flash-lite',
-        'gemini-2.5-pro',
-        'gemma-3-27b-instruct',
-        'gemma-3-12b-instruct',
-        'gemma-3-4b-instruct'
+        'gemini-3.7-flash',
+        'gemini-3.1-flash-lite',
+        'gemini-flash-latest'
     ];
 
     let lastError: any = null;
