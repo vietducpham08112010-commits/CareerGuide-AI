@@ -46,6 +46,24 @@ function synthesizeFallbackChatResponse(message: string, systemInstruction?: str
   const query = (message || "").toLowerCase();
   const sysInst = (systemInstruction || "").toLowerCase();
 
+  // 0. Title generation request
+  if (
+    sysInst.includes("title") ||
+    query.includes("generate a short concise") ||
+    query.includes("generate title") ||
+    query.includes("tạo tiêu đề")
+  ) {
+    if (query.includes("chào") || query.includes("hello") || query.includes("hi")) {
+      return "Chào hỏi & Bắt đầu";
+    }
+    return "Tư vấn sự nghiệp";
+  }
+
+  // 1. Simple greetings
+  if (query === "xin chào" || query === "chào bạn" || query === "hello" || query === "hi" || query === "chào" || query === "chao ban") {
+    return "Chào bạn! Tôi là CareerGuide AI - Cố vấn định hướng nghề nghiệp và học tập của bạn. Hôm nay bạn muốn tìm hiểu về ngành nghề nào, tra cứu điểm chuẩn trường đại học, xây dựng lộ trình kỹ năng hay luyện tập phỏng vấn thử?";
+  }
+
   // 1. Salary & Promotion Analysis (ProgressBoard)
   if (
     sysInst.includes("labor market analyst") ||
@@ -387,8 +405,7 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
-        'gemini-2.5-flash',
-        'gemini-2.5-flash',
+        'gemini-3.7-flash',
         'gemini-flash-latest',
         'gemini-3.1-flash-lite'
     ];

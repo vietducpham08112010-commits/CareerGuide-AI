@@ -1122,7 +1122,22 @@ export class LiveSessionManager {
 export const generateChatTitle = async (message: string, language: Language) => {
   if (!message || !message.trim()) return '';
   const firstMsg = message.trim();
+  const lowerMsg = firstMsg.toLowerCase();
+  
+  // Instant clean title for common short greetings
+  if (['xin chào', 'chào bạn', 'chào', 'hello', 'hi', 'hey', 'alo', 'chao ban', 'chao'].includes(lowerMsg)) {
+    return language === Language.VI ? 'Bắt đầu cuộc trò chuyện' : 'General Inquiry';
+  }
+
   const customKey = getGeminiApiKey();
+
+  const sanitizeTitle = (raw: string): string => {
+    const t = cleanMarkdownAsterisks(raw || '').replace(/^["']|["']$/g, '').replace(/\n.*$/s, '').trim();
+    if (!t || t.length > 35 || t.includes('Chào bạn') || t.includes('Đối với') || t.includes('hành trình') || t.includes('Generate title') || t.includes('Language required')) {
+      return firstMsg.length > 25 ? firstMsg.slice(0, 25) + '...' : firstMsg;
+    }
+    return t;
+  };
 
   const callApi = async () => {
     const response = await fetch('/api/chat', {
@@ -1146,8 +1161,7 @@ export const generateChatTitle = async (message: string, language: Language) => 
                 contents: [{ role: 'user', parts: [{ text: `Generate a 2-4 word title: "${firstMsg.slice(0, 50)}"` }] }],
                 config: { systemInstruction: "Return only 2 to 4 words" }
             });
-            const text = cleanMarkdownAsterisks(aiResponse.text?.trim() || '').replace(/^["']|["']$/g, '');
-            if (text && text.length <= 40 && !text.includes('Chào bạn')) return text;
+            return sanitizeTitle(aiResponse.text || '');
         }
         return firstMsg.length > 25 ? firstMsg.slice(0, 25) + '...' : firstMsg;
     }
@@ -1156,11 +1170,7 @@ export const generateChatTitle = async (message: string, language: Language) => 
     let data;
     try { data = JSON.parse(textResponse); } catch(e) { throw new Error('Invalid JSON'); }
     if (data.error) throw new Error(data.error);
-    let title = cleanMarkdownAsterisks(data.text?.trim() || '').replace(/^["']|["']$/g, '').replace(/\n.*$/s, '').trim();
-    if (title && title.length <= 40 && !title.includes('Chào bạn') && !title.includes('Đối với')) {
-      return title;
-    }
-    return firstMsg.length > 25 ? firstMsg.slice(0, 25) + '...' : firstMsg;
+    return sanitizeTitle(data.text || '');
   };
 
   try {
