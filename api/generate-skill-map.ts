@@ -148,29 +148,23 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    let finalApiKey = "";
-    if (apiKey && typeof apiKey === 'string' && apiKey.trim() && apiKey.startsWith('AIza') && apiKey.length >= 30 && !apiKey.includes('AQ.Ab8RN') && !apiKey.includes('AIzaSyAWdZ7q2CJ')) {
-      finalApiKey = apiKey.trim();
-    } else {
-      const envKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API_KEY;
-      if (envKey && envKey.trim() && envKey.startsWith('AIza') && envKey.length >= 30 && !envKey.includes('AQ.Ab8RN') && !envKey.includes('AIzaSyAWdZ7q2CJ')) {
-        finalApiKey = envKey.trim();
+    const keys: string[] = [];
+    const addKey = (k?: string) => {
+      if (!k || typeof k !== 'string') return;
+      const parts = k.split(/[\n,;]+/).map(p => p.trim()).filter(p => p.length >= 10);
+      for (const p of parts) {
+        if (!keys.includes(p)) keys.push(p);
       }
-    }
+    };
 
-    if (!finalApiKey) {
-      // Return synthesized fallback directly
-      return res.status(200).json(synthesizeFallbackSkillMap(career));
-    }
+    addKey(apiKey);
+    addKey(process.env.GEMINI_API_KEYS);
+    addKey(process.env.GEMINI_API_KEY);
+    addKey(process.env.GOOGLE_GENAI_API_KEY);
+    addKey(process.env.GOOGLE_API_KEY);
+    addKey(process.env.VITE_GEMINI_API_KEY);
 
-    const aiInstance = new GoogleGenAI({ 
-      apiKey: finalApiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build'
-        }
-      }
-    });
+    const keyCandidates: (string | undefined)[] = keys.length > 0 ? keys : [undefined];
 
     const careerId = "ai-gen-" + Math.random().toString(36).substring(2, 9);
     const systemInstruction = "You are a professional industrial and career mapping expert. You specialize in analyzing job roles and decomposing them into clean, structural learning levels (junior, mid, senior).";
@@ -197,16 +191,44 @@ Cấu trúc JSON chính xác như sau:
   ]
 }`;
 
-    const response = await generateContentWithFallback(aiInstance, {
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        systemInstruction
-    });
+    for (const candidateKey of keyCandidates) {
+      try {
+        const aiInstance = candidateKey ? new GoogleGenAI({ 
+          apiKey: candidateKey,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build'
+            }
+          }
+        }) : new GoogleGenAI({
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build'
+            }
+          }
+        });
 
-    let text = response.text || "";
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    const parsed = JSON.parse(text);
-    return res.status(200).json(parsed);
+        const response = await generateContentWithFallback(aiInstance, {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            systemInstruction
+        });
+
+        let text = response.text || "";
+        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const firstBrace = text.indexOf('{');
+        const lastBrace = text.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+          text = text.substring(firstBrace, lastBrace + 1);
+        }
+        
+        const parsed = JSON.parse(text);
+        return res.status(200).json(parsed);
+      } catch (keyErr) {
+        console.warn("Skill map generation failed for key, trying next:", keyErr);
+      }
+    }
+
+    return res.status(200).json(synthesizeFallbackSkillMap(career));
 
   } catch (error: any) {
     console.info("Generate Skill Map AI graceful fallback:", error?.message || error);

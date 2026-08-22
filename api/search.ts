@@ -187,10 +187,18 @@ export default async function handler(req: any, res: any) {
 
     const contents = formatHistoryForGemini(history || [], message);
 
-    for (const key of keys) {
+    const keyCandidates: (string | undefined)[] = keys.length > 0 ? keys : [undefined];
+
+    for (const key of keyCandidates) {
       try {
-        const ai = new GoogleGenAI({ 
+        const ai = key ? new GoogleGenAI({ 
           apiKey: key,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build'
+            }
+          }
+        }) : new GoogleGenAI({
           httpOptions: {
             headers: {
               'User-Agent': 'aistudio-build'

@@ -43,25 +43,84 @@ const formatHistoryForGemini = (history: { role: string; text: string }[], newMe
 
 // Fallback intelligent career counselor response synthesizer
 function synthesizeFallbackChatResponse(message: string, systemInstruction?: string): string {
-  const query = (message || "").toLowerCase();
+  const query = (message || "").toLowerCase().trim();
   const sysInst = (systemInstruction || "").toLowerCase();
 
-  // 0. Title generation request
-  if (
-    sysInst.includes("title") ||
-    query.includes("generate a short concise") ||
-    query.includes("generate title") ||
-    query.includes("tạo tiêu đề")
-  ) {
+  // 0. Explicit Title generation request ONLY
+  const isTitleRequest = 
+    query.startsWith("generate a short concise") ||
+    query.startsWith("generate a 2-4 word title") ||
+    query.startsWith("generate title") ||
+    (sysInst.includes("2 to 4 word chat titles") && query.includes("title")) ||
+    (sysInst.includes("return only 2 to 4 words") && query.includes("title"));
+
+  if (isTitleRequest) {
     if (query.includes("chào") || query.includes("hello") || query.includes("hi")) {
       return "Chào hỏi & Bắt đầu";
     }
-    return "Tư vấn sự nghiệp";
+    if (query.includes("khoa học máy tính") || query.includes("bác sĩ") || query.includes("so sánh")) {
+      return "So sánh ngành nghề";
+    }
+    return "Tư vấn hướng nghiệp";
   }
 
   // 1. Simple greetings
-  if (query === "xin chào" || query === "chào bạn" || query === "hello" || query === "hi" || query === "chào" || query === "chao ban") {
-    return "Chào bạn! Tôi là CareerGuide AI - Cố vấn định hướng nghề nghiệp và học tập của bạn. Hôm nay bạn muốn tìm hiểu về ngành nghề nào, tra cứu điểm chuẩn trường đại học, xây dựng lộ trình kỹ năng hay luyện tập phỏng vấn thử?";
+  if (["xin chào", "chào bạn", "hello", "hi", "chào", "chao ban", "alo", "helo"].includes(query)) {
+    return "Chào bạn! Tôi là CareerGuide AI - Cố vấn định hướng nghề nghiệp và học tập của bạn. Hôm nay bạn muốn tìm hiểu về ngành nghề nào, tra cứu điểm chuẩn trường đại học, so sánh các ngành nghề hay luyện tập phỏng vấn thử?";
+  }
+
+  // 2. Career Comparison (e.g. So sánh ngành khoa học máy tính với bác sĩ / Y đa khoa)
+  if (query.includes("so sánh") || (query.includes("khoa học máy tính") && query.includes("bác sĩ")) || (query.includes("cntt") && query.includes("y"))) {
+    return `### 🧭 So sánh chi tiết: Ngành Khoa học Máy tính (CS/CNTT) vs Ngành Bác sĩ (Y đa khoa)
+
+Chào bạn, đây là hai ngành nghề danh giá hàng đầu nhưng có lộ trình đào tạo, môi trường làm việc và đặc thù hoàn toàn khác biệt. Dưới đây là bảng so sánh trọng tâm giúp bạn đưa ra định hướng chuẩn xác:
+
+---
+
+#### 1. 📚 Thời gian đào tạo & Khối thi xét tuyển
+* **Khoa học Máy tính (Computer Science):**
+  * **Thời gian học:** 4 – 4.5 năm (Cử nhân / Kỹ sư).
+  * **Khối thi phổ biến:** Khối A00 (Toán, Lý, Hóa), A01 (Toán, Lý, Anh), D01 (Toán, Văn, Anh), D07.
+  * **Độ cập nhật kiến thức:** Cực kỳ nhanh; công nghệ mới (AI, Cloud, Big Data) ra mắt liên tục đòi hỏi tự học suốt đời.
+
+* **Bác sĩ (Y Đa khoa / Chuyên khoa):**
+  * **Thời gian học:** 6 năm đại học + 18 tháng thực hành lâm sàng lấy chứng chỉ hành nghề (CCHN) + 2 – 3 năm Bác sĩ Nội trú / Chuyên khoa I (Tổng cộng: 7.5 – 9 năm để độc lập hành nghề).
+  * **Khối thi phổ biến:** Khối B00 (Toán, Hóa, Sinh).
+  * **Độ cập nhật kiến thức:** Cần sự chuẩn xác tuyệt đối, tích lũy kinh nghiệm lâm sàng dày dặn qua hàng ngàn ca bệnh.
+
+---
+
+#### 2. 💼 Môi trường làm việc & Tính chất công việc
+* **Khoa học Máy tính:**
+  * **Môi trường:** Doanh nghiệp công nghệ, Startup, ngân hàng, hoặc làm việc từ xa (Remote) cho các tập đoàn đa quốc gia.
+  * **Tính chất:** Ngồi làm việc với máy tính, giải quyết bài toán thuật toán, tối ưu hiệu năng, xây dựng phần mềm/hệ thống.
+  * **Áp lực:** Deadline dự án, OT khi triển khai hệ thống, nguy cơ bị đào thải nhanh nếu không nâng cấp công nghệ.
+
+* **Bác sĩ:**
+  * **Môi trường:** Bệnh viện công/tư, phòng khám, viện nghiên cứu y học, trung tâm y tế.
+  * **Tính chất:** Tiếp xúc trực tiếp với bệnh nhân và người nhà, khám chữa bệnh, phẫu thuật, cấp cứu.
+  * **Áp lực:** Trực đêm, trách nhiệm sinh mạng con người rất nặng nề, áp lực tâm lý và cường độ làm việc cao.
+
+---
+
+#### 3. 💰 Thu nhập & Tiềm năng phát triển
+* **Khoa học Máy tính:**
+  * **Mới tốt nghiệp:** 10 – 20 triệu VNĐ/tháng.
+  * **Sau 3 – 5 năm (Senior/Lead):** 35 – 80+ triệu VNĐ/tháng. Cơ hội nhận lương đô-la ($2,000 – $5,000+) khi làm cho thị trường US/EU/Singapore.
+  * **Đỉnh cao sự nghiệp:** Có thể đạt thu nhập cao từ rất sớm (25 – 30 tuổi).
+
+* **Bác sĩ:**
+  * **Giai đoạn đầu (học nghề & nội trú):** Thu nhập khiêm tốn (5 – 12 triệu VNĐ/tháng), phải đầu tư nhiều năm học tập.
+  * **Sau khi có tay nghề & thương hiệu (32 – 40 tuổi):** Thu nhập tăng trưởng vượt bậc và cực kỳ bền vững (30 – 100+ triệu VNĐ/tháng từ bệnh viện, phòng khám tư nhân, cố vấn y khoa).
+  * **Đỉnh cao sự nghiệp:** Tuổi nghề rất dài, càng lớn tuổi kinh nghiệm càng quý giá và được kính trọng.
+
+---
+
+#### 4. 🎯 Lời khuyên chọn ngành: Bạn phù hợp với ngành nào?
+* **Nên chọn Khoa học Máy tính nếu:** Bạn yêu thích tư duy logic, toán học, máy tính, thích sáng tạo công nghệ, mong muốn sự linh hoạt và muốn có thu nhập bứt phá sớm.
+* **Nên chọn Y khoa / Bác sĩ nếu:** Bạn có lòng trắc ẩn, kiên nhẫn, chịu được áp lực cao, có đam mê sâu sắc với việc chữa bệnh cứu người và sẵn sàng theo đuổi chặng đường học tập dài hạn.
+
+Bạn đang thiên về khối thi nào (A hay B) và thế mạnh tính cách của bạn ra sao? Hãy chia sẻ thêm để mình phân tích cơ hội trúng tuyển và lộ trình chi tiết nhé!`;
   }
 
   // 1. Salary & Promotion Analysis (ProgressBoard)
@@ -505,10 +564,18 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    for (const key of keys) {
+    const keyCandidates: (string | undefined)[] = keys.length > 0 ? keys : [undefined];
+
+    for (const key of keyCandidates) {
       try {
-        const ai = new GoogleGenAI({ 
+        const ai = key ? new GoogleGenAI({ 
           apiKey: key,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build'
+            }
+          }
+        }) : new GoogleGenAI({
           httpOptions: {
             headers: {
               'User-Agent': 'aistudio-build'
