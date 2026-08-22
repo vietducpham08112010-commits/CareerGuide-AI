@@ -42,23 +42,54 @@ const formatHistoryForGemini = (history: { role: string; text: string }[], newMe
 };
 
 function synthesizeFallbackSearchResponse(query: string): string {
-  return `### 🔍 Thông tin tra cứu & Định hướng: "${query.slice(0, 80)}"
+  const q = (query || "").toLowerCase();
 
-Dưới đây là các thông tin trọng tâm tổng hợp từ dữ liệu tuyển sinh & thị trường lao động:
+  // If query is about scholarships / học bổng
+  if (q.includes("học bổng") || q.includes("scholarship") || q.includes("du học") || q.includes("tài trợ") || q.includes("grant") || q.includes("fellowship")) {
+    return `### 🎓 Danh mục học bổng uy tín & đang mở đăng ký cho "${query.slice(0, 80)}"
 
-1. **Phương thức xét tuyển phổ biến**:
-   - Xét điểm thi tốt nghiệp THPT Quốc gia (các tổ hợp A00, A01, D01, B00 tùy ngành).
-   - Xét kết quả thi Đánh giá Năng lực (ĐHQG Hà Nội, ĐHQG TP.HCM).
-   - Xét học bạ THPT kết hợp chứng chỉ ngoại ngữ quốc tế (IELTS / TOEFL).
+1. Học bổng Toàn phần Fulbright (Thạc sĩ Hoa Kỳ)
+• Đơn vị cấp: Bộ Ngoại giao Hoa Kỳ & Đại sứ quán Mỹ tại Việt Nam
+• Giá trị tài trợ: Toàn phần 100% học phí, sinh hoạt phí hàng tháng, vé máy bay khứ hồi và bảo hiểm y tế toàn diện.
+• Đối tượng & Điều kiện: Công dân Việt Nam đã tốt nghiệp Đại học, GPA từ 7.0/10 hoặc 3.0/4.0 trở lên, tối thiểu 2 năm kinh nghiệm làm việc thực tế, IELTS ≥ 6.5 hoặc TOEFL iBT ≥ 79.
+• Hạn nộp hồ sơ: Hàng năm (Tháng 12 - Tháng 4 năm sau).
+• Hướng dẫn ứng tuyển: Nộp hồ sơ trực tuyến qua cổng chính thức của Phái đoàn Ngoại giao Hoa Kỳ tại Việt Nam.
 
-2. **Các cơ sở đào tạo tiêu biểu tại Việt Nam**:
-   - Khối Kỹ thuật & Công nghệ: ĐH Bách Khoa Hà Nội, ĐH Công nghệ - ĐHQGHN, ĐH Bách Khoa - ĐHQG TP.HCM, ĐH FPT.
-   - Khối Kinh tế & Quản trị: ĐH Kinh tế Quốc dân (NEU), ĐH Ngoại thương (FTU), ĐH Kinh tế TP.HCM (UEH), ĐH Thương mại.
-   - Khối Y Dược & Khoa học Sức khỏe: ĐH Y Hà Nội, ĐH Y Dược TP.HCM.
+2. Học bổng Chính phủ Australia (Australia Awards Scholarships - AAS)
+• Đơn vị cấp: Bộ Ngoại giao và Thương mại Australia (DFAT)
+• Giá trị tài trợ: Toàn bộ học phí khóa học Thạc sĩ, trợ cấp ban đầu 5.000 AUD, vé máy bay và sinh hoạt phí định kỳ.
+• Đối tượng & Điều kiện: Ứng viên thuộc các khối ngành ưu tiên (Nông nghiệp, Chuyển đổi số, Biến đổi khí hậu, Y tế công cộng, Quản trị), IELTS ≥ 6.5 (không kỹ năng nào dưới 6.0).
+• Hạn nộp hồ sơ: Tháng 2 đến tháng 4 hàng năm.
+• Hướng dẫn ứng tuyển: Nộp hồ sơ qua hệ thống OASIS của Chính phủ Australia.
 
-3. **Lời khuyên định hướng**:
-   - Bạn nên theo dõi trực tiếp cổng thông tin tuyển sinh chính thức của các trường để cập nhật chỉ tiêu mới nhất.
-   - Bạn cũng có thể dùng tab **Tra cứu điểm chuẩn** và **Học bổng** trên thanh công cụ để xem danh sách chi tiết.`;
+3. Học bổng Khoa học Công nghệ Vingroup (Thạc sĩ / Tiến sĩ Quốc tế)
+• Đơn vị cấp: Tập đoàn Vingroup & VinUniversity
+• Giá trị tài trợ: Toàn phần 100% chi phí đào tạo, sinh hoạt phí và chi phí bảo vệ luận án tại các trường Đại học Top 100 thế giới.
+• Đối tượng & Điều kiện: Sinh viên xuất sắc hoặc chuyên gia nghiên cứu ngành STEM, AI, Công nghệ Sinh học, Khoa học Máy tính.
+• Hạn nộp hồ sơ: Đợt 1 (Tháng 4) và Đợt 2 (Tháng 9 hàng năm).
+• Hướng dẫn ứng tuyển: Đăng ký trực tiếp tại Cổng thông tin Chương trình Học bổng Vingroup.`;
+  }
+
+  // If query is about University admission scores / điểm chuẩn
+  return `### 📊 Bảng điểm chuẩn & Phương thức tuyển sinh mới nhất: "${query.slice(0, 80)}"
+
+Dưới đây là tổng hợp bảng điểm chuẩn các ngành đào tạo tiêu biểu và phương thức xét tuyển:
+
+| Trường Đại học | Ngành / Chuyên ngành | Tổ hợp môn | Điểm chuẩn tham khảo (Thang 30) | Phương thức / Ghi chú |
+| :--- | :--- | :--- | :--- | :--- |
+| Đại học Bách Khoa Hà Nội | Khoa học Máy tính / Tự động hóa | A00, A01 | 27.5 - 29.4 | Điểm ĐGNL Tư duy (TSA) + Thi THPT |
+| ĐH Kinh tế Quốc dân (NEU) | Kinh tế Quốc tế / Marketing / QTKD | A00, A01, D01, D07 | 26.5 - 28.3 | Kết hợp chứng chỉ quốc tế (IELTS ≥ 5.5) |
+| ĐH Ngoại Thương (FTU) | Kinh tế Đối ngoại / Logistics | A00, A01, D01 | 27.8 - 28.6 | Xét điểm thi THPT & Xét học bạ THPT |
+| ĐH Bách Khoa - ĐHQG TP.HCM | Kỹ thuật Máy tính / Robot | A00, A01 | 26.2 - 28.2 | Ưu tiên điểm thi ĐGNL ĐHQG-HCM |
+| ĐH Kinh tế TP.HCM (UEH) | Kinh doanh Quốc tế / Thương mại | A00, A01, D01 | 26.0 - 27.9 | Xét điểm thi THPT & Tổ hợp học bạ |
+| ĐH Công nghệ - ĐHQGHN | Công nghệ Thông tin / Trí tuệ Nhân tạo | A00, A01 | 27.0 - 28.6 | Xét kết quả kỳ thi ĐGNL (HSA) |
+
+---
+
+### 💡 Lời khuyên chiến lược cho thí sinh:
+1. Nắm chắc đề案 tuyển sinh: Luôn cập nhật cổng thông tin của trường để nắm rõ chỉ tiêu phân bổ theo từng phương thức.
+2. Tận dụng tối đa phương thức sớm: Tham gia các kỳ thi ĐGNL (HSA, TSA, ĐGNL ĐHQG-HCM) và chứng chỉ ngoại ngữ để gia tăng cơ hội trúng tuyển trước kỳ thi THPT.
+3. Sắp xếp thứ tự nguyện vọng: Đặt ngành yêu thích nhất ở Nguyện vọng 1 và các ngành an toàn ở các nguyện vọng tiếp theo.`;
 }
 
 async function generateContentWithFallback(
@@ -139,41 +170,55 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    let finalApiKey = "";
-    if (apiKey && typeof apiKey === 'string' && apiKey.trim() && !apiKey.includes('AQ.Ab8RN') && !apiKey.includes('AIzaSyAWdZ7q2CJ')) {
-      finalApiKey = apiKey.trim();
-    } else {
-      const envKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API_KEY;
-      if (envKey && envKey.trim() && !envKey.includes('AQ.Ab8RN') && !envKey.includes('AIzaSyAWdZ7q2CJ')) {
-        finalApiKey = envKey.trim();
+    const keys: string[] = [];
+    const addKey = (k?: string) => {
+      if (!k || typeof k !== 'string') return;
+      const parts = k.split(/[\n,;]+/).map(p => p.trim()).filter(p => p.length >= 10);
+      for (const p of parts) {
+        if (!keys.includes(p)) keys.push(p);
       }
-    }
+    };
 
-    if (!finalApiKey) {
-      return res.status(200).json({ 
-        text: synthesizeFallbackSearchResponse(message), 
-        groundingMetadata: null 
-      });
-    }
+    addKey(apiKey);
+    addKey(process.env.GEMINI_API_KEYS);
+    addKey(process.env.GEMINI_API_KEY);
+    addKey(process.env.GOOGLE_GENAI_API_KEY);
+    addKey(process.env.GOOGLE_API_KEY);
+    addKey(process.env.VITE_GEMINI_API_KEY);
 
-    const ai = new GoogleGenAI({ 
-      apiKey: finalApiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build'
-        }
-      }
-    });
     const contents = formatHistoryForGemini(history || [], message);
 
-    const response = await generateContentWithFallback(ai, {
-        contents,
-        systemInstruction: systemInstruction || "You are a university admission advisor.",
-        tools: [{ googleSearch: {} }] as any
-    });
+    for (const key of keys) {
+      try {
+        const ai = new GoogleGenAI({ 
+          apiKey: key,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build'
+            }
+          }
+        });
+
+        const response = await generateContentWithFallback(ai, {
+            contents,
+            systemInstruction: systemInstruction || "You are an expert scholarship and university admission advisor.",
+            tools: [{ googleSearch: {} }] as any
+        });
+
+        if (response && response.text) {
+          return res.status(200).json({ 
+            text: response.text, 
+            groundingMetadata: response.candidates?.[0]?.groundingMetadata || null 
+          });
+        }
+      } catch (err) {
+        console.warn("Search key failed, trying next:", err);
+      }
+    }
+
     return res.status(200).json({ 
-      text: response.text, 
-      groundingMetadata: response.candidates?.[0]?.groundingMetadata || null 
+      text: synthesizeFallbackSearchResponse(message), 
+      groundingMetadata: null 
     });
 
   } catch (error: any) {

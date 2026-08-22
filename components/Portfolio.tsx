@@ -236,7 +236,7 @@ export const Portfolio: React.FC<PortfolioProps> = ({ user, language, theme, onU
             ) : (
               user.portfolio.map((item, index) => (
                 <motion.div 
-                  key={item.id}
+                  key={item.id ? `${item.id}-${index}` : `pf-item-${index}`}
                   initial={{ opacity: 0, x: -20, scale: 0.95 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9, y: -20 }}

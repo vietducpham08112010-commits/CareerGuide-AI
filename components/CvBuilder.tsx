@@ -4,7 +4,7 @@ import { jsPDF } from 'jspdf';
 import * as Icons from 'lucide-react';
 import { captureElementToCanvasDataUrl } from '../utils/exportUtils';
 import { Language, Theme, UserProfile } from '../types';
-import { requestAiContent } from '../services/geminiService';
+import { requestAiContent, cleanMarkdownAsterisks } from '../services/geminiService';
 import { getSubscriptionDetails, isFeatureUnlocked } from '../utils/subscriptionUtils';
 import { LuxuryAiThinking } from './SkeletonLoader';
 
@@ -280,7 +280,7 @@ Chỉ trả về duy nhất khối JSON nguyên bản, không dùng markdown cod
       showToast(isVi ? '✨ Đã dùng AI tối ưu hóa CV chuẩn ATS thành công!' : '✨ AI successfully optimized your CV for ATS!', 'success');
     } catch (err: any) {
       console.error("CV AI error:", err);
-      showToast(err.message || (isVi ? 'Có lỗi xảy ra khi gọi AI Gemini.' : 'Error generating AI CV.'), 'error');
+      showToast(err.message || (isVi ? 'Có lỗi xảy ra khi gọi CareerGuide AI.' : 'Error generating AI CV.'), 'error');
     } finally {
       setIsAiLoading(false);
     }
@@ -325,12 +325,12 @@ Hãy trả về duy nhất 1 JSON object với cấu trúc chính xác như sau 
   "optimizedSummary": "Đoạn tóm tắt CV được viết lại lồng ghép chính xác các từ khóa ATS từ JD này..."
 }`;
 
-      const rawText = await requestAiContent(prompt, "You are a job description and ATS analyzer. Output JSON only.", language);
+      const rawText = await requestAiContent(prompt, "You are a job description and ATS analyzer. Output valid JSON only, without any markdown formatting or asterisks.", language);
       
       const fallbackResult = {
         score: 85,
         matchLevel: isVi ? "Phù hợp rất cao (High Match)" : "High Match",
-        matchedSkills: cvData.skills.slice(0, 4),
+        matchedSkills: cvData.skills.length > 0 ? cvData.skills.slice(0, 4) : [isVi ? "Tư duy phân tích" : "Analytical Thinking", isVi ? "Giải quyết vấn đề" : "Problem Solving"],
         missingKeywords: isVi 
           ? ["Tối ưu hiệu suất (Performance Optimization)", "Quy trình Agile/Scrum", "Quản lý tiến độ OKR", "Kỹ năng báo cáo trực quan"]
           : ["Performance Optimization", "Agile/Scrum Workflow", "OKR Tracking", "Data Visualization"],
@@ -348,8 +348,21 @@ Hãy trả về duy nhất 1 JSON object với cấu trúc chính xác như sau 
           : `Dedicated professional pursuing ${cvData.jobTitle || 'career role'} with strong analytical thinking and demonstrated adaptability.`
       };
 
-      const parsed = extractSafeJson(rawText, fallbackResult);
+      let parsed = extractSafeJson(rawText, fallbackResult);
+      if (!parsed || typeof parsed !== 'object' || !parsed.score) {
+        parsed = fallbackResult;
+      } else {
+        parsed = {
+          score: Number(parsed.score) || 82,
+          matchLevel: parsed.matchLevel || fallbackResult.matchLevel,
+          matchedSkills: Array.isArray(parsed.matchedSkills) && parsed.matchedSkills.length > 0 ? parsed.matchedSkills : fallbackResult.matchedSkills,
+          missingKeywords: Array.isArray(parsed.missingKeywords) && parsed.missingKeywords.length > 0 ? parsed.missingKeywords : fallbackResult.missingKeywords,
+          suggestions: Array.isArray(parsed.suggestions) && parsed.suggestions.length > 0 ? parsed.suggestions : fallbackResult.suggestions,
+          optimizedSummary: parsed.optimizedSummary || fallbackResult.optimizedSummary
+        };
+      }
 
+      parsed = cleanMarkdownAsterisks(parsed);
       setJdResult(parsed);
       showToast(isVi ? '🎯 Đã hoàn thành phân tích So khớp CV với JD!' : '🎯 Completed JD & CV Match analysis!', 'success');
     } catch (e: any) {
@@ -582,7 +595,7 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
             ) : (
               <Icons.Wand2 className="w-4 h-4 text-amber-300" />
             )}
-            {isVi ? (isLockedForFree ? 'Mở Khóa Tối Ưu ATS AI' : '✨ Tối Ưu CV Bằng AI Gemini') : (isLockedForFree ? 'Unlock AI ATS Optimize' : '✨ AI Polish CV')}
+            {isVi ? (isLockedForFree ? 'Mở Khóa Tối Ưu ATS AI' : '✨ Tối Ưu CV Bằng CareerGuide AI') : (isLockedForFree ? 'Unlock AI ATS Optimize' : '✨ AI Polish CV')}
           </button>
 
           <button

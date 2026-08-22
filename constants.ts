@@ -179,7 +179,7 @@ export const TRANSLATIONS = {
     // AI Config
     aiConfigTitle: 'AI Model Configuration',
     aiProvider: 'AI Provider',
-    providerGemini: 'Google Gemini',
+    providerGemini: 'CareerGuide AI',
     providerCustom: 'Custom (OpenAI)',
     providerN8N: 'n8n Workflow',
     endpointUrl: 'Endpoint URL',
@@ -421,7 +421,7 @@ export const TRANSLATIONS = {
     // AI Config
     aiConfigTitle: 'Cấu hình Mô hình AI',
     aiProvider: 'Nhà cung cấp AI',
-    providerGemini: 'Google Gemini',
+    providerGemini: 'CareerGuide AI',
     providerCustom: 'Tùy chỉnh (OpenAI)',
     providerN8N: 'n8n Workflow',
     endpointUrl: 'Đường dẫn Endpoint',

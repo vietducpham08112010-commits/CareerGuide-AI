@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Language, Theme, UserProfile } from '../types';
 import { getSubscriptionDetails } from '../utils/subscriptionUtils';
-import { getGeminiApiKey, cleanFrontEndErrorMessage } from '../services/geminiService';
+import { getGeminiApiKey, cleanFrontEndErrorMessage, cleanMarkdownAsterisks } from '../services/geminiService';
 import { InlineGuide } from './InlineGuide';
 import { LuxuryAiThinking } from './SkeletonLoader';
 
@@ -301,7 +301,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
 
       const parsedQuestions = extractJson(text);
       if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-        setQuestions(parsedQuestions);
+        setQuestions(parsedQuestions.map((q: string) => cleanMarkdownAsterisks(q)));
         setAnswers([]);
         setCurrentIdx(0);
         setCurrentAnswer('');
@@ -436,7 +436,7 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
         }
       };
 
-      const parsedRes: InterviewResult = extractJsonObj(text) || fallbackRubric;
+      const parsedRes: InterviewResult = cleanMarkdownAsterisks(extractJsonObj(text) || fallbackRubric);
       
       // Calculate categories dynamically if fallback required
       if (!parsedRes.categories) {
@@ -1030,8 +1030,8 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
                     </h3>
                     <p className="text-xs text-gray-500">
                       {language === Language.VI 
-                        ? "Dữ liệu cấu trúc gốc được xuất bản trực tiếp từ mô hình Gemini AI để lập biểu đồ và đánh giá năng lực." 
-                        : "Raw structured JSON output generated directly by the Gemini AI model to power analytics and rubrics."}
+                        ? "Dữ liệu cấu trúc gốc được xuất bản trực tiếp từ mô hình CareerGuide AI để lập biểu đồ và đánh giá năng lực." 
+                        : "Raw structured JSON output generated directly by the CareerGuide AI model to power analytics and rubrics."}
                     </p>
                   </div>
                   <button 

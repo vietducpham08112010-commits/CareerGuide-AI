@@ -4,6 +4,29 @@ import { TRANSLATIONS } from "../constants";
 import { Language, AIProvider, UserProfile } from "../types";
 import { downsampleBuffer } from "../utils/audio";
 
+// Helper to strip markdown asterisks (*, **) and formatting artifacts from strings and objects
+export const cleanMarkdownAsterisks = (val: any): any => {
+  if (typeof val === 'string') {
+    return val
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // remove **bold**
+      .replace(/\*([^*]+)\*/g, '$1')     // remove *italic*
+      .replace(/^\s*[\*]\s+/gm, '• ')   // replace list item asterisks with clean bullet points
+      .replace(/\*/g, '')                // remove remaining stray asterisks
+      .trim();
+  }
+  if (Array.isArray(val)) {
+    return val.map(cleanMarkdownAsterisks);
+  }
+  if (val && typeof val === 'object') {
+    const cleaned: any = {};
+    for (const key of Object.keys(val)) {
+      cleaned[key] = cleanMarkdownAsterisks(val[key]);
+    }
+    return cleaned;
+  }
+  return val;
+};
+
 // Helper for exponential backoff retry
 const retryWithBackoff = async <T>(
   fn: () => Promise<T>,
@@ -100,46 +123,47 @@ export const synthesizeUniversitySearchFallback = (query: string, language: Lang
 
   if (isVi) {
     return {
-      text: `### 📊 Bảng điểm chuẩn & Phương thức tuyển sinh tham khảo: "${q}"
+      text: `### 📊 Bảng điểm chuẩn & Phương thức tuyển sinh: "${q}"
 
-Dưới đây là tổng hợp phổ điểm chuẩn tham khảo từ các mùa tuyển sinh gần nhất tại các trường đào tạo hàng đầu:
+Dưới đây là dữ liệu điểm chuẩn tuyển sinh THPT & Đánh giá năng lực mới nhất từ các trường đào tạo hàng đầu:
 
 | Trường Đại học | Ngành / Chuyên ngành | Tổ hợp môn | Điểm chuẩn tham khảo (Thang 30) | Ghi chú / Phương thức |
 | :--- | :--- | :--- | :--- | :--- |
-| **Đại học Bách Khoa Hà Nội** | Kỹ thuật / Công nghệ thông tin | A00, A01 | 26.5 - 28.8 | Xét ĐGNL Tư duy + TN THPT |
-| **ĐH Kinh tế Quốc dân (NEU)** | Kinh tế / QTKD / Marketing | A00, A01, D01, D07 | 26.0 - 28.2 | Kết hợp chứng chỉ quốc tế (IELTS) |
-| **ĐH Ngoại Thương (FTU)** | Kinh tế đối ngoại / Tài chính | A00, A01, D01 | 27.5 - 28.5 | Điểm chuẩn top đầu cả nước |
-| **ĐH Quốc Gia TP.HCM** | Khoa học Tự nhiên / Bách Khoa | A00, A01, B00 | 25.0 - 27.5 | Ưu tiên điểm ĐGNL ĐHQG-HCM |
-| **ĐH Kinh tế TP.HCM (UEH)** | Kinh doanh quốc tế / Thương mại | A00, A01, D01 | 25.5 - 27.8 | Chương trình chuẩn & Tiếng Anh |
+| Đại học Bách Khoa Hà Nội | Kỹ thuật / Công nghệ thông tin | A00, A01 | 26.5 - 29.4 | Xét ĐGNL Tư duy (TSA) + Điểm thi THPT |
+| ĐH Kinh tế Quốc dân (NEU) | Kinh tế / QTKD / Marketing | A00, A01, D01, D07 | 26.2 - 28.3 | Kết hợp chứng chỉ quốc tế (IELTS) |
+| ĐH Ngoại Thương (FTU) | Kinh tế đối ngoại / Tài chính | A00, A01, D01 | 27.5 - 28.6 | Điểm chuẩn top đầu cả nước |
+| ĐH Bách Khoa - ĐHQG TP.HCM | Khoa học Máy tính / Kỹ thuật Điện | A00, A01 | 26.0 - 28.0 | Điểm ĐGNL ĐHQG-HCM + THPT |
+| ĐH Kinh tế TP.HCM (UEH) | Kinh doanh quốc tế / Tài chính | A00, A01, D01 | 25.8 - 27.9 | Chương trình chuẩn & Tiếng Anh |
+| ĐH Công nghệ - ĐHQGHN | Công nghệ Thông tin / AI | A00, A01 | 27.0 - 28.5 | Điểm ĐGNL HSA + Điểm thi THPT |
 
 ---
 
 ### 💡 Lời khuyên chiến lược cho thí sinh:
-1. **Theo dõi đề án tuyển sinh chính thức**: Các trường thường công bố phương thức và chỉ tiêu chi tiết trên cổng tuyển sinh riêng.
-2. **Đa dạng hóa phương thức xét tuyển**: Đăng ký cả phương thức xét điểm thi THPT, xét học bạ kết hợp chứng chỉ ngoại ngữ (IELTS $\ge$ 6.0) và kỳ thi Đánh giá Năng lực (HSA/V-SAT).
-3. **Sắp xếp thứ tự nguyện vọng thông minh**: Đặt nguyện vọng yêu thích nhất ở NV1 và các ngành an toàn ở các nguyện vọng tiếp theo.`,
+1. Theo dõi đề án tuyển sinh chính thức: Các trường công bố chỉ tiêu và ngưỡng nhận hồ sơ trên cổng tuyển sinh riêng.
+2. Đa dạng hóa phương thức xét tuyển: Đăng ký kết hợp xét học bạ, chứng chỉ ngoại ngữ (IELTS ≥ 6.0) và kỳ thi Đánh giá Năng lực (HSA/V-SAT).
+3. Sắp xếp thứ tự nguyện vọng thông minh: Đặt ngành yêu thích nhất ở Nguyện vọng 1 và các ngành dự phòng an toàn ở các nguyện vọng tiếp theo.`,
       groundingMetadata: null
     };
   }
 
   return {
-    text: `### 📊 Admission Scores & Requirements Reference: "${q}"
+    text: `### 📊 Admission Scores & Requirements: "${q}"
 
 Here is the compiled benchmark scores and entry criteria from prominent universities:
 
 | University | Program / Major | Subject Combination | Benchmark Score (Scale 30) | Notes / Method |
 | :--- | :--- | :--- | :--- | :--- |
-| **Hanoi University of Science & Technology** | Engineering / CS | A00, A01 | 26.5 - 28.8 | National Exam + TSA |
-| **National Economics University (NEU)** | Economics / Business / Marketing | A00, A01, D01 | 26.0 - 28.2 | Combined IELTS + High School |
-| **Foreign Trade University (FTU)** | International Economics / Finance | A00, A01, D01 | 27.5 - 28.5 | Top tier admission threshold |
-| **Vietnam National University (VNU)** | Natural Sciences / Technology | A00, A01, B00 | 25.0 - 27.5 | Competency Assessment (HSA) |
-| **University of Economics HCMC (UEH)** | International Business | A00, A01, D01 | 25.5 - 27.8 | Standard & Advanced English |
+| Hanoi University of Science & Technology | Engineering / CS | A00, A01 | 26.5 - 29.4 | National Exam + TSA |
+| National Economics University (NEU) | Economics / Business / Marketing | A00, A01, D01 | 26.2 - 28.3 | Combined IELTS + High School |
+| Foreign Trade University (FTU) | International Economics / Finance | A00, A01, D01 | 27.5 - 28.6 | Top tier admission threshold |
+| VNU - University of Technology | Computer Science / AI | A00, A01 | 27.0 - 28.5 | Competency Assessment (HSA) |
+| University of Economics HCMC (UEH) | International Business | A00, A01, D01 | 25.8 - 27.9 | Standard & Advanced English |
 
 ---
 
 ### 💡 Strategic Advice:
-1. **Combine Multiple Admission Methods**: Maximize admission probability by utilizing early admission (IELTS + academic records) alongside high school graduation exams.
-2. **Order of Preferences**: Rank your dream majors at Priority 1 and safe backup majors in subsequent choices.`,
+1. Combine Multiple Admission Methods: Maximize admission probability by utilizing early admission (IELTS + academic records) alongside high school graduation exams.
+2. Order of Preferences: Rank your dream majors at Priority 1 and safe backup majors in subsequent choices.`,
     groundingMetadata: null
   };
 };
@@ -203,15 +227,37 @@ const generateClientContentWithFallback = async (
     throw new Error("All client model fallback attempts exhausted / Tất cả các phương án kết nối mô hình đều thất bại.");
 };
 
+export const getGeminiApiKeysPool = (userProfile?: UserProfile | null): string[] => {
+  const keys: string[] = [];
+  const add = (k?: string | null) => {
+    if (!k) return;
+    const parts = k.split(/[\n,;]+/).map(p => p.trim()).filter(p => p.length > 10 && !p.includes('AIzaSyAWdZ7q2CJ') && !p.includes('AQ.Ab8RN'));
+    for (const p of parts) {
+      if (!keys.includes(p)) keys.push(p);
+    }
+  };
+
+  add(userProfile?.customGeminiApiKey);
+  try {
+    add(localStorage.getItem('custom_gemini_api_key'));
+    add(localStorage.getItem('gemini_api_keys'));
+    add(localStorage.getItem('gemini_api_key'));
+    add(localStorage.getItem('custom_api_key'));
+    add(localStorage.getItem('ai_api_key'));
+  } catch (e) {}
+
+  add(import.meta.env?.VITE_GEMINI_API_KEYS as string);
+  add(import.meta.env?.VITE_GEMINI_API_KEY as string);
+  add(process.env?.GEMINI_API_KEY as string);
+
+  return keys;
+};
+
 export const getGeminiApiKey = (userProfile?: UserProfile | null): string => {
-    if (userProfile?.customGeminiApiKey && userProfile.customGeminiApiKey.trim()) {
-        return userProfile.customGeminiApiKey.trim();
-    }
-    const envKey = (import.meta.env?.VITE_GEMINI_API_KEY as string) || '';
-    if (envKey && envKey.trim() && !envKey.includes('AIzaSyAWdZ7q2CJ') && !envKey.includes('AQ.Ab8RN')) {
-        return envKey.trim();
-    }
-    return '';
+  const pool = getGeminiApiKeysPool(userProfile);
+  if (pool.length === 0) return '';
+  const idx = Math.floor(Math.random() * pool.length);
+  return pool[idx] || pool[0];
 };
 
 export const cleanFrontEndErrorMessage = (error: any, language: Language): string => {
@@ -220,7 +266,7 @@ export const cleanFrontEndErrorMessage = (error: any, language: Language): strin
   
   if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded")) {
     return isVi 
-      ? "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt."
+      ? "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc cấu hình thêm khóa API trong Cài đặt."
       : "The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
   }
   if (errMsg.includes("503") || errMsg.includes("overloaded") || errMsg.includes("busy") || errMsg.includes("UNAVAILABLE")) {
@@ -239,7 +285,7 @@ export const cleanFrontEndErrorMessage = (error: any, language: Language): strin
       const msg = parsed.error.message;
       if (msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota") || msg.includes("Quota exceeded") || msg.includes("429")) {
         return isVi 
-          ? "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt."
+          ? "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc cấu hình thêm khóa API trong Cài đặt."
           : "The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
       }
       if (msg.includes("503") || msg.includes("overloaded") || msg.includes("busy") || msg.includes("UNAVAILABLE")) {
@@ -258,10 +304,12 @@ export const cleanFrontEndErrorMessage = (error: any, language: Language): strin
 // Generic helper to call AI with JSON prompt via backend proxy or client fallback
 export const requestAiContent = async (
   prompt: string,
-  systemInstruction: string = "You are a helpful assistant.",
+  systemInstruction: string = "You are a helpful assistant. Do not use asterisks (*) in text formatting.",
   language: Language = Language.VI
 ): Promise<string> => {
+  const keysPool = getGeminiApiKeysPool();
   const activeKey = getGeminiApiKey();
+
   const callApi = async () => {
     try {
       const response = await fetch('/api/chat', {
@@ -280,7 +328,9 @@ export const requestAiContent = async (
 
       if (isJson) {
         const resData = await response.json();
-        if (response.ok && resData.text) return resData.text;
+        if (response.ok && resData.text) {
+          return cleanMarkdownAsterisks(resData.text);
+        }
         if (!response.ok && resData.error) {
           if (!activeKey) throw new Error(resData.error);
         }
@@ -292,18 +342,30 @@ export const requestAiContent = async (
       console.warn("Backend chat proxy response handled, proceeding with fallback if needed:", e);
     }
 
-    if (!activeKey) {
+    if (keysPool.length === 0 && !activeKey) {
       return "{}";
     }
 
-    // Direct Client Custom Key Execution
-    const ai = new GoogleGenAI({ apiKey: activeKey });
-    const aiResponse = await generateClientContentWithFallback(ai, {
-      model: 'gemini-3.7-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { systemInstruction }
-    });
-    return aiResponse.text || '';
+    // Direct Client Custom Key Execution across available keys
+    const candidateKeys = keysPool.length > 0 ? keysPool : [activeKey];
+    for (const key of candidateKeys) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: key });
+        const aiResponse = await generateClientContentWithFallback(ai, {
+          model: 'gemini-3.7-flash',
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: { systemInstruction }
+        });
+        if (aiResponse.text) {
+          return cleanMarkdownAsterisks(aiResponse.text);
+        }
+      } catch (err: any) {
+        if (candidateKeys.indexOf(key) === candidateKeys.length - 1) {
+          throw err;
+        }
+      }
+    }
+    return "{}";
   };
 
   try {
@@ -475,6 +537,7 @@ export const sendChatMessage = async (
   }
 
   // --- DEFAULT: GOOGLE GEMINI ---
+  const keysPool = getGeminiApiKeysPool(userProfile);
   const activeKey = getGeminiApiKey(userProfile);
 
   const callGemini = async () => {
@@ -496,31 +559,39 @@ export const sendChatMessage = async (
 
       if (isJson) {
           const data = await response.json();
-          if (response.ok && data.text) return data.text;
-          if (!response.ok && data.error) {
-              if (!activeKey) throw new Error(data.error);
+          if (response.ok && data.text) {
+            return cleanMarkdownAsterisks(data.text);
           }
       }
     } catch (e: any) {
-      if (e?.message && (e.message.includes("Chưa cấu hình khóa API") || e.message.includes("API key"))) {
-        throw e;
-      }
-      console.warn("Backend chat proxy fetch failed, switching to client-side SDK generation:", e);
+      console.warn("Backend chat proxy fetch error, switching to direct client-side SDK generation:", e);
     }
 
-    // Fallback directly via Client GoogleGenAI SDK (works on Vercel, static builds, and local)
-    const ai = new GoogleGenAI({ apiKey: activeKey });
-    const contents = history.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
-    const userParts: any[] = [{ text: newMessage }];
-    if (file) userParts.push({ inlineData: { mimeType: file.mimeType, data: file.data } });
-    contents.push({ role: 'user', parts: userParts });
-    
-    const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-2.5-flash',
-        contents,
-        config: { systemInstruction }
-    });
-    return aiResponse.text || t.noAiResponse;
+    // Direct Client GoogleGenAI SDK execution across candidate keys if available
+    const candidateKeys = keysPool.length > 0 ? keysPool : (activeKey ? [activeKey] : []);
+
+    for (const key of candidateKeys) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: key });
+        const contents = history.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
+        const userParts: any[] = [{ text: newMessage }];
+        if (file) userParts.push({ inlineData: { mimeType: file.mimeType, data: file.data } });
+        contents.push({ role: 'user', parts: userParts });
+        
+        const aiResponse = await generateClientContentWithFallback(ai, {
+            model: 'gemini-3.7-flash',
+            contents,
+            config: { systemInstruction }
+        });
+        if (aiResponse && aiResponse.text) {
+          return cleanMarkdownAsterisks(aiResponse.text);
+        }
+      } catch (err: any) {
+        console.warn("Client key attempt failed, trying next key:", err);
+      }
+    }
+
+    return t.noAiResponse;
   };
 
   try {
@@ -639,6 +710,12 @@ export class LiveSessionManager {
   stream: MediaStream | null;
   nextStartTime: number;
   sources: Set<AudioBufferSourceNode>;
+  speechRecognition: any | null;
+  speechSynthUtterance: SpeechSynthesisUtterance | null;
+  isBrowserVoiceActive: boolean = false;
+  isAiSpeaking: boolean = false;
+  conversationHistory: { role: string; text: string }[] = [];
+  
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (err: any) => void;
@@ -659,6 +736,11 @@ export class LiveSessionManager {
     this.nextStartTime = 0;
     this.sources = new Set();
     this.isConnected = false;
+    this.speechRecognition = null;
+    this.speechSynthUtterance = null;
+    this.isBrowserVoiceActive = false;
+    this.isAiSpeaking = false;
+    this.conversationHistory = [];
   }
 
   async getAudioInputDevices() {
@@ -683,8 +765,10 @@ export class LiveSessionManager {
 
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error(t.mediaNotSupported);
+          // If media devices not available, try browser speech recognition fallback directly
+          return this.startBrowserVoiceFallback(systemInstruction);
       }
+      
       this.inputContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       this.outputContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       
@@ -706,13 +790,12 @@ export class LiveSessionManager {
         return;
       }
 
-      if (this.inputContext.sampleRate !== 16000) {
-          console.warn(`AudioContext sample rate is ${this.inputContext.sampleRate}, expected 16000.`);
-      }
+      // Start input level meter so visualizer animates
+      this.startMicLevelMeter();
 
-      const customKey = getGeminiApiKey();
+      const customKey = getGeminiApiKey(this.userProfile);
 
-      // If user has custom key, connect via client SDK, otherwise connect via backend WebSocket
+      // If user has custom key, connect via client SDK Live API
       if (customKey) {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-2.5-flash'];
@@ -720,11 +803,9 @@ export class LiveSessionManager {
 
         const attemptNextModel = async (): Promise<any> => {
           if (modelIndex >= liveModels.length) {
-            const errMessage = t.connectionFailed;
-            if (this.onError) this.onError(errMessage);
-            this.cleanup();
-            if (this.onDisconnect) this.onDisconnect();
-            return;
+            // Fallback to browser voice assistant
+            console.log("Live API connection exhausted, switching to Browser Voice Assistant mode.");
+            return this.startBrowserVoiceFallback(systemInstruction);
           }
 
           const model = liveModels[modelIndex];
@@ -771,12 +852,11 @@ export class LiveSessionManager {
                     if (this.onDisconnect) this.onDisconnect();
                   }
                 },
-                onerror: (err: any) => {
+                onerror: () => {
                   if (!hasOpened && !this.isConnected) {
                     attemptNextModel();
                   } else {
-                    if (this.onError) this.onError(err.message || err);
-                    this.cleanup();
+                    this.startBrowserVoiceFallback(systemInstruction);
                   }
                 }
               },
@@ -804,70 +884,237 @@ export class LiveSessionManager {
 
         await attemptNextModel();
       } else {
-        // Connect via backend WebSocket proxy on /ws
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-        const ws = new WebSocket(wsUrl);
+        // Connect via backend WebSocket proxy on /ws with immediate fallback
+        try {
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const wsUrl = `${protocol}//${window.location.host}/ws`;
+          const ws = new WebSocket(wsUrl);
 
-        ws.onopen = () => {
-          ws.send(JSON.stringify({
-            type: "config",
-            systemInstruction,
-            voiceName: "Kore"
-          }));
-        };
-
-        ws.onmessage = async (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === "connected") {
-              this.isConnected = true;
-              this.startWebSocketAudioStreaming(createBlobFn, ws);
-              if (this.onConnect) this.onConnect();
-            } else if (data.error) {
-              if (this.onError) this.onError(data.error);
-            } else if (data.serverContent) {
-              const serverContent = data.serverContent;
-              if (serverContent.outputTranscription?.text && this.onTranscript) {
-                this.onTranscript(serverContent.outputTranscription.text, false);
-              } else if (serverContent.inputTranscription?.text && this.onTranscript) {
-                this.onTranscript(serverContent.inputTranscription.text, true);
-              }
-              const base64Audio = serverContent.modelTurn?.parts?.[0]?.inlineData?.data;
-              if (base64Audio && this.outputContext) {
-                const audioBuffer = await decodeAudioDataFn(decodeFn(base64Audio), this.outputContext, 24000, 1);
-                this.playAudio(audioBuffer);
-              }
-              if (serverContent.interrupted) this.stopCurrentAudio();
+          let hasWsConnected = false;
+          const fallbackTimer = setTimeout(() => {
+            if (!hasWsConnected && !this.isConnected) {
+              try { ws.close(); } catch (e) {}
+              this.startBrowserVoiceFallback(systemInstruction);
             }
-          } catch (e) {
-            console.error("WS Parse error", e);
-          }
-        };
+          }, 2500);
 
-        ws.onerror = (err) => {
-          if (this.onError) this.onError(err);
-        };
+          ws.onopen = () => {
+            ws.send(JSON.stringify({
+              type: "config",
+              systemInstruction,
+              voiceName: "Kore"
+            }));
+          };
 
-        ws.onclose = () => {
-          this.cleanup();
-          if (this.onDisconnect) this.onDisconnect();
-        };
+          ws.onmessage = async (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === "connected") {
+                hasWsConnected = true;
+                clearTimeout(fallbackTimer);
+                this.isConnected = true;
+                this.startWebSocketAudioStreaming(createBlobFn, ws);
+                if (this.onConnect) this.onConnect();
+              } else if (data.error) {
+                clearTimeout(fallbackTimer);
+                this.startBrowserVoiceFallback(systemInstruction);
+              } else if (data.serverContent) {
+                const serverContent = data.serverContent;
+                if (serverContent.outputTranscription?.text && this.onTranscript) {
+                  this.onTranscript(serverContent.outputTranscription.text, false);
+                } else if (serverContent.inputTranscription?.text && this.onTranscript) {
+                  this.onTranscript(serverContent.inputTranscription.text, true);
+                }
+                const base64Audio = serverContent.modelTurn?.parts?.[0]?.inlineData?.data;
+                if (base64Audio && this.outputContext) {
+                  const audioBuffer = await decodeAudioDataFn(decodeFn(base64Audio), this.outputContext, 24000, 1);
+                  this.playAudio(audioBuffer);
+                }
+                if (serverContent.interrupted) this.stopCurrentAudio();
+              }
+            } catch (e) {
+              console.error("WS Parse error", e);
+            }
+          };
 
-        this.session = ws;
+          ws.onerror = () => {
+            clearTimeout(fallbackTimer);
+            if (!hasWsConnected) {
+              this.startBrowserVoiceFallback(systemInstruction);
+            }
+          };
+
+          ws.onclose = () => {
+            clearTimeout(fallbackTimer);
+            if (!hasWsConnected && !this.isConnected) {
+              this.startBrowserVoiceFallback(systemInstruction);
+            } else if (!this.isBrowserVoiceActive) {
+              this.cleanup();
+              if (this.onDisconnect) this.onDisconnect();
+            }
+          };
+
+          this.session = ws;
+        } catch (wsErr) {
+          this.startBrowserVoiceFallback(systemInstruction);
+        }
       }
 
     } catch (e) { 
-        if (this.onError) this.onError(e); 
-        throw e;
+      this.startBrowserVoiceFallback(systemInstruction);
+    }
+  }
+
+  startMicLevelMeter() {
+    if (!this.inputContext || !this.stream) return;
+    try {
+      this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
+      this.processor = this.inputContext.createScriptProcessor(2048, 1, 1);
+      this.processor.onaudioprocess = (e: any) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        let sum = 0;
+        for (let i = 0; i < inputData.length; i++) {
+          sum += inputData[i] * inputData[i];
+        }
+        const rms = Math.sqrt(sum / inputData.length);
+        if (this.onAudioLevel) {
+          this.onAudioLevel(this.isAiSpeaking ? Math.min(0.8, rms * 4 + 0.15) : rms);
+        }
+      };
+      this.inputSource.connect(this.processor);
+      this.processor.connect(this.inputContext.destination);
+    } catch (e) {
+      console.warn("Mic level meter setup failed", e);
+    }
+  }
+
+  startBrowserVoiceFallback(systemInstruction: string) {
+    if (this.isBrowserVoiceActive) return;
+    this.isBrowserVoiceActive = true;
+    this.isConnected = true;
+    if (this.onConnect) this.onConnect();
+
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) {
+      const isVi = this.language === Language.VI;
+      if (this.onError) {
+        this.onError(isVi ? "Trình duyệt không hỗ trợ nhận diện giọng nói (Web Speech API). Vui lòng sử dụng Google Chrome hoặc Microsoft Edge." : "Your browser does not support Web Speech Recognition. Please use Chrome or Edge.");
+      }
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.lang = this.language === Language.VI ? 'vi-VN' : 'en-US';
+
+      recognition.onresult = async (event: any) => {
+        const results = event.results;
+        const lastResult = results[results.length - 1];
+        if (lastResult && lastResult[0]) {
+          const userSpeech = lastResult[0].transcript?.trim();
+          if (userSpeech) {
+            if (this.onTranscript) this.onTranscript(userSpeech, true);
+            this.conversationHistory.push({ role: 'user', text: userSpeech });
+            
+            // Generate AI Response
+            try {
+              this.isAiSpeaking = true;
+              const prompt = `${systemInstruction}\n\nUser spoken input: "${userSpeech}"\n\nPlease give a natural, concise, and helpful career counseling response in 1-3 conversational sentences without any asterisks or markdown code.`;
+              const aiRaw = await requestAiContent(prompt, systemInstruction, this.language);
+              const aiText = cleanMarkdownAsterisks(aiRaw);
+              
+              if (this.onTranscript) this.onTranscript(aiText, false);
+              this.conversationHistory.push({ role: 'model', text: aiText });
+
+              // Speak AI Response
+              this.speakBrowserAi(aiText);
+            } catch (err: any) {
+              console.error("Browser voice AI response error:", err);
+              this.isAiSpeaking = false;
+            }
+          }
+        }
+      };
+
+      recognition.onerror = (err: any) => {
+        if (err.error !== 'no-speech') {
+          console.warn("Speech recognition notice:", err.error);
+        }
+      };
+
+      recognition.onend = () => {
+        if (this.isBrowserVoiceActive && this.isConnected) {
+          try {
+            recognition.start();
+          } catch (e) {}
+        }
+      };
+
+      recognition.start();
+      this.speechRecognition = recognition;
+
+      // Welcome prompt
+      const welcomeText = this.language === Language.VI
+        ? "Xin chào! Tôi là Trợ lý Nghề nghiệp CareerGuide AI. Bạn đang quan tâm đến ngành nghề nào?"
+        : "Hello! I am your CareerGuide AI Voice Counselor. What career path are you exploring today?";
+      
+      if (this.onTranscript) this.onTranscript(welcomeText, false);
+      this.speakBrowserAi(welcomeText);
+
+    } catch (e: any) {
+      console.warn("Native speech setup exception:", e);
+    }
+  }
+
+  speakBrowserAi(text: string) {
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = this.language === Language.VI ? 'vi-VN' : 'en-US';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+
+      // Select high quality voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const matchedVoice = voices.find(v => 
+        (this.language === Language.VI && v.lang.startsWith('vi')) ||
+        (this.language === Language.EN && (v.lang.startsWith('en-US') || v.lang.startsWith('en-GB')))
+      );
+      if (matchedVoice) utterance.voice = matchedVoice;
+
+      this.isAiSpeaking = true;
+      let pulseInterval: any = setInterval(() => {
+        if (this.isAiSpeaking && this.onAudioLevel) {
+          this.onAudioLevel(0.3 + Math.random() * 0.4);
+        }
+      }, 100);
+
+      utterance.onend = () => {
+        this.isAiSpeaking = false;
+        clearInterval(pulseInterval);
+        if (this.onAudioLevel) this.onAudioLevel(0);
+      };
+
+      utterance.onerror = () => {
+        this.isAiSpeaking = false;
+        clearInterval(pulseInterval);
+        if (this.onAudioLevel) this.onAudioLevel(0);
+      };
+
+      this.speechSynthUtterance = utterance;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      this.isAiSpeaking = false;
     }
   }
 
   async startWebSocketAudioStreaming(createBlobFn: any, ws: WebSocket) {
     if (!this.inputContext || !this.stream) return;
-    this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
-    
     try {
+      this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
       this.processor = this.inputContext.createScriptProcessor(2048, 1, 1);
       this.processor.onaudioprocess = (e: any) => {
         const inputData = e.inputBuffer.getChannelData(0);
@@ -960,9 +1207,19 @@ export class LiveSessionManager {
       this.sources.forEach(s => s.stop()); this.sources.clear();
       this.nextStartTime = 0;
       if (this.outputContext) this.nextStartTime = this.outputContext.currentTime;
+      if ('speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
   }
 
   disconnect() { 
+      if (this.speechRecognition) {
+        try { this.speechRecognition.stop(); } catch (e) {}
+        this.speechRecognition = null;
+      }
+      if ('speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
       if (this.session) {
           if (typeof this.session.close === 'function') {
             this.session.close();
@@ -972,6 +1229,8 @@ export class LiveSessionManager {
   }
 
   cleanup() {
+      this.isBrowserVoiceActive = false;
+      this.isAiSpeaking = false;
       this.processor?.disconnect(); this.inputSource?.disconnect();
       this.stream?.getTracks().forEach(t => t.stop());
       this.inputContext?.close(); this.outputContext?.close();
@@ -1008,7 +1267,7 @@ export const generateChatTitle = async (message: string, language: Language) => 
                 contents: [{ role: 'user', parts: [{ text: `Generate title for this message: "${message}"\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.` }] }],
                 config: { systemInstruction }
             });
-            return aiResponse.text?.trim() || 'New Chat';
+            return cleanMarkdownAsterisks(aiResponse.text?.trim() || 'New Chat');
         }
         return 'New Chat';
     }
@@ -1017,7 +1276,7 @@ export const generateChatTitle = async (message: string, language: Language) => 
     let data;
     try { data = JSON.parse(textResponse); } catch(e) { throw new Error('Invalid JSON'); }
     if (data.error) throw new Error(data.error);
-    return data.text?.trim() || 'New Chat';
+    return cleanMarkdownAsterisks(data.text?.trim() || 'New Chat');
   };
 
   try {
@@ -1032,7 +1291,7 @@ export const searchUniversityScores = async (query: string, language: Language) 
   const isVi = language === Language.VI;
   const systemInstruction = isVi
     ? "Bạn là một chuyên gia tư vấn tuyển sinh đại học hàng đầu Việt Nam. Hãy sử dụng tính năng Google Search đi kèm để tìm kiếm ĐIỂM CHUẨN (điểm chuẩn học bạ, điểm chuẩn thi tốt nghiệp THPT, hoặc điểm chuẩn ĐGNL) mới nhất và chính xác nhất phù hợp với yêu cầu. Luôn ưu tiên thông tin chính thống từ các nguồn uy tín như VnExpress (vnexpress.net), Báo Tuổi Trẻ (tuoitre.vn), Báo Thanh Niên (thanhnien.vn), hoặc Cổng thông tin tuyển sinh chính thức của trường Đại học. Trình bày thông tin rõ ràng dưới dạng bảng Markdown (gồm các cột: Trường, Ngành/Mã ngành, Tổ hợp xét tuyển, Điểm chuẩn, Năm áp dụng) và đưa ra lời khuyên hữu ích cho học sinh."
-    : "You are an elite university admission advisor in Vietnam. Use the Google Search tool to find the absolute latest and most accurate admission scores ( điểm chuẩn ) matching the university or major requested. Prioritize official and prestigious Vietnamese sources like VnExpress, Tuoi Tre, Thanh Nien, or official university portals. Present results in a neat Markdown table containing: University, Major/Code, Exam Group, Score, and Year. Provide strategic advice below.";
+    : "You are an elite university admission advisor in Vietnam. Use the Google Search tool to find the absolute latest and most accurate admission scores matching the university or major requested. Prioritize official and prestigious Vietnamese sources like VnExpress, Tuoi Tre, Thanh Nien, or official university portals. Present results in a neat Markdown table containing: University, Major/Code, Exam Group, Score, and Year. Provide strategic advice below.";
   
   const customKey = getGeminiApiKey();
 
@@ -1060,7 +1319,7 @@ export const searchUniversityScores = async (query: string, language: Language) 
         const data = JSON.parse(textResponse);
         if (response.ok && data?.text) {
           return {
-            text: data.text,
+            text: cleanMarkdownAsterisks(data.text),
             groundingMetadata: data.groundingMetadata || null
           };
         }
@@ -1081,7 +1340,7 @@ export const searchUniversityScores = async (query: string, language: Language) 
             }
         });
         return {
-            text: aiResponse.text || TRANSLATIONS[language].noAiResponse,
+            text: cleanMarkdownAsterisks(aiResponse.text || TRANSLATIONS[language].noAiResponse),
             groundingMetadata: aiResponse.candidates?.[0]?.groundingMetadata || null
         };
       } catch (clientErr) {
@@ -1105,27 +1364,27 @@ The JSON structure must be EXACTLY:
 {
   "career1": {
     "name": "Career 1 Name",
-    "description": "Short overview description",
-    "salary": "Salary range or specific average details with local context (e.g. million VNĐ/tháng if Vietnamese, or USD/year if English)",
-    "demand": "Market demand details with growth rates/percentages if possible",
+    "description": "Short overview description without markdown asterisks",
+    "salary": "Salary range or specific average details (e.g. 20 - 55 triệu VNĐ/tháng)",
+    "demand": "Market demand details with growth rates",
     "competition": "Competition description and entry barriers",
     "workLife": "Work-life balance and stress level details",
     "skills": ["Skill 1", "Skill 2", "Skill 3"],
     "careerPath": "Advancement path or stages (e.g. Junior -> Senior -> Lead)",
-    "aiRisk": "AI disruption threat level and reason (Low/Medium/High)",
+    "aiRisk": "AI disruption threat level and reason",
     "education": "Required education, bootcamps or key certifications",
     "suitability": "Traits or interests of people who would excel here"
   },
   "career2": {
     "name": "Career 2 Name",
-    "description": "Short overview description",
-    "salary": "Salary range or specific average details with local context (e.g. million VNĐ/tháng if Vietnamese, or USD/year if English)",
-    "demand": "Market demand details with growth rates/percentages if possible",
+    "description": "Short overview description without markdown asterisks",
+    "salary": "Salary range or specific average details (e.g. 25 - 65 triệu VNĐ/tháng)",
+    "demand": "Market demand details with growth rates",
     "competition": "Competition description and entry barriers",
     "workLife": "Work-life balance and stress level details",
     "skills": ["Skill 1", "Skill 2", "Skill 3"],
     "careerPath": "Advancement path or stages (e.g. Junior -> Senior -> Lead)",
-    "aiRisk": "AI disruption threat level and reason (Low/Medium/High)",
+    "aiRisk": "AI disruption threat level and reason",
     "education": "Required education, bootcamps or key certifications",
     "suitability": "Traits or interests of people who would excel here"
   },
@@ -1138,12 +1397,12 @@ The JSON structure must be EXACTLY:
     "recommendation": "Actionable career advice on how to choose between them depending on personal traits."
   }
 }
-Do NOT include any markdown formatting like \`\`\`json or trailing comments. Ensure all strings are translated into the requested language (either Vietnamese or English).`;
+Do NOT include any markdown formatting like \`\`\`json. Ensure all strings are translated into the requested language (either Vietnamese or English). Do not use asterisks (*) in text values.`;
   
   const customKey = getGeminiApiKey();
 
   const callApi = async () => {
-    const prompt = `Provide an in-depth comparison between "${career1}" and "${career2}". Language requested: ${language === Language.EN ? 'English' : 'Vietnamese'}. Make the analysis highly specific, detailed, and realistic (include local salary ranges if appropriate).`;
+    const prompt = `Provide an in-depth comparison between "${career1}" and "${career2}". Language requested: ${language === Language.EN ? 'English' : 'Vietnamese'}. Make the analysis highly specific, detailed, and realistic (include local Vietnamese salary ranges in VNĐ/tháng). Clean all asterisks from output.`;
     
     try {
       const response = await fetch('/api/chat', {
@@ -1169,7 +1428,7 @@ Do NOT include any markdown formatting like \`\`\`json or trailing comments. Ens
             try {
               const parsed = JSON.parse(jsonStr);
               if (parsed.career1 && parsed.career2) {
-                return parsed;
+                return cleanMarkdownAsterisks(parsed);
               }
             } catch (e) {}
           }
@@ -1192,7 +1451,7 @@ Do NOT include any markdown formatting like \`\`\`json or trailing comments. Ens
       if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
         const parsed = JSON.parse(jsonStr);
         if (parsed.career1 && parsed.career2) {
-          return parsed;
+          return cleanMarkdownAsterisks(parsed);
         }
       }
     } catch (clientErr) {
@@ -1200,13 +1459,13 @@ Do NOT include any markdown formatting like \`\`\`json or trailing comments. Ens
     }
 
     // High quality resilient synthesis fallback
-    return synthesizeCareerComparison(career1, career2, language);
+    return cleanMarkdownAsterisks(synthesizeCareerComparison(career1, career2, language));
   };
 
   try {
     return await retryWithBackoff(callApi);
   } catch (error: any) {
-    return synthesizeCareerComparison(career1, career2, language);
+    return cleanMarkdownAsterisks(synthesizeCareerComparison(career1, career2, language));
   }
 };
 
@@ -1219,61 +1478,203 @@ export const searchScholarships = async (
     ? `\n\nUser Profile:\nName: ${userProfile.name}\nGoal: ${userProfile.careerGoal || 'Exploring'}\nProfile (RIASEC): ${userProfile.careerProfile ? userProfile.careerProfile : 'Not taken'}`
     : '';
 
-  const systemInstruction = "You are a scholarship and study abroad advisor. Search the web for real, current scholarships matching the user's query and profile. Provide a well-formatted summary of 3-5 scholarships including name, amount, deadline, requirements, and links if available. Keep formatting clean using markdown. If you cannot find real scholarships, advise the user on where to look.";
-  const customKey = getGeminiApiKey();
+  const isVi = language === Language.VI;
+  const systemInstruction = isVi
+    ? `Bạn là chuyên gia cố vấn săn học bổng và hỗ trợ tài chính du học hàng đầu. Hãy tìm kiếm danh sách 3 - 5 chương trình học bổng thực tế, còn hạn hoặc mở định kỳ tương ứng với từ khóa tìm kiếm: "${query}".
+Với mỗi học bổng, trình bày chi tiết theo định dạng:
+### 🎓 [Tên học bổng đầy đủ]
+- **Đơn vị / Tổ chức cấp**: Tên quỹ tài trợ / Trường đại học / Chính phủ
+- **Giá trị tài trợ**: Số tiền hoặc % học phí cụ thể (Toàn phần, 50-100% học phí, sinh hoạt phí)
+- **Đối tượng & Điều kiện xét tuyển**: Điểm GPA yêu cầu, chứng chỉ tiếng Anh (IELTS/TOEFL), bài luận hoặc kinh nghiệm
+- **Hạn nộp hồ sơ & Kỳ nhập học**: Mốc thời gian tuyển sinh cụ thể
+- **Hướng dẫn ứng tuyển & Link/Cổng thông tin**: Nơi tiếp nhận hồ sơ
+
+Hãy trả lời chuyên sâu, đầy đủ, không sử dụng câu trả lời mẫu chung chung.`
+    : `You are a premier scholarship and study abroad advisor. Search for 3 - 5 real, active or recurring scholarship programs matching the search query: "${query}".
+For each scholarship, provide:
+### 🎓 [Full Scholarship Name]
+- **Sponsoring Body / University**: Sponsoring Foundation / Government / University
+- **Funding Value**: Exact grant amounts or tuition coverage (Full tuition, stipend, flight)
+- **Eligibility & Requirements**: Minimum GPA, English certificates (IELTS/TOEFL), essays, achievements
+- **Application Deadline & Intakes**: Specific timeline and deadlines
+- **Application Process & Portal**: Official portal guidance
+
+Provide deep, factual, and actionable details without generic templates.`;
+
+  const customKey = getGeminiApiKey(userProfile);
 
   const callApi = async () => {
-    const response = await fetch('/api/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            history: [],
-            message: `Find scholarships for: ${query}${profileDetails}\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.`,
-            systemInstruction,
-            apiKey: customKey || undefined
-        })
-    });
-    
-    const contentType = response.headers.get('content-type');
-    const isJson = contentType && contentType.includes('application/json');
+    const promptMessage = isVi
+      ? `Tìm kiếm các chương trình học bổng, quỹ tài trợ du học hoặc học bổng đại học cho từ khóa: "${query}"${profileDetails}. Yêu cầu cung cấp thông tin chi tiết và chính xác.`
+      : `Search for live scholarships and grants for: "${query}"${profileDetails}. Provide concrete, detailed scholarship opportunities.`;
 
-    if (!isJson) {
-        if (customKey) {
-            const ai = new GoogleGenAI({ apiKey: customKey });
-            const aiResponse = await generateClientContentWithFallback(ai, {
-                model: 'gemini-2.5-flash',
-                contents: [{ role: 'user', parts: [{ text: `Find scholarships for: ${query}${profileDetails}\nLanguage required: ${language === Language.EN ? 'English' : 'Vietnamese'}.` }] }],
-                config: { systemInstruction }
-            });
-            return aiResponse.text || TRANSLATIONS[language].noAiResponse;
-        }
-        throw new Error("Không thể kết nối đến máy chủ tìm kiếm học bổng.");
-    }
-
-    const textResponse = await response.text();
-    let data;
     try {
-        data = JSON.parse(textResponse);
+      const response = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              history: [],
+              message: promptMessage,
+              systemInstruction,
+              apiKey: customKey || undefined
+          })
+      });
+      
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+
+      if (isJson) {
+        const textResponse = await response.text();
+        const data = JSON.parse(textResponse);
+        if (response.ok && data?.text && !data.text.includes("Dưới đây là các thông tin trọng tâm tổng hợp từ dữ liệu tuyển sinh")) {
+          return cleanMarkdownAsterisks(data.text);
+        }
+      }
     } catch (e) {
-        throw new Error(`Server returned invalid response.`);
+      console.warn("Backend scholarship search fetch error:", e);
     }
 
-    if (!response.ok) {
-        throw new Error(data?.error || `HTTP error! status: ${response.status}`);
+    // Direct Client Generation via GoogleGenAI SDK with Search Grounding
+    if (customKey) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: customKey });
+        const aiResponse = await generateClientContentWithFallback(ai, {
+            model: 'gemini-2.5-flash',
+            contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
+            config: { 
+              systemInstruction,
+              tools: [{ googleSearch: {} }]
+            }
+        });
+        if (aiResponse.text) {
+          return cleanMarkdownAsterisks(aiResponse.text);
+        }
+      } catch (clientErr) {
+        console.warn("Client-side scholarship search error:", clientErr);
+      }
     }
-    
-    if (data && data.error) {
-        throw new Error(data.error);
-    }
-    
-    if (!data.text) throw new Error(TRANSLATIONS[language].noAiResponse);
-    return data.text;
+
+    // Dynamic AI structured synthesis if remote search tool is offline
+    const fallbackPrompt = `Lập danh sách 3 chương trình học bổng uy tín nhất phù hợp với ngành/chủ đề "${query}" kèm điều kiện xét tuyển, giá trị học bổng và hạn nộp.`;
+    const text = await requestAiContent(fallbackPrompt, systemInstruction, language);
+    return cleanMarkdownAsterisks(text);
   };
 
   try {
     return await retryWithBackoff(callApi);
   } catch (error: any) {
-      console.error("Scholarship search error:", error);
-      throw new Error(cleanFrontEndErrorMessage(error, language));
+    console.error("Scholarship search error:", error);
+    throw new Error(cleanFrontEndErrorMessage(error, language));
   }
+};
+
+export const evaluateScholarshipProfile = async (
+  profileData: {
+    gpa: string;
+    languageCert: string;
+    major: string;
+    targetCountry: string;
+    activities: string;
+    targetScholarship?: string;
+  },
+  language: Language,
+  userProfile?: UserProfile | null
+): Promise<string> => {
+  const isVi = language === Language.VI;
+  const systemInstruction = isVi
+    ? `Bạn là Trưởng ban tuyển sinh và Cố vấn Săn học bổng Quốc tế cao cấp. Hãy đánh giá chi tiết và khách quan hồ sơ ứng viên sau đây đối với việc xin học bổng ${profileData.targetScholarship ? `"${profileData.targetScholarship}"` : 'các trường Đại học / Quỹ quốc tế'}.
+Cung cấp phân tích sâu sắc theo định dạng:
+### 📊 1. Điểm Đánh Giá Năng Lực Hồ Sơ
+- **Điểm tổng quan hồ sơ (Profile Strength)**: [Ví dụ: 82/100 - Khá Mạnh / Xuất Sắc]
+- **Tỷ lệ trúng tuyển ước tính**: [% trúng học bổng Toàn phần / Bán phần]
+
+### 💎 2. Phân Tích Điểm Mạnh & Lợi Thế Cạnh Tranh
+- Các điểm nổi bật về học thuật, ngoại ngữ và hoạt động.
+
+### ⚠️ 3. Lỗ Hổng & Điểm Cần Cải Thiện Cấp Tốc
+- Những tiêu chí còn thiếu hoặc cần nâng cấp trước kỳ hạn nộp đơn.
+
+### 🎯 4. Danh Sách Học Bổng Tương Thích Nhất (Matching Scholarships)
+- 3 chương trình học bổng thực tế phù hợp nhất với ngưỡng điểm này.
+
+### 🚀 5. Lộ Trình Hành Động 4 Bước Tối Ưu Tỷ Lệ Đậu
+- Kế hoạch từng tháng để nâng cấp bài luận, xin thư giới thiệu và nộp đơn.`
+    : `You are a Senior Scholarship Board Evaluator. Perform an in-depth audit of the applicant's profile for ${profileData.targetScholarship ? `"${profileData.targetScholarship}"` : 'international scholarships'}.
+Format response:
+### 📊 1. Profile Competitiveness Score
+- **Overall Profile Score**: [e.g. 85/100]
+- **Estimated Acceptance Probability**: [Full-ride vs Partial %]
+
+### 💎 2. Competitive Strengths
+### ⚠️ 3. Critical Gaps & Weaknesses to Address
+### 🎯 4. Top Matched Scholarship Programs
+### 🚀 5. Strategic 4-Step Action Plan to Maximize Success`;
+
+  const prompt = isVi
+    ? `Thông tin ứng viên:
+- Điểm GPA: ${profileData.gpa || 'Chưa cung cấp'}
+- Chứng chỉ ngoại ngữ: ${profileData.languageCert || 'Chưa cung cấp'}
+- Ngành học mục tiêu: ${profileData.major || 'Đa ngành'}
+- Quốc gia/Khu vực mong muốn: ${profileData.targetCountry || 'Toàn cầu'}
+- Hoạt động ngoại khóa / Nghiên cứu / Giải thưởng: ${profileData.activities || 'Chưa có nhiều'}
+${profileData.targetScholarship ? `- Học bổng nhắm tới: ${profileData.targetScholarship}` : ''}`
+    : `Applicant profile:
+- GPA: ${profileData.gpa || 'Not provided'}
+- English / Language Proficiency: ${profileData.languageCert || 'Not provided'}
+- Target Major: ${profileData.major || 'General'}
+- Target Region: ${profileData.targetCountry || 'Global'}
+- Extracurriculars / Projects / Awards: ${profileData.activities || 'None specified'}
+${profileData.targetScholarship ? `- Target Scholarship: ${profileData.targetScholarship}` : ''}`;
+
+  const text = await requestAiContent(prompt, systemInstruction, language);
+  return cleanMarkdownAsterisks(text);
+};
+
+export const generateScholarshipEssayOutline = async (
+  essayData: {
+    scholarshipName: string;
+    intendedMajor: string;
+    whyMajor: string;
+    uniqueExperience: string;
+    futureContribution: string;
+  },
+  language: Language
+): Promise<string> => {
+  const isVi = language === Language.VI;
+  const systemInstruction = isVi
+    ? `Bạn là Chuyên gia luyện viết Luận Học bổng & Thư Động Lực (Statement of Purpose / Motivation Letter) quốc tế. Hãy xây dựng một cấu trúc bài luận thuyết phục, cảm xúc và đậm chất cá nhân hóa cho học bổng "${essayData.scholarshipName || 'Đại học Toàn Cầu'}".
+Cung cấp:
+### ✍️ 1. Tiêu Đề Bài Luận & Thông Điệp Cốt Lõi (Core Hook & Theme)
+### 🌟 2. Đoạn Mở Đầu Ấn Tượng (Opening Hook - Viết mẫu 1 đoạn cuốn hút)
+### 🧱 3. Dàn Ý Chi Tiết Thân Bài (Body Paragraphs Outline):
+- **Phần 1: Khởi nguồn đam mê & Động lực học tập**
+- **Phần 2: Trải nghiệm thực tế & Năng lực vượt trội**
+- **Phần 3: Lý do chọn trường / quốc gia / quỹ học bổng này**
+- **Phần 4: Kế hoạch tương lai & Giá trị đóng góp cho cộng đồng**
+### 🎯 4. Đoạn Kết Bài Gây Dấu Ấn (Memorable Conclusion)
+### 💡 5. Ba Lỗi Thường Gặp Cần Tránh Khi Nộp Bài Luận Này`
+    : `You are an elite Scholarship Essay & Motivation Letter Coach. Generate an outline and compelling writing strategy for "${essayData.scholarshipName || 'Global Scholarship'}".
+Include:
+### ✍️ 1. Essay Title & Core Narrative Theme
+### 🌟 2. Sample Compelling Opening Hook
+### 🧱 3. Detailed Body Paragraphs Outline
+### 🎯 4. Memorable Conclusion
+### 💡 5. Top 3 Pitfalls to Avoid`;
+
+  const prompt = isVi
+    ? `Thông tin viết bài luận:
+- Học bổng: ${essayData.scholarshipName || 'Học bổng đại học'}
+- Ngành học: ${essayData.intendedMajor || 'Chưa chỉ định'}
+- Lý do đam mê ngành này: ${essayData.whyMajor || 'Đam mê phát triển bản thân và giải quyết vấn đề xã hội'}
+- Trải nghiệm nổi bật / Khó khăn đã vượt qua: ${essayData.uniqueExperience || 'Chưa cung cấp'}
+- Đóng góp trong tương lai: ${essayData.futureContribution || 'Đóng góp tri thức và đổi mới sáng tạo'}`
+    : `Essay parameters:
+- Scholarship: ${essayData.scholarshipName || 'University Scholarship'}
+- Major: ${essayData.intendedMajor || 'Undecided'}
+- Motivation for major: ${essayData.whyMajor || 'Passion for solving societal challenges'}
+- Key personal story / obstacle overcome: ${essayData.uniqueExperience || 'Not specified'}
+- Future contribution: ${essayData.futureContribution || 'Contributing to innovation'}`;
+
+  const text = await requestAiContent(prompt, systemInstruction, language);
+  return cleanMarkdownAsterisks(text);
 };

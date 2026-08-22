@@ -30,7 +30,7 @@ export interface LuxuryAiThinkingProps {
 
 export const LuxuryAiThinking: React.FC<LuxuryAiThinkingProps> = ({
   title = "CareerGuide AI Đang Xử Lý & Phân Tích Dữ Liệu...",
-  subtitle = "Hệ thống đang tích hợp mô hình Gemini AI thế hệ mới để tính toán và tối ưu hóa kết quả chính xác nhất.",
+  subtitle = "Hệ thống đang tích hợp mô hình CareerGuide AI thế hệ mới để tính toán và tối ưu hóa kết quả chính xác nhất.",
   stageSteps = [
     "Khởi tạo mạng nơ-ron phân tích dữ liệu chuyên sâu",
     "Đối chiếu tiêu chuẩn thị trường & yêu cầu tuyển dụng 2026",

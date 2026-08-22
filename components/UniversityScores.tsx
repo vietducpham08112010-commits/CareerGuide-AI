@@ -28,14 +28,18 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
+  const handleSearch = async (overrideQuery?: string) => {
+    const term = (overrideQuery !== undefined ? overrideQuery : searchTerm).trim();
+    if (!term) return;
+    if (overrideQuery !== undefined) {
+      setSearchTerm(overrideQuery);
+    }
     setIsSearching(true);
     setError(null);
     setAiResult(null);
     setGroundingMetadata(null);
     try {
-      const response = await searchUniversityScores(searchTerm, lang);
+      const response = await searchUniversityScores(term, lang);
       setAiResult(response.text);
       setGroundingMetadata(response.groundingMetadata);
     } catch (err: any) {
@@ -113,7 +117,7 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
             className="w-full bg-transparent border-0 py-4.5 pl-3 pr-4 text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-0 text-base md:text-lg font-medium"
           />
           <button
-            onClick={handleSearch}
+            onClick={() => handleSearch()}
             disabled={isSearching || !searchTerm.trim()}
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl transition-all duration-200 disabled:opacity-50 text-sm md:text-base flex items-center gap-2 shrink-0 shadow-md hover:shadow-indigo-600/10 cursor-pointer"
           >
@@ -229,7 +233,7 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
                       <span>{copied ? (lang === Language.VI ? 'Đã sao chép' : 'Copied') : (lang === Language.VI ? 'Sao chép' : 'Copy')}</span>
                     </button>
                     <button
-                      onClick={handleSearch}
+                      onClick={() => handleSearch()}
                       className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer text-white shadow-lg shadow-indigo-600/30"
                     >
                       <RefreshCw className="w-4 h-4" />
@@ -320,7 +324,8 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
                 <div 
                   key={item.id}
                   onClick={() => {
-                    setSearchTerm(`${item.name} ${item.major}`);
+                    const query = `${item.name} ${item.major}`;
+                    handleSearch(query);
                   }}
                   className="bg-white dark:bg-[#0c0c0c] border border-gray-200 dark:border-white/10 rounded-2xl p-5 hover:border-indigo-400 dark:hover:border-indigo-800 transition-all shadow-sm hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer group"
                 >

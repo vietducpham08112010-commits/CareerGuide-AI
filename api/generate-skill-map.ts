@@ -150,11 +150,11 @@ export default async function handler(req: any, res: any) {
 
   try {
     let finalApiKey = "";
-    if (apiKey && typeof apiKey === 'string' && apiKey.trim() && !apiKey.includes('AQ.Ab8RN') && !apiKey.includes('AIzaSyAWdZ7q2CJ')) {
+    if (apiKey && typeof apiKey === 'string' && apiKey.trim() && apiKey.startsWith('AIza') && apiKey.length >= 30 && !apiKey.includes('AQ.Ab8RN') && !apiKey.includes('AIzaSyAWdZ7q2CJ')) {
       finalApiKey = apiKey.trim();
     } else {
       const envKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API_KEY;
-      if (envKey && envKey.trim() && !envKey.includes('AQ.Ab8RN') && !envKey.includes('AIzaSyAWdZ7q2CJ')) {
+      if (envKey && envKey.trim() && envKey.startsWith('AIza') && envKey.length >= 30 && !envKey.includes('AQ.Ab8RN') && !envKey.includes('AIzaSyAWdZ7q2CJ')) {
         finalApiKey = envKey.trim();
       }
     }

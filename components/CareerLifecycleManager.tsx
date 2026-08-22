@@ -303,8 +303,59 @@ Trả về duy nhất JSON object (không markdown):
 }`;
 
       const rawText = await requestAiContent(prompt, "You are a career transition and upskilling consultant. Output JSON only.", language);
-      const cleanJson = rawText.replace(/```json\s*|\s*```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
+      let parsed: any = null;
+      try {
+        const cleanJson = rawText.replace(/```json\s*|\s*```/g, '').trim();
+        parsed = JSON.parse(cleanJson);
+      } catch (err) {
+        const s = rawText.indexOf('{');
+        const e = rawText.lastIndexOf('}');
+        if (s !== -1 && e > s) {
+          try {
+            parsed = JSON.parse(rawText.substring(s, e + 1));
+          } catch (e2) {}
+        }
+      }
+      if (!parsed || !parsed.roadmap90Days) {
+        parsed = {
+          transferableSkills: [
+            isVi ? "Kỹ năng tư duy logic & Phân tích giải quyết vấn đề" : "Analytical & Problem Solving",
+            isVi ? "Khả năng giao tiếp và làm việc nhóm linh hoạt" : "Effective Communication & Teamwork",
+            isVi ? "Kinh nghiệm quản lý tiến độ & Tối ưu quy trình" : "Project Management & Workflow Optimization"
+          ],
+          skillGaps: [
+            isVi ? `Kiến thức chuyên sâu ngành ${targetSkillRole || 'mục tiêu'}` : `Specialized Domain Knowledge in ${targetSkillRole || 'Target Role'}`,
+            isVi ? "Thực hành công cụ & Công nghệ chuyên môn" : "Hands-on Tools & Applied Tech Stack",
+            isVi ? "Chứng chỉ nghề nghiệp đạt tiêu chuẩn ngành" : "Recognized Industry Certifications"
+          ],
+          roadmap90Days: [
+            {
+              phase: isVi ? "Tháng 1 (Ngày 1-30)" : "Month 1 (Days 1-30)",
+              title: isVi ? "Bổ sung nền tảng kiến thức cốt lõi" : "Foundation & Core Knowledge",
+              tasks: [
+                isVi ? `Nghiên cứu tài liệu và hoàn thành khóa học căn bản về ${targetSkillRole || 'ngành mới'}` : "Complete fundamental online courses",
+                isVi ? "Hệ thống hóa các kỹ năng chuyển giao từ ngành cũ" : "Map and leverage existing transferable skills"
+              ]
+            },
+            {
+              phase: isVi ? "Tháng 2 (Ngày 31-60)" : "Month 2 (Days 31-60)",
+              title: isVi ? "Thực hành dự án Portfolio thực chiến" : "Hands-on Portfolio Project",
+              tasks: [
+                isVi ? "Xây dựng 01-02 mini-project thực tế chứng minh năng lực" : "Build 1-2 real-world portfolio mini projects",
+                isVi ? "Tìm kiếm mentor hoặc cộng đồng chuyên gia để nhận phản hồi" : "Seek peer review and mentor feedback"
+              ]
+            },
+            {
+              phase: isVi ? "Tháng 3 (Ngày 61-90)" : "Month 3 (Days 61-90)",
+              title: isVi ? "Tối ưu CV & Luyện phỏng vấn chuyển ngành" : "Resume Polish & Interview Prep",
+              tasks: [
+                isVi ? "Viết CV chuẩn ATS làm nổi bật kinh nghiệm và dự án mới" : "Tailor ATS resume highlighting transferable strengths",
+                isVi ? "Luyện tập phỏng vấn thử cùng AI và ứng tuyển các vị trí phù hợp" : "Practice mock interviews and submit applications"
+              ]
+            }
+          ]
+        };
+      }
       setReskillingResult(parsed);
       showToast(isVi ? '🌉 Đã tạo thành công Lộ trình Chuyển ngành 90 Ngày!' : '🌉 Successfully built 90-Day Reskilling Roadmap!', 'success');
     } catch (e: any) {

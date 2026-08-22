@@ -123,6 +123,7 @@ const Icons = {
   Square: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="3" rx="2"/></svg>,
   Settings: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
   Lock: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+  ExternalLink: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>,
   Database: (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>,
 };
 
@@ -635,11 +636,11 @@ const CareerQuiz = ({ lang, t, onComplete }: { lang: Language, t: any, onComplet
               textColor: 'text-pink-600 dark:text-pink-400',
               glowColor: 'shadow-pink-500/5 hover:shadow-pink-500/15'
             },
-          ].map((opt) => {
+          ].map((opt, optIndex) => {
             const IconComponent = opt.icon;
             return (
               <motion.div 
-                key={opt.length} 
+                key={`quiz-opt-${opt.length}-${optIndex}`} 
                 whileHover={{ scale: 1.03, y: -4 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
@@ -1991,10 +1992,10 @@ export default function App() {
     if (e) e.preventDefault();
     if (isChatLoading || isSendingRef.current) return; 
     
-    const textToSend = overrideText || inputMsg;
+    const textToSend = (overrideText || inputMsg).trim();
     const currentPastedTexts = [...pastedTexts];
     
-    if (!textToSend.trim() && !selectedFile && currentPastedTexts.length === 0) return;
+    if (!textToSend && !selectedFile && currentPastedTexts.length === 0) return;
 
     // Check freemium query limit (5 questions per day)
     const subDetails = getSubscriptionDetails(auth.user?.subscription);
@@ -2036,7 +2037,7 @@ export default function App() {
 
     try {
       const history = messages
-        .filter(m => !m.text.startsWith('⚠️ Error'))
+        .filter(m => !m.text.startsWith('⚠️ Error') && !m.text.startsWith('⚠️ Chưa cấu hình'))
         .map(m => {
             let fullText = m.text;
             if (m.pastedTexts && m.pastedTexts.length > 0) {
@@ -2079,11 +2080,7 @@ export default function App() {
             errorMsg = t.aiBusy;
         }
 
-        if (errorMsg.includes("API Key")) {
-             setMessages(prev => [...prev, { id: `${Date.now()}-ai-${Math.random().toString(36).substr(2, 9)}`, role: 'model', text: `⚠️ ${errorMsg}\n\nSystem API Key Issue. Please contact support.`, timestamp: new Date() }]);
-        } else {
-             setMessages(prev => [...prev, { id: `${Date.now()}-ai-${Math.random().toString(36).substr(2, 9)}`, role: 'model', text: `⚠️ Error: ${errorMsg}\n(Please check your connection or try again later)`, timestamp: new Date() }]);
-        }
+        setMessages(prev => [...prev, { id: `${Date.now()}-ai-${Math.random().toString(36).substr(2, 9)}`, role: 'model', text: `⚠️ ${errorMsg}`, timestamp: new Date() }]);
     } finally { 
         setIsChatLoading(false); 
         isSendingRef.current = false;
@@ -3593,6 +3590,34 @@ export default function App() {
           >
             {tab === DashboardTab.CHAT && (
             <div className={`flex-1 flex flex-col h-full overflow-hidden relative ${messages.length === 0 ? 'w-full max-w-3xl mx-auto' : ''}`}>
+                {/* Chat Top Bar with Live Model / API Key Connection Indicator */}
+                <div className="w-full bg-white/80 dark:bg-[#111]/80 backdrop-blur-md border-b border-gray-200/80 dark:border-white/5 px-4 py-2.5 flex items-center justify-between gap-3 text-xs z-10 shrink-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                        <span className="font-bold text-gray-800 dark:text-gray-200 truncate">
+                            {currentChatTitle || (lang === Language.VI ? 'Trợ lý Hướng nghiệp AI' : 'AI Career Assistant')}
+                        </span>
+                        <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px]">
+                            CareerGuide AI
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30 shadow-xs">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>{lang === Language.VI ? 'AI Trực Tuyến' : 'AI Active'}</span>
+                        </div>
+
+                        <button
+                            onClick={() => startNewChat()}
+                            className="p-1.5 text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                            title={lang === Language.VI ? 'Đoạn chat mới' : 'New Chat'}
+                        >
+                            <Icons.Plus className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
                 {isTemporaryChat && (
                     <div className="w-full bg-amber-500/10 dark:bg-amber-400/5 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between text-xs text-amber-700 dark:text-amber-400 z-20 animate-fade-in">
                         <div className="flex items-center gap-2">
@@ -4324,6 +4349,25 @@ export default function App() {
                             </select>
                         </div>
 
+                        {/* CareerGuide AI Built-in Engine Indicator */}
+                        {(auth.user?.aiProvider === AIProvider.GEMINI || !auth.user?.aiProvider) && (
+                            <div className="p-3.5 bg-gradient-to-r from-indigo-50/80 via-purple-50/80 to-emerald-50/80 dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-emerald-950/30 border border-indigo-200/60 dark:border-indigo-800/40 rounded-2xl flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
+                                    ⚡
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white">
+                                        {lang === Language.VI ? "Động Cơ CareerGuide AI (Tự động tích hợp sẵn)" : "CareerGuide AI Engine (Built-in Active)"}
+                                    </p>
+                                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                        {lang === Language.VI 
+                                            ? "Hệ thống sử dụng trực tiếp API máy chủ của website. Người dùng không cần cấu hình API Key thủ công." 
+                                            : "The system utilizes the website's built-in AI servers. No manual API Key configuration required."}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
 
 
                         {/* If Custom is selected */}
@@ -4565,7 +4609,7 @@ export default function App() {
                   <h3 className="font-extrabold text-base sm:text-lg text-gray-900 dark:text-white">
                     {lang === Language.VI ? 'Hồ Sơ Đội Ngũ Sáng Lập (The NextX 2026)' : 'NextX 2026 Founders & Finalists'}
                   </h3>
-                  <p className="text-xs text-gray-500">CareerGuide AI • Vinschool The Harmony</p>
+                  <p className="text-xs text-gray-500">CareerGuide AI • THPT Vinschool Ocean Park</p>
                 </div>
               </div>
               <button 
