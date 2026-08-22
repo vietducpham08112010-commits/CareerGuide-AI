@@ -296,8 +296,6 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
       const rubricResult = await evaluateMockInterviewTranscript(job, level, tone, questions, completedAnswers, language);
       setResult(rubricResult);
       setStep('results');
-      
-      setResult(parsedRes);
 
       // Deduct mock interview credit if on limited plan
       if (onUpdateUser && (currentSub.mockInterviewCredits || 0) > 0 && currentSub.tier !== 'max_monthly' && currentSub.tier !== 'max_yearly') {

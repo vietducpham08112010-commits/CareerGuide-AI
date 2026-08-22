@@ -13,7 +13,7 @@ const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 function getResolvedApiKeysList(clientKey?: string): string[] {
   const keys: string[] = [];
@@ -28,8 +28,8 @@ function getResolvedApiKeysList(clientKey?: string): string[] {
   };
 
   addKey(clientKey);
-  addKey(process.env.GEMINI_API_KEYS);
   addKey(process.env.GEMINI_API_KEY);
+  addKey(process.env.GEMINI_API_KEYS);
   addKey(process.env.GOOGLE_GENAI_API_KEY);
   addKey(process.env.GOOGLE_API_KEY);
   addKey(process.env.VITE_GEMINI_API_KEY);
@@ -66,7 +66,7 @@ const formatHistoryForGemini = (history: { role: string; text: string }[], newMe
 const cleanGeminiErrorMessage = (error: any): string => {
   const errMsg = error?.message || String(error);
   if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded")) {
-    return "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt. / The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
+    return "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối khóa API riêng của bạn trong phần Cài đặt. / The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI key in Settings.";
   }
   if (errMsg.includes("503") || errMsg.includes("overloaded") || errMsg.includes("busy") || errMsg.includes("UNAVAILABLE")) {
     return "Hệ thống AI hiện đang xử lý nhiều yêu cầu, vui lòng ấn gửi lại sau giây lát. / The AI model is currently busy. Please retry in a moment.";
@@ -76,7 +76,7 @@ const cleanGeminiErrorMessage = (error: any): string => {
     if (parsed.error && parsed.error.message) {
       const msg = parsed.error.message;
       if (msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota") || msg.includes("Quota exceeded") || msg.includes("429")) {
-        return "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối tài khoản dịch vụ riêng của bạn trong phần Cài đặt. / The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI provider in Settings.";
+        return "Hệ thống AI đang tạm thời đạt giới hạn dùng thử miễn phí (AI Quota Limit). Vui lòng thử lại sau vài giây hoặc kết nối khóa API riêng của bạn trong phần Cài đặt. / The AI service has temporarily reached its free trial quota limit. Please try again in a few seconds or configure a custom AI key in Settings.";
       }
       if (msg.includes("503") || msg.includes("overloaded") || msg.includes("busy") || msg.includes("UNAVAILABLE")) {
         return "Hệ thống AI hiện đang xử lý nhiều yêu cầu, vui lòng ấn gửi lại sau giây lát. / The AI model is currently busy. Please retry in a moment.";
@@ -97,7 +97,7 @@ async function generateContentWithFallback(
         tools?: any[];
     }
 ) {
-    const modelsToTry = ["gemini-3.6-flash"];
+    const modelsToTry = ["gemini-3.7-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
 
     let lastError: any = null;
 
@@ -176,12 +176,19 @@ app.post("/api/chat", async (req, res) => {
   }
 
   const keysList = getResolvedApiKeysList(apiKey);
+  const keyCandidates: (string | undefined)[] = keysList.length > 0 ? keysList : [undefined];
 
   let lastError: any = null;
-  for (const candidateKey of keysList) {
+  for (const candidateKey of keyCandidates) {
     try {
-      const aiInstance = new GoogleGenAI({ 
+      const aiInstance = candidateKey ? new GoogleGenAI({ 
         apiKey: candidateKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build'
+          }
+        }
+      }) : new GoogleGenAI({
         httpOptions: {
           headers: {
             'User-Agent': 'aistudio-build'
@@ -199,12 +206,11 @@ app.post("/api/chat", async (req, res) => {
       }
     } catch (error: any) {
       lastError = error;
-      // console.warn(`Key candidate failed for chat, trying next:`, error?.message || error);
     }
   }
 
   // Return standard 500 error if all keys fail or no keys present
-  const errorMessage = lastError?.message || "Lỗi kết nối AI: Không thể truy cập mô hình (Vui lòng kiểm tra API Key).";
+  const errorMessage = lastError ? cleanGeminiErrorMessage(lastError) : "Lỗi kết nối AI: Không thể truy cập mô hình (Vui lòng kiểm tra API Key).";
   return res.status(500).json({ error: errorMessage });
 });
 
@@ -215,13 +221,20 @@ app.post("/api/search", async (req, res) => {
   }
 
   const keysList = getResolvedApiKeysList(apiKey);
+  const keyCandidates: (string | undefined)[] = keysList.length > 0 ? keysList : [undefined];
   const contents = formatHistoryForGemini(history || [], message || "");
 
   let lastError: any = null;
-  for (const candidateKey of keysList) {
+  for (const candidateKey of keyCandidates) {
     try {
-      const aiInstance = new GoogleGenAI({ 
+      const aiInstance = candidateKey ? new GoogleGenAI({ 
         apiKey: candidateKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build'
+          }
+        }
+      }) : new GoogleGenAI({
         httpOptions: {
           headers: {
             'User-Agent': 'aistudio-build'
@@ -243,11 +256,10 @@ app.post("/api/search", async (req, res) => {
       }
     } catch (error: any) {
       lastError = error;
-      // console.warn("Search attempt failed, trying next key or fallback:", error.message || error);
     }
   }
 
-  const errorMessage = lastError?.message || "AI Search failed. Please check your API key configuration.";
+  const errorMessage = lastError ? cleanGeminiErrorMessage(lastError) : "AI Search failed. Please check your API key configuration.";
   return res.status(500).json({ error: errorMessage });
 });
 
@@ -395,7 +407,7 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-3.6-flash'];
+        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-3.7-flash'];
         let connected = false;
         for (const model of liveModels) {
           try {
