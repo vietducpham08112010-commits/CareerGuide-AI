@@ -3705,6 +3705,14 @@ export default function App() {
                         <>
                             {messages.length === 0 && (
                                 <div className="w-full max-w-3xl mx-auto flex-col flex justify-center items-center py-6 sm:py-12">
+                                    <motion.h2 
+                                        initial={{ opacity: 0, y: -20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                                        className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 text-center mb-2"
+                                    >
+                                        {greeting.text}, {greeting.name}!
+                                    </motion.h2>
                                     <motion.p
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}

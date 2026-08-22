@@ -55,119 +55,6 @@ const retryWithBackoff = async <T>(
   throw lastError;
 };
 
-// Fallback synthesizer for career comparisons when AI quota is temporarily limited
-export const synthesizeCareerComparison = (career1: string, career2: string, language: Language) => {
-  const isVi = language === Language.VI;
-  const c1Clean = career1.trim();
-  const c2Clean = career2.trim();
-
-  return {
-    career1: {
-      name: c1Clean,
-      description: isVi 
-        ? `Lĩnh vực chuyên môn tập trung vào các hoạt động cốt lõi, tư duy phân tích và kỹ năng chuyên biệt của ngành ${c1Clean}.`
-        : `Professional field focusing on the core competencies, analytical framework, and specialized execution of ${c1Clean}.`,
-      salary: isVi ? "15 - 45 triệu VNĐ/tháng (Fresher: 10-16M, Senior: 30-55M+)" : "$65,000 - $130,000/year (Entry: $55k-$75k, Senior: $110k-$160k+)",
-      demand: isVi ? "Cao (Tăng trưởng ổn định theo nhu cầu thị trường hiện đại)" : "High (Steady growth matching modern industry expansion)",
-      competition: isVi ? "Trung bình - Cao (Đòi hỏi chuyên môn thực chiến và sự thích ứng nhanh)" : "Moderate - High (Requires solid portfolio and quick adaptability)",
-      workLife: isVi ? "Tốt - Linh hoạt (Tùy thuộc vào quy mô doanh nghiệp và dự án)" : "Good - Flexible (Depends on company size and project scope)",
-      skills: [
-        isVi ? `Nền tảng kiến thức cốt lõi ngành ${c1Clean}` : `Core foundational competencies in ${c1Clean}`,
-        isVi ? "Kỹ năng phân tích & Giải quyết vấn đề" : "Critical Thinking & Problem Solving",
-        isVi ? "Sử dụng thành thạo công cụ chuyên ngành" : "Domain Tools & Professional Toolchains",
-        isVi ? "Giao tiếp & Phối hợp liên phòng ban" : "Cross-functional Team Collaboration"
-      ],
-      careerPath: isVi ? "Intern / Junior → Mid-Level Specialist → Senior / Team Lead → Department Head / Consultant" : "Junior Specialist → Senior Professional → Team Lead → Director / Strategist",
-      aiRisk: isVi ? "Thấp - Trung bình (AI hỗ trợ tự động hóa một số khâu nhưng không thay thế được tư duy chiến lược)" : "Low - Medium (AI augments repetitive tasks but strategic insight remains human-driven)",
-      education: isVi ? "Bằng Đại học/Cao đẳng chuyên ngành liên quan hoặc các chứng chỉ nghiệp vụ uy tín." : "Bachelor's degree in relevant disciplines or certified professional credentials.",
-      suitability: isVi ? `Người có đam mê với ngành ${c1Clean}, thích học hỏi liên tục và có tinh thần trách nhiệm cao.` : `Analytical individuals passionate about ${c1Clean} with a commitment to continuous growth.`
-    },
-    career2: {
-      name: c2Clean,
-      description: isVi 
-        ? `Ngành nghề định hướng vào sự kết hợp giữa kiến thức chuyên sâu, quản lý quy trình và tạo ra giá trị bền vững cho tổ chức của ${c2Clean}.`
-        : `Career pathway emphasizing domain depth, process orchestration, and high-impact delivery in ${c2Clean}.`,
-      salary: isVi ? "18 - 50 triệu VNĐ/tháng (Fresher: 12-18M, Senior: 35-65M+)" : "$70,000 - $140,000/year (Entry: $60k-$85k, Senior: $120k-$175k+)",
-      demand: isVi ? "Rất cao (Nhu cầu nhân lực chất lượng cao ngày càng gia tăng)" : "Very High (Rising demand for specialized talent globally)",
-      competition: isVi ? "Cao (Cạnh tranh mạnh ở các vị trí cấp quản lý hoặc công ty lớn)" : "High (Competitive for senior roles and top-tier companies)",
-      workLife: isVi ? "Trung bình - Tốt (Cần quản lý thời gian hiệu quả giữa các giai đoạn cao điểm)" : "Moderate - Good (Requires strong prioritization during milestone peaks)",
-      skills: [
-        isVi ? `Năng lực chuyên sâu ngành ${c2Clean}` : `Advanced specialization in ${c2Clean}`,
-        isVi ? "Tư duy chiến lược & Ra quyết định" : "Strategic Thinking & Data-driven Decision Making",
-        isVi ? "Quản lý tiến độ & Tối ưu hóa quy trình" : "Milestone Tracking & Workflow Optimization",
-        isVi ? "Thuyết trình & Đàm phán chuyên nghiệp" : "Stakeholder Communication & Negotiation"
-      ],
-      careerPath: isVi ? "Associate → Senior Specialist → Lead Manager → Chief Officer / Expert Advisor" : "Associate → Senior Specialist → Practice Lead → Principal Strategist",
-      aiRisk: isVi ? "Thấp (Yêu cầu cao về trí tuệ cảm xúc, điều phối con người và thích ứng bối cảnh phức tạp)" : "Low (Demands high emotional intelligence, stakeholder leadership, and context evaluation)",
-      education: isVi ? "Đào tạo bài bản cử nhân chuyên ngành, kết hợp thực tập dự án thực tế." : "Formal bachelor's degree complemented by hands-on practical project experience.",
-      suitability: isVi ? `Phù hợp với người yêu thích sự đổi mới, có tư duy logic sắc bén và khả năng tương tác linh hoạt.` : `Best suited for dynamic innovators with strong structural thinking and adaptability.`
-    },
-    comparisonPoints: {
-      salaryWinner: "tie" as const,
-      demandWinner: "career2" as const,
-      workLifeWinner: "career1" as const,
-      aiResilienceWinner: "career2" as const,
-      summaryAnalysis: isVi 
-        ? `Ngành "${c1Clean}" và "${c2Clean}" đều mang lại cơ hội phát triển nghề nghiệp vững chắc trong kỷ nguyên chuyển đổi số. "${c1Clean}" tạo lợi thế về tính chuyên biệt và môi trường tác nghiệp ổn định, trong khi "${c2Clean}" mở rộng không gian thăng tiến nhờ tính bao quát và cơ hội điều phối đa ngành.`
-        : `Both "${c1Clean}" and "${c2Clean}" present exceptional career pathways in today's evolving market. "${c1Clean}" excels in technical mastery and structured execution, whereas "${c2Clean}" offers broad upward mobility through strategic orchestration and cross-discipline impact.`,
-      recommendation: isVi
-        ? `Hãy chọn "${c1Clean}" nếu bạn đam mê đi sâu vào chi tiết kỹ thuật/chuyên môn và thích làm việc với các hệ thống rõ ràng. Hãy chọn "${c2Clean}" nếu bạn hào hứng với việc kết nối con người, tối ưu hóa chiến lược kinh doanh và đón đầu xu hướng mới.`
-        : `Choose "${c1Clean}" if you thrive on deep technical craftsmanship and structured execution. Choose "${c2Clean}" if you are energized by strategic integration, multidisciplinary collaboration, and market innovation.`
-    }
-  };
-};
-
-export const synthesizeUniversitySearchFallback = (query: string, language: Language) => {
-  const isVi = language === Language.VI;
-  const q = query.trim();
-
-  if (isVi) {
-    return {
-      text: `### 📊 Bảng điểm chuẩn & Phương thức tuyển sinh: "${q}"
-
-Dưới đây là dữ liệu điểm chuẩn tuyển sinh THPT & Đánh giá năng lực mới nhất từ các trường đào tạo hàng đầu:
-
-| Trường Đại học | Ngành / Chuyên ngành | Tổ hợp môn | Điểm chuẩn tham khảo (Thang 30) | Ghi chú / Phương thức |
-| :--- | :--- | :--- | :--- | :--- |
-| Đại học Bách Khoa Hà Nội | Kỹ thuật / Công nghệ thông tin | A00, A01 | 26.5 - 29.4 | Xét ĐGNL Tư duy (TSA) + Điểm thi THPT |
-| ĐH Kinh tế Quốc dân (NEU) | Kinh tế / QTKD / Marketing | A00, A01, D01, D07 | 26.2 - 28.3 | Kết hợp chứng chỉ quốc tế (IELTS) |
-| ĐH Ngoại Thương (FTU) | Kinh tế đối ngoại / Tài chính | A00, A01, D01 | 27.5 - 28.6 | Điểm chuẩn top đầu cả nước |
-| ĐH Bách Khoa - ĐHQG TP.HCM | Khoa học Máy tính / Kỹ thuật Điện | A00, A01 | 26.0 - 28.0 | Điểm ĐGNL ĐHQG-HCM + THPT |
-| ĐH Kinh tế TP.HCM (UEH) | Kinh doanh quốc tế / Tài chính | A00, A01, D01 | 25.8 - 27.9 | Chương trình chuẩn & Tiếng Anh |
-| ĐH Công nghệ - ĐHQGHN | Công nghệ Thông tin / AI | A00, A01 | 27.0 - 28.5 | Điểm ĐGNL HSA + Điểm thi THPT |
-
----
-
-### 💡 Lời khuyên chiến lược cho thí sinh:
-1. Theo dõi đề án tuyển sinh chính thức: Các trường công bố chỉ tiêu và ngưỡng nhận hồ sơ trên cổng tuyển sinh riêng.
-2. Đa dạng hóa phương thức xét tuyển: Đăng ký kết hợp xét học bạ, chứng chỉ ngoại ngữ (IELTS ≥ 6.0) và kỳ thi Đánh giá Năng lực (HSA/V-SAT).
-3. Sắp xếp thứ tự nguyện vọng thông minh: Đặt ngành yêu thích nhất ở Nguyện vọng 1 và các ngành dự phòng an toàn ở các nguyện vọng tiếp theo.`,
-      groundingMetadata: null
-    };
-  }
-
-  return {
-    text: `### 📊 Admission Scores & Requirements: "${q}"
-
-Here is the compiled benchmark scores and entry criteria from prominent universities:
-
-| University | Program / Major | Subject Combination | Benchmark Score (Scale 30) | Notes / Method |
-| :--- | :--- | :--- | :--- | :--- |
-| Hanoi University of Science & Technology | Engineering / CS | A00, A01 | 26.5 - 29.4 | National Exam + TSA |
-| National Economics University (NEU) | Economics / Business / Marketing | A00, A01, D01 | 26.2 - 28.3 | Combined IELTS + High School |
-| Foreign Trade University (FTU) | International Economics / Finance | A00, A01, D01 | 27.5 - 28.6 | Top tier admission threshold |
-| VNU - University of Technology | Computer Science / AI | A00, A01 | 27.0 - 28.5 | Competency Assessment (HSA) |
-| University of Economics HCMC (UEH) | International Business | A00, A01, D01 | 25.8 - 27.9 | Standard & Advanced English |
-
----
-
-### 💡 Strategic Advice:
-1. Combine Multiple Admission Methods: Maximize admission probability by utilizing early admission (IELTS + academic records) alongside high school graduation exams.
-2. Order of Preferences: Rank your dream majors at Priority 1 and safe backup majors in subsequent choices.`,
-    groundingMetadata: null
-  };
-};
-
 // Client-side fallback if user provided custom API Key directly in Settings
 const generateClientContentWithFallback = async (
     aiInstance: GoogleGenAI,
@@ -175,13 +62,8 @@ const generateClientContentWithFallback = async (
         model?: string;
         contents: any;
         config?: any;
-    }
-): Promise<any> => {
-    const modelsToTry = [
-        'gemini-2.5-flash',
-        'gemini-1.5-flash',
-        options.model || 'gemini-2.5-flash'
-    ];
+    }): Promise<any> => {
+    const modelsToTry = ["gemini-3.6-flash", options.model || "gemini-3.6-flash"].filter(Boolean);
 
     const uniqueModels = Array.from(new Set(modelsToTry));
 
@@ -352,7 +234,7 @@ export const requestAiContent = async (
       try {
         const ai = new GoogleGenAI({ apiKey: key });
         const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.6-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { systemInstruction }
         });
@@ -491,7 +373,7 @@ export const generateRoadmap = async (
       const contents = chatHistory.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
       contents.push({ role: 'user', parts: [{ text: prompt }] });
       const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.6-flash',
           contents,
           config: { systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text." }
       });
@@ -575,7 +457,7 @@ export const sendChatMessage = async (
         contents.push({ role: 'user', parts: userParts });
         
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.6-flash',
             contents,
             config: { systemInstruction }
         });
@@ -593,7 +475,7 @@ export const sendChatMessage = async (
   try {
     return await retryWithBackoff(callGemini);
   } catch (error: any) {
-    console.error("Chat API Error:", error);
+    // console.error("Chat API Error:", error);
     throw new Error(cleanFrontEndErrorMessage(error, language));
   }
 };
@@ -794,7 +676,7 @@ export class LiveSessionManager {
       // If user has custom key, connect via client SDK Live API
       if (customKey) {
         const ai = new GoogleGenAI({ apiKey: customKey });
-        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-2.5-flash'];
+        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-3.6-flash'];
         let modelIndex = 0;
 
         const attemptNextModel = async (): Promise<any> => {
@@ -1260,7 +1142,7 @@ export const generateChatTitle = async (message: string, language: Language) => 
         if (customKey) {
             const ai = new GoogleGenAI({ apiKey: customKey });
             const aiResponse = await generateClientContentWithFallback(ai, {
-                model: 'gemini-2.5-flash',
+                model: 'gemini-3.6-flash',
                 contents: [{ role: 'user', parts: [{ text: `Generate a 2-4 word title: "${firstMsg.slice(0, 50)}"` }] }],
                 config: { systemInstruction: "Return only 2 to 4 words" }
             });
@@ -1284,7 +1166,7 @@ export const generateChatTitle = async (message: string, language: Language) => 
   try {
     return await retryWithBackoff(callApi);
   } catch (error) {
-    console.error("Title generation error:", error);
+    // console.error("Title generation error:", error);
     return firstMsg.length > 25 ? firstMsg.slice(0, 25) + '...' : firstMsg;
   }
 };
@@ -1327,14 +1209,14 @@ export const searchUniversityScores = async (query: string, language: Language) 
         }
       }
     } catch (err) {
-      console.warn("Backend search proxy failed:", err);
+      // console.warn("Backend search proxy failed:", err);
     }
 
     if (customKey) {
       try {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.6-flash',
             contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
             config: { 
                 systemInstruction,
@@ -1440,7 +1322,7 @@ Do NOT include any markdown formatting like \`\`\`json. Ensure all strings are t
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.6-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { systemInstruction }
       });
@@ -1534,7 +1416,7 @@ Provide deep, factual, and actionable details without generic templates.`;
       try {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.6-flash',
             contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
             config: { 
               systemInstruction,
@@ -1724,7 +1606,7 @@ Return the output strictly as a JSON array of 4 string questions. Do not write a
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         config: { systemInstruction: systemPrompt }
       });
@@ -1818,7 +1700,7 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         config: { systemInstruction }
       });

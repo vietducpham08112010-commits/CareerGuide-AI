@@ -13,7 +13,7 @@ const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 function getResolvedApiKeysList(clientKey?: string): string[] {
   const keys: string[] = [];
@@ -97,7 +97,7 @@ async function generateContentWithFallback(
         tools?: any[];
     }
 ) {
-    const modelsToTry = ["gemini-3.6-flash"];
+    const modelsToTry = ["gemini-2.5-flash"];
 
     let lastError: any = null;
 
@@ -177,7 +177,6 @@ app.post("/api/chat", async (req, res) => {
 
   const keysList = getResolvedApiKeysList(apiKey);
 
-  let lastError: any = null;
   for (const candidateKey of keysList) {
     try {
       const aiInstance = new GoogleGenAI({ 
@@ -198,14 +197,12 @@ app.post("/api/chat", async (req, res) => {
         return res.json({ text: response.text });
       }
     } catch (error: any) {
-      lastError = error;
-      // console.warn(`Key candidate failed for chat, trying next:`, error?.message || error);
+      console.warn(`Key candidate failed for chat, trying next:`, error?.message || error);
     }
   }
 
   // Return standard 500 error if all keys fail or no keys present
-  const errorMessage = lastError?.message || "Lỗi kết nối AI: Không thể truy cập mô hình (Vui lòng kiểm tra API Key).";
-  return res.status(500).json({ error: errorMessage });
+  return res.status(500).json({ error: "Lỗi kết nối AI: Không thể truy cập mô hình (Vui lòng kiểm tra API Key)." });
 });
 
 app.post("/api/search", async (req, res) => {
@@ -217,7 +214,6 @@ app.post("/api/search", async (req, res) => {
   const keysList = getResolvedApiKeysList(apiKey);
   const contents = formatHistoryForGemini(history || [], message || "");
 
-  let lastError: any = null;
   for (const candidateKey of keysList) {
     try {
       const aiInstance = new GoogleGenAI({ 
@@ -242,13 +238,13 @@ app.post("/api/search", async (req, res) => {
         });
       }
     } catch (error: any) {
-      lastError = error;
-      // console.warn("Search attempt failed, trying next key or fallback:", error.message || error);
+      console.warn("Search attempt failed, trying next key or fallback:", error.message || error);
     }
   }
 
-  const errorMessage = lastError?.message || "AI Search failed. Please check your API key configuration.";
-  return res.status(500).json({ error: errorMessage });
+  return res.status(500).json({ 
+    error: "AI Search failed. Please check your API key configuration." 
+  });
 });
 
 // --- AI Skill Map Generator API ---
@@ -352,122 +348,3 @@ wss.on("connection", (ws: WebSocket) => {
 
         const connectToGemini = async (model: string) => {
             console.log(`Attempting to connect to Gemini Live with model: ${model}`);
-            return liveAi.live.connect({
-                model,
-                callbacks: {
-                  onopen: () => {
-                    console.log(`Gemini Live Session Opened (${model})`);
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ type: "connected" }));
-                    }
-                  },
-                  onmessage: (message: LiveServerMessage) => {
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify(message));
-                    }
-                  },
-                  onclose: () => {
-                    console.log("Gemini Live Session Closed");
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.close();
-                    }
-                  },
-                  onerror: (err: any) => {
-                    console.error("Gemini Live Session Error:", err);
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ error: err.message }));
-                    }
-                  }
-                },
-                config: {
-                  responseModalities: [Modality.AUDIO],
-                  outputAudioTranscription: {},
-                  inputAudioTranscription: {},
-                  systemInstruction: msg.systemInstruction || "You are a helpful assistant.",
-                  speechConfig: { 
-                    voiceConfig: {
-                       prebuiltVoiceConfig: { 
-                        voiceName: msg.voiceName || 'Kore'
-                      }
-                    }
-                  }
-                }
-            });
-        };
-
-        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-3.6-flash'];
-        let connected = false;
-        for (const model of liveModels) {
-          try {
-            session = await connectToGemini(model);
-            connected = true;
-            break;
-          } catch (err) {
-            console.warn(`Failed with model ${model}, trying next...`);
-          }
-        }
-        
-        if (!connected) {
-          ws.send(JSON.stringify({ error: "Failed to connect to Gemini Live. Please verify model availability." }));
-        }
-
-      } else if (msg.realtimeInput) {
-          if (session) {
-              const input = Array.isArray(msg.realtimeInput) ? msg.realtimeInput[0] : msg.realtimeInput;
-              session.sendRealtimeInput(input);
-          }
-      } else if (msg.toolResponse) {
-          if (session) {
-              session.sendToolResponse(msg.toolResponse);
-          }
-      }
-    } catch (err) {
-      console.error("WebSocket Message Error:", err);
-    }
-  });
-
-  ws.on("close", () => {
-    console.log("Client disconnected");
-    if (session) {
-        session.close();
-    }
-  });
-});
-
-// --- Vite Middleware ---
-async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { 
-        middlewareMode: true,
-        hmr: false
-      },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    // In production, serve static files (if built)
-    app.use(express.static("dist"));
-    
-    // SPA fallback
-    app.get("*all", (req, res) => {
-      res.sendFile(path.resolve("dist/index.html"));
-    });
-  }
-
-  const serverInstance = server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-
-  const shutdown = () => {
-    console.log('Shutting down server...');
-    serverInstance.close(() => {
-      process.exit(0);
-    });
-  };
-
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
-}
-
-startServer();

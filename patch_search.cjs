@@ -1,0 +1,41 @@
+const fs = require('fs');
+let code = fs.readFileSync('server.ts', 'utf8');
+
+code = code.replace(
+  /for \(const candidateKey of keysList\) \{[\s\S]*?return res\.status\(500\)\.json\(\{ \n    error: "AI Search failed\. Please check your API key configuration\." \n  \}\);\n\}\);/,
+  `let lastError: any = null;
+  for (const candidateKey of keysList) {
+    try {
+      const aiInstance = new GoogleGenAI({ 
+        apiKey: candidateKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build'
+          }
+        }
+      });
+
+      const response = await generateContentWithFallback(aiInstance, {
+          contents,
+          systemInstruction: systemInstruction || "You are an expert university and scholarship advisor. Search for real scholarships and provide concrete details.",
+          tools: [{ googleSearch: {} }] as any
+      });
+
+      if (response && response.text) {
+        return res.json({ 
+          text: response.text,
+          groundingMetadata: response.candidates?.[0]?.groundingMetadata || null 
+        });
+      }
+    } catch (error: any) {
+      lastError = error;
+      console.warn("Search attempt failed, trying next key or fallback:", error.message || error);
+    }
+  }
+
+  const errorMessage = lastError?.message || "AI Search failed. Please check your API key configuration.";
+  return res.status(500).json({ error: errorMessage });
+});`
+);
+
+fs.writeFileSync('server.ts', code);
