@@ -1188,7 +1188,9 @@ export default function App() {
   }, [milestones, auth.user?.email]);
 
   const extractRoadmapJson = (text: string): Milestone[] | null => {
-    // 1. Try parsing JSON block first
+    if (!text) return null;
+
+    // 1. Try parsing structured JSON block first (Standard AI output for roadmap requests)
     const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\[\s*\{\s*"id":[\s\S]*?\}\s*\]/);
     if (jsonMatch) {
       try {
@@ -1198,14 +1200,19 @@ export default function App() {
           return data;
         }
       } catch (e) {
-        // Fall through to markdown parsing
+        // Fall through to strict phase parsing
       }
     }
 
-    // 2. Try parsing Markdown text for roadmap/steps
+    // 2. Strict phase-based parsing ONLY if the message explicitly organizes by months/phases (Tháng 1, Giai đoạn 1, Month 1, Phase 1)
     const lower = text.toLowerCase();
-    const isRoadmapContext = lower.includes("lộ trình") || lower.includes("roadmap") || lower.includes("giai đoạn") || lower.includes("kế hoạch") || lower.includes("bước 1") || lower.includes("phase 1") || lower.includes("step 1");
-    if (!isRoadmapContext) return null;
+    const hasExplicitPhases = 
+      (lower.includes("tháng 1") && lower.includes("tháng 2")) ||
+      (lower.includes("giai đoạn 1") && lower.includes("giai đoạn 2")) ||
+      (lower.includes("month 1") && lower.includes("month 2")) ||
+      (lower.includes("phase 1") && lower.includes("phase 2"));
+
+    if (!hasExplicitPhases) return null;
 
     const lines = text.split('\n');
     const parsedMilestones: Milestone[] = [];
@@ -1214,14 +1221,13 @@ export default function App() {
 
     for (const line of lines) {
       const trimmed = line.trim();
-      const isHeaderLine = (
-        /^#{1,4}\s+/.test(trimmed) || 
-        /^\*\*(?:giai đoạn|bước|phase|step)\s*\d+.*?\*\*/i.test(trimmed) ||
-        /^(?:giai đoạn|bước|phase|step)\s*\d+[:\.\-]/i.test(trimmed) ||
-        /^\d+[\.\)]\s+[A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴ]/i.test(trimmed)
-      ) && trimmed.length < 120;
+      const isPhaseHeader = (
+        /^\*\*(?:tháng|giai đoạn|month|phase)\s*\d+.*?\*\*/i.test(trimmed) ||
+        /^(?:tháng|giai đoạn|month|phase)\s*\d+[:\.\-]/i.test(trimmed) ||
+        /^#{1,4}\s+(?:tháng|giai đoạn|month|phase)\s*\d+/i.test(trimmed)
+      ) && trimmed.length < 100;
 
-      if (isHeaderLine) {
+      if (isPhaseHeader) {
         if (currentTitle) {
           parsedMilestones.push({
             id: `ms-gen-${parsedMilestones.length + 1}`,
@@ -1250,7 +1256,6 @@ export default function App() {
       return parsedMilestones.slice(0, 6);
     }
 
-    // Strictly return null if no dynamic milestones parsed from AI response (NO HARDCODED MOCK DATA)
     return null;
   };
 
@@ -3770,11 +3775,15 @@ export default function App() {
                                     )}
                                     {m.role === 'model' && (() => {
                                         const prevUserMsg = messages.slice(0, idx).reverse().find(msg => msg.role === 'user')?.text || '';
-                                        const hasProgressIntent = /bảng tiến độ|tiến độ|lộ trình|kế hoạch|mục tiêu|roadmap|progress|bảng theo dõi|tạo lộ trình/i.test(prevUserMsg) || /bảng tiến độ|tiến độ|lộ trình|kế hoạch|mục tiêu|roadmap|progress|bảng theo dõi|tạo lộ trình/i.test(m.text);
-                                        if (!hasProgressIntent) return null;
+                                        const isExplicitRoadmapRequest = 
+                                            /(lập|tạo|xây dựng|thiết kế|lên|cho tôi|hãy làm)\s*(lộ trình|roadmap|kế hoạch\s*\d+\s*tháng|bảng tiến độ)/i.test(prevUserMsg) ||
+                                            /(lộ trình|roadmap)\s*(3 tháng|\d+\s*tháng|chi tiết|từng tháng)/i.test(prevUserMsg);
+                                        const hasExplicitRoadmapJson = /```json\s*\[\s*\{\s*"id":/i.test(m.text) || /\[\s*\{\s*"id":\s*"\d+"[\s\S]*?"title":/i.test(m.text);
+
+                                        if (!isExplicitRoadmapRequest && !hasExplicitRoadmapJson) return null;
 
                                         const parsedRoadmap = extractRoadmapJson(m.text);
-                                        if (!parsedRoadmap) return null;
+                                        if (!parsedRoadmap || parsedRoadmap.length === 0) return null;
 
                                         return (
                                             <motion.button

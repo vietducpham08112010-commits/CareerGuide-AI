@@ -63,9 +63,11 @@ const generateClientContentWithFallback = async (
         contents: any;
         config?: any;
     }): Promise<any> => {
-    const modelsToTry = [options.model || "gemini-3.7-flash", "gemini-3.7-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"].filter(Boolean);
-
+    const defaultModels = ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"];
+    const modelsToTry = options.model ? [options.model, ...defaultModels] : defaultModels;
     const uniqueModels = Array.from(new Set(modelsToTry));
+
+    let lastError: any = null;
 
     if (options.config?.tools && options.config.tools.length > 0) {
         for (const model of uniqueModels) {
@@ -77,10 +79,7 @@ const generateClientContentWithFallback = async (
                 });
                 return response;
             } catch (error: any) {
-                if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("403")) {
-                    throw error;
-                }
-                await new Promise(r => setTimeout(r, 300));
+                lastError = error;
             }
         }
     }
@@ -99,14 +98,11 @@ const generateClientContentWithFallback = async (
             });
             return response;
         } catch (error: any) {
-            if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("403")) {
-                throw error;
-            }
-            await new Promise(r => setTimeout(r, 300));
+            lastError = error;
         }
     }
 
-    throw new Error("All client model fallback attempts exhausted / Tất cả các phương án kết nối mô hình đều thất bại.");
+    throw lastError || new Error("All client model fallback attempts exhausted / Tất cả các phương án kết nối mô hình đều thất bại.");
 };
 
 export const getGeminiApiKeysPool = (userProfile?: UserProfile | null): string[] => {

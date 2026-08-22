@@ -465,8 +465,8 @@ async function generateContentWithFallback(
 ) {
     const modelsToTry = [
         'gemini-3.7-flash',
-        'gemini-flash-latest',
-        'gemini-3.1-flash-lite'
+        'gemini-3.1-flash-lite',
+        'gemini-flash-latest'
     ];
 
     let lastError: any = null;
@@ -487,10 +487,7 @@ async function generateContentWithFallback(
                 }
             } catch (error: any) {
                 lastError = error;
-                if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("403")) {
-                    throw error;
-                }
-                await new Promise(r => setTimeout(r, 200));
+                // Try next model fallback immediately
             }
         }
     }
@@ -510,10 +507,7 @@ async function generateContentWithFallback(
             }
         } catch (error: any) {
             lastError = error;
-            if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("403")) {
-                throw error;
-            }
-            await new Promise(r => setTimeout(r, 200));
+            // Try next model fallback immediately
         }
     }
 
@@ -531,6 +525,8 @@ export default async function handler(req: any, res: any) {
   if (!message && !attachment) {
     return res.status(400).json({ error: "Message or attachment is required" });
   }
+
+  let lastError: any = null;
 
   try {
     const keys: string[] = [];
@@ -592,11 +588,17 @@ export default async function handler(req: any, res: any) {
           return res.status(200).json({ text: response.text });
         }
       } catch (error: any) {
-        console.warn("Chat key failed, trying next:", error?.message || error);
+        lastError = error;
+        console.warn("Chat key attempt failed:", error?.message || error);
       }
     }
 
-    return res.status(200).json({ text: synthesizeFallbackChatResponse(message || "", systemInstruction) });
+    if (lastError) {
+      const msg = cleanGeminiErrorMessage(lastError);
+      return res.status(500).json({ error: msg });
+    }
+
+    return res.status(500).json({ error: "Không thể kết nối đến mô hình AI. Vui lòng kiểm tra lại kết nối mạng hoặc thử lại sau." });
 
   } catch (error: any) {
     return res.status(500).json({ error: cleanGeminiErrorMessage(error) });

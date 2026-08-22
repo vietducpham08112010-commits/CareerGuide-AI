@@ -107,8 +107,8 @@ async function generateContentWithFallback(
 ) {
     const modelsToTry = [
         'gemini-3.7-flash',
-        'gemini-flash-latest',
-        'gemini-3.1-flash-lite'
+        'gemini-3.1-flash-lite',
+        'gemini-flash-latest'
     ];
 
     let lastError: any = null;
@@ -127,10 +127,6 @@ async function generateContentWithFallback(
             }
         } catch (error: any) {
             lastError = error;
-            if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("403")) {
-                throw error;
-            }
-            await new Promise(r => setTimeout(r, 200));
         }
     }
 
