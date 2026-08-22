@@ -273,7 +273,7 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                       {uniqueCitations.map((cit, idx) => (
                         <a
-                          key={idx}
+                          key={cit.uri || `cit-${idx}`}
                           href={cit.uri}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -341,8 +341,8 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
                         {item.major}
                       </p>
                       <div className="flex gap-1.5 flex-wrap pt-1">
-                        {item.group.split(',').map((gp) => (
-                          <span key={gp} className="text-[10px] font-mono font-bold bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded border border-gray-100 dark:border-white/5">
+                        {item.group.split(',').map((gp, gIdx) => (
+                          <span key={`${item.id}-${gp.trim()}-${gIdx}`} className="text-[10px] font-mono font-bold bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded border border-gray-100 dark:border-white/5">
                             {gp.trim()}
                           </span>
                         ))}

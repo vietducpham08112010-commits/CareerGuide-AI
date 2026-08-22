@@ -573,7 +573,7 @@ export const CareerCompare = ({ lang, t, Icons }: { lang: Language, t: any, Icon
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {Array.isArray(result.career1?.skills) ? (
                           result.career1.skills.map((skill: string, idx: number) => (
-                            <span key={idx} className="text-xs bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300 px-2.5 py-1 rounded-xl font-medium border border-indigo-100/50 dark:border-indigo-900/10">
+                            <span key={`c1-sk-${idx}-${skill}`} className="text-xs bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300 px-2.5 py-1 rounded-xl font-medium border border-indigo-100/50 dark:border-indigo-900/10">
                               {skill}
                             </span>
                           ))
@@ -587,7 +587,7 @@ export const CareerCompare = ({ lang, t, Icons }: { lang: Language, t: any, Icon
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {Array.isArray(result.career2?.skills) ? (
                           result.career2.skills.map((skill: string, idx: number) => (
-                            <span key={idx} className="text-xs bg-purple-50 text-purple-600 dark:bg-purple-950/30 dark:text-purple-300 px-2.5 py-1 rounded-xl font-medium border border-purple-100/50 dark:border-purple-900/10">
+                            <span key={`c2-sk-${idx}-${skill}`} className="text-xs bg-purple-50 text-purple-600 dark:bg-purple-950/30 dark:text-purple-300 px-2.5 py-1 rounded-xl font-medium border border-purple-100/50 dark:border-purple-900/10">
                               {skill}
                             </span>
                           ))

@@ -25,6 +25,7 @@ import { MonetizationRewardsHub } from './components/MonetizationRewardsHub';
 import { CvBuilder } from './components/CvBuilder';
 import { UpgradeModal } from './components/UpgradeModal';
 import { PromptBuilderModal } from './components/PromptBuilderModal';
+import { FoundersSection } from './components/FoundersSection';
 import { getSubscriptionDetails } from './utils/subscriptionUtils';
 import { 
   syncUserProfileToCloud, 
@@ -1002,6 +1003,7 @@ export default function App() {
     }
   };
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isFoundersModalOpen, setIsFoundersModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [upgradeFeatureName, setUpgradeFeatureName] = useState<string | undefined>(undefined);
@@ -2221,6 +2223,13 @@ export default function App() {
               </button>
 
              {/* Exclusive Glowing Judge Privilege Bypass Button on Navbar */}
+             <button 
+                onClick={() => setIsFoundersModalOpen(true)} 
+                className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-black transition-all cursor-pointer shadow-xs"
+             >
+                <span>🏆 {lang === Language.VI ? "Đội Ngũ Sáng Lập" : "NextX Founders"}</span>
+             </button>
+
              <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -2415,8 +2424,8 @@ export default function App() {
                                 {t.vnLaborMarketDesc}
                             </p>
                             <div className="flex flex-wrap justify-center gap-2 md:gap-4">
-                                {t.laborMarketTags.map((tag: any) => (
-                                    <span key={tag.en} className="px-3 py-1.5 md:px-4 md:py-2 bg-white dark:bg-white/10 rounded-full text-[10px] md:text-sm font-bold border border-indigo-500/20">{lang === Language.EN ? tag.en : tag.vi}</span>
+                                {t.laborMarketTags.map((tag: any, tagIdx: number) => (
+                                    <span key={`lmt-${tag.en || tagIdx}-${tagIdx}`} className="px-3 py-1.5 md:px-4 md:py-2 bg-white dark:bg-white/10 rounded-full text-[10px] md:text-sm font-bold border border-indigo-500/20">{lang === Language.EN ? tag.en : tag.vi}</span>
                                 ))}
                             </div>
                         </div>
@@ -2429,7 +2438,7 @@ export default function App() {
             <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-gray-50 via-transparent to-gray-50 dark:from-[#0a0a0a] dark:via-transparent dark:to-[#0a0a0a] z-10"></div>
             <div className="flex gap-8 whitespace-nowrap animate-marquee">
                 {[...CAREER_TAGS, ...CAREER_TAGS].map((tag, i) => (
-                    <div key={`${tag.en}-${i}`} className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-gray-300 to-gray-400 dark:from-white/20 dark:to-white/5 uppercase tracking-widest">{lang === Language.EN ? tag.en : tag.vi}</div>
+                    <div key={`ctag-${tag.en || i}-${i}`} className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-gray-300 to-gray-400 dark:from-white/20 dark:to-white/5 uppercase tracking-widest">{lang === Language.EN ? tag.en : tag.vi}</div>
                 ))}
             </div>
         </div>
@@ -2445,12 +2454,12 @@ export default function App() {
              
              <StaggerContainer>
                  <div ref={landingCareersScrollRef} style={{ touchAction: 'pan-x' }} className="flex overflow-x-auto pb-8 snap-x snap-mandatory gap-6 hide-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
-                     {HOT_INDUSTRIES.map((industry) => {
+                     {HOT_INDUSTRIES.map((industry, indIdx) => {
                          const iconKey = industry.icon as keyof typeof Icons;
                          const IconComponent = Icons[iconKey] || Icons.TrendingUp;
                          
                          return (
-                            <StaggerItem key={industry.id} className="min-w-[85vw] snap-center md:min-w-0 md:w-auto">
+                            <StaggerItem key={`hot-ind-${industry.id || indIdx}-${indIdx}`} className="min-w-[85vw] snap-center md:min-w-0 md:w-auto">
                                 <motion.div 
                                     whileHover={{ y: -8, scale: 1.02 }}
                                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -2777,6 +2786,14 @@ export default function App() {
           </div>
         </section>
 
+        {/* The NEXTX 2026 Grand Finalists & Founders Showcase Section */}
+        <section id="founders-section" className="border-t border-gray-200/80 dark:border-white/5 bg-gradient-to-b from-transparent via-indigo-500/[0.03] to-transparent">
+          <FoundersSection 
+            lang={lang} 
+            onExploreDemo={handleActivateDemo} 
+          />
+        </section>
+
         <footer className="py-16 px-6 border-t border-gray-200 dark:border-white/5 bg-gray-50/50 dark:bg-[#070709] transition-colors">
              <div className="max-w-6xl mx-auto space-y-8 text-center md:text-left">
                  <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-gray-200 dark:border-white/5">
@@ -2788,6 +2805,10 @@ export default function App() {
                          </div>
                      </div>
                      <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-gray-600 dark:text-gray-400">
+                         <button onClick={() => setIsFoundersModalOpen(true)} className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold hover:underline transition-colors">
+                             <span>🏆 {lang === Language.VI ? 'Đội Ngũ Sáng Lập (The NextX)' : 'Founders Showcase'}</span>
+                         </button>
+                         <span>•</span>
                          <button onClick={() => setHasAcceptedTerms(false)} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                              {lang === Language.VI ? 'Điều khoản sử dụng' : 'Terms of Service'}
                          </button>
@@ -3177,15 +3198,22 @@ export default function App() {
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.SCHOLARSHIPS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.SCHOLARSHIPS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Search className="w-5 h-5" />{t.scholarships}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.PORTFOLIO); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.PORTFOLIO ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.Briefcase className="w-5 h-5" />{t.portfolio}</motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.CV_BUILDER); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.CV_BUILDER ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.FileText className="w-5 h-5 text-indigo-500" />{lang === Language.VI ? 'Tạo CV Tự Động AI' : 'AI CV Builder'}</motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.FOUNDERS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center justify-between py-3 px-4 rounded-xl text-sm font-bold transition-all ${tab === DashboardTab.FOUNDERS ? 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}>
+                  <div className="flex items-center gap-3">
+                    <Icons.Award className="w-5 h-5 text-amber-500" />
+                    <span>{lang === Language.VI ? 'Đội Ngũ Sáng Lập (NextX)' : 'NextX Founders'}</span>
+                  </div>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">Final</span>
+                </motion.button>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setTab(DashboardTab.MONETIZATION_PARTNERS); setIsMobileSidebarOpen(false); }} className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-medium transition-all ${tab === DashboardTab.MONETIZATION_PARTNERS ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'}`}><Icons.CreditCard className="w-5 h-5 text-emerald-500" />{t.monetizationPartners || 'Gói cước & Đối tác'}</motion.button>
                 
                 {chatHistory.length > 0 ? (
                     <div className="mt-8">
                         <div className="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Icons.History className="w-3 h-3" />{t.chatHistory}</div>
                         <div className="space-y-1">
-                            {chatHistory.slice(0, 10).map((session) => (
+                            {chatHistory.slice(0, 10).map((session, idx) => (
                                 <SidebarChatItem
-                                    key={session.id}
+                                    key={session.id ? `${session.id}-${idx}` : `session-${idx}`}
                                     session={session}
                                     onClick={() => { loadSession(session); setIsMobileSidebarOpen(false); }}
                                     onRename={renameSession}
@@ -3299,9 +3327,9 @@ export default function App() {
                         <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t.searchChats} className="w-full pl-9 pr-3 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors" />
                     </div>
                     <div className="space-y-1">
-                        {filteredHistory.map((session) => (
+                        {filteredHistory.map((session, idx) => (
                             <SidebarChatItem
-                                key={session.id}
+                                key={session.id ? `${session.id}-${idx}` : `filt-session-${idx}`}
                                 session={session}
                                 onClick={() => loadSession(session)}
                                 onRename={renameSession}
@@ -3622,9 +3650,9 @@ export default function App() {
                                     </motion.p>
                                 </div>
                             )}
-                            {messages.map((m) => (
+                            {messages.map((m, idx) => (
                         <motion.div 
-                            key={m.id} 
+                            key={m.id ? `${m.id}-${idx}` : `msg-${idx}`} 
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
@@ -3636,7 +3664,7 @@ export default function App() {
                                     {m.pastedTexts && m.pastedTexts.length > 0 && (
                                         <div className="flex flex-wrap gap-1.5 md:gap-2 mb-2 md:mb-3">
                                             {m.pastedTexts.map((text, idx) => (
-                                                <div key={idx} className="h-14 w-20 md:h-24 md:w-32 flex flex-col bg-white/10 rounded-lg md:rounded-2xl border border-white/20 shadow-sm p-1.5 md:p-3 overflow-hidden">
+                                                <div key={`pt-${m.id || ''}-${idx}-${text.slice(0, 10)}`} className="h-14 w-20 md:h-24 md:w-32 flex flex-col bg-white/10 rounded-lg md:rounded-2xl border border-white/20 shadow-sm p-1.5 md:p-3 overflow-hidden">
                                                     <p className="text-[7px] md:text-[10px] text-white/80 line-clamp-2 md:line-clamp-3 mb-auto leading-relaxed">{text}</p>
                                                     <div className="mt-1 md:mt-2 text-[6px] md:text-[9px] font-bold uppercase tracking-wider text-white/60 border border-white/20 rounded-md px-1 md:px-1.5 py-0.5 self-start bg-white/5">
                                                         {t.pasted}
@@ -3748,7 +3776,7 @@ export default function App() {
                                 )}
                                 {pastedTexts.map((text, index) => (
                                     <motion.div 
-                                        key={index}
+                                        key={`pasted-prev-${index}-${text.slice(0, 10)}`}
                                         initial={{ opacity: 0, scale: 0.8, y: 10 }}
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.8, y: 10 }}
@@ -3910,7 +3938,7 @@ export default function App() {
                                     const IconComponent = (Icons as any)[suggestion.icon] || Icons.MessageSquare;
                                     return (
                                         <motion.button
-                                            key={idx}
+                                            key={`sug-${lang}-${idx}-${suggestion.title}`}
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}
                                             onClick={() => handleSendMessage(undefined, suggestion.prompt)}
@@ -3974,7 +4002,7 @@ export default function App() {
                  <div className="absolute bottom-28 left-0 right-0 max-w-3xl mx-auto px-6 max-h-[35vh] flex flex-col justify-end overflow-hidden pointer-events-none z-10">
                     <div className="flex flex-col space-y-4 pb-4 overflow-y-auto no-scrollbar" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 15%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%)' }}>
                         {transcripts.slice(-4).map((tr, i) => (
-                            <div key={i} className={`flex ${tr.isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
+                            <div key={`tr-${i}-${tr.isUser ? 'u' : 'm'}-${tr.text.slice(0, 10)}`} className={`flex ${tr.isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
                                 <div className={`max-w-[85%] px-5 py-3.5 rounded-3xl text-sm sm:text-base leading-relaxed pointer-events-auto backdrop-blur-md shadow-sm ${tr.isUser ? 'bg-indigo-600/95 text-white rounded-tr-md' : 'bg-white/95 dark:bg-[#1A1A1A]/95 text-gray-800 dark:text-gray-100 rounded-tl-md border border-gray-200/50 dark:border-white/10'}`}>
                                     {tr.text}
                                 </div>
@@ -3995,9 +4023,9 @@ export default function App() {
                             disabled={isVoiceActive} 
                             className="appearance-none bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none font-medium text-xs sm:text-sm w-28 sm:w-40 truncate cursor-pointer disabled:opacity-50"
                          >
-                             {inputDevices.map((device) => (
-                                <option key={device.deviceId} value={device.deviceId} className="bg-white dark:bg-black">
-                                    {device.label || `${t.microphone} ${device.deviceId.slice(0, 5)}...`}
+                             {inputDevices.map((device, devIdx) => (
+                                <option key={device.deviceId ? `${device.deviceId}-${devIdx}` : `dev-${devIdx}`} value={device.deviceId} className="bg-white dark:bg-black">
+                                    {device.label || `${t.microphone} ${device.deviceId ? device.deviceId.slice(0, 5) : devIdx}...`}
                                 </option>
                              ))}
                          </select>
@@ -4175,6 +4203,15 @@ export default function App() {
               />
             </div>
         )}
+        {tab === DashboardTab.FOUNDERS && (
+            <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#050505] overflow-y-auto">
+              <FoundersSection 
+                  lang={lang} 
+                  isStandaloneTab={true}
+                  onExploreDemo={handleActivateDemo}
+              />
+            </div>
+        )}
         </motion.div>
         </AnimatePresence>
       </main>
@@ -4240,7 +4277,7 @@ export default function App() {
                         <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                             {AVATARS.slice(0, 10).map((avatar, idx) => (
                                 <img 
-                                    key={idx} 
+                                    key={`avatar-${idx}-${avatar}`} 
                                     src={avatar} 
                                     alt={`Avatar ${idx}`} 
                                     referrerPolicy="no-referrer"
@@ -4287,26 +4324,7 @@ export default function App() {
                             </select>
                         </div>
 
-                        {/* If Gemini is selected: Custom Gemini API Key */}
-                        {(auth.user?.aiProvider === AIProvider.GEMINI || !auth.user?.aiProvider) && (
-                            <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">
-                                    {lang === Language.VI ? "Khóa API Gemini của bạn (Tùy chọn)" : "Your Gemini API Key (Optional)"}
-                                </label>
-                                <input 
-                                    type="password"
-                                    value={auth.user?.customGeminiApiKey || ''} 
-                                    onChange={(e) => updateUserProfile({ customGeminiApiKey: e.target.value })} 
-                                    placeholder={lang === Language.VI ? "Dán khóa API Gemini của bạn để vượt qua giới hạn dùng thử" : "Paste your custom Gemini API key to bypass trial limits"} 
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-xl text-gray-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                />
-                                <p className="text-[10px] text-gray-500 mt-1">
-                                    {lang === Language.VI 
-                                        ? "Khóa của bạn sẽ được bảo mật, lưu cục bộ và gửi trực tiếp qua proxy máy chủ để thực hiện yêu cầu." 
-                                        : "Your key is secured, stored locally, and proxied securely to avoid exposure."}
-                                </p>
-                            </div>
-                        )}
+
 
                         {/* If Custom is selected */}
                         {auth.user?.aiProvider === AIProvider.CUSTOM && (
@@ -4363,6 +4381,21 @@ export default function App() {
                         >
                             {t.clearAllHistory}
                         </motion.button>
+                    </div>
+
+                    {/* Quick Button to Open Founders Showcase */}
+                    <div className="mt-6 pt-4 border-t border-gray-100 dark:border-white/5">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsProfileModalOpen(false);
+                                setIsFoundersModalOpen(true);
+                            }}
+                            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-indigo-500/10 border border-amber-500/30 hover:border-amber-500/60 text-amber-700 dark:text-amber-300 font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-xs"
+                        >
+                            <Icons.Award className="w-4 h-4 text-amber-500" />
+                            <span>{lang === Language.VI ? '🏆 Xem Hồ Sơ Đội Ngũ Sáng Lập (The NextX 2026)' : '🏆 View The NextX Founders & Finalists Profile'}</span>
+                        </button>
                     </div>
 
                     <AnimatePresence>
@@ -4509,6 +4542,53 @@ export default function App() {
         }}
         showToast={showToast}
       />
+
+      {/* The NextX Founders & Finalists Showcase Modal */}
+      {isFoundersModalOpen && (
+        <div 
+          onClick={() => setIsFoundersModalOpen(false)}
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-2 sm:p-6 bg-black/75 backdrop-blur-md animate-fade-in cursor-pointer"
+        >
+          <motion.div 
+            initial={{ scale: 0.94, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.94, opacity: 0, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-[#0c0c12] border border-gray-200 dark:border-white/10 rounded-3xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden cursor-default"
+          >
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-200 dark:border-white/10 bg-gray-50/80 dark:bg-white/[0.03]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 text-lg font-black shrink-0">
+                  🏆
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg text-gray-900 dark:text-white">
+                    {lang === Language.VI ? 'Hồ Sơ Đội Ngũ Sáng Lập (The NextX 2026)' : 'NextX 2026 Founders & Finalists'}
+                  </h3>
+                  <p className="text-xs text-gray-500">CareerGuide AI • Vinschool The Harmony</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsFoundersModalOpen(false)}
+                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+                title={lang === Language.VI ? 'Đóng' : 'Close'}
+              >
+                <Icons.X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-2 sm:p-6 flex-1">
+              <FoundersSection 
+                lang={lang} 
+                isStandaloneTab={true}
+                onExploreDemo={() => {
+                  setIsFoundersModalOpen(false);
+                  handleActivateDemo();
+                }}
+              />
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Mobile Bottom Navigation Bar (Optimized for Mobile Judge Experience) */}
       {mode === AppMode.DASHBOARD && (

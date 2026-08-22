@@ -995,8 +995,8 @@ export const HotCareersVietnam: React.FC<Props> = ({ lang, onConsult }) => {
                   {lang === 'vi' ? 'KỸ NĂNG THEN CHỐT' : 'ESSENTIAL SKILLS'}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {job.skills.map(skill => (
-                    <span key={skill} className="px-2 py-0.5 bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 rounded text-[10px] font-mono border border-gray-200/40 dark:border-white/5">
+                  {job.skills.map((skill, sIdx) => (
+                    <span key={`${job.id}-${skill}-${sIdx}`} className="px-2 py-0.5 bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 rounded text-[10px] font-mono border border-gray-200/40 dark:border-white/5">
                       {skill}
                     </span>
                   ))}

@@ -297,21 +297,20 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                     {isVi ? "Không ràng buộc chu kỳ" : "No recurring obligation"}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {[
-                    { tier: 'micro_interview' as SubscriptionTier, nameVi: '1 Lượt AI Phỏng Vấn Lẻ', nameEn: '1 Mock Interview Credit', amount: 8000, priceFormatted: '8.000 VNĐ', icon: Icons.Video, desc: '1 Lượt Mock AI' },
-                    { tier: 'micro_transcript' as SubscriptionTier, nameVi: '1 Lượt Soi Học Bạ Lẻ', nameEn: '1 Transcript Audit Credit', amount: 5000, priceFormatted: '5.000 VNĐ', icon: Icons.FileCheck, desc: '1 Lượt Audit Điểm' },
-                    { tier: 'micro5' as SubscriptionTier, nameVi: 'Gói Lẻ 5 Câu Chat AI', nameEn: '5 Extra AI Chats', amount: 15000, priceFormatted: '15.000 VNĐ', icon: Icons.MessageSquare, desc: 'Hỏi đáp tư vấn' },
-                    { tier: 'micro10' as SubscriptionTier, nameVi: 'Gói Lẻ 10 Câu Chat AI', nameEn: '10 Extra AI Chats', amount: 25000, priceFormatted: '25.000 VNĐ', icon: Icons.Zap, desc: 'Tiết kiệm hơn' },
+                    { tier: 'micro_interview' as SubscriptionTier, nameVi: 'AI Mock Interview', nameEn: 'AI Mock Interview', amount: 8000, priceFormatted: '8.000 VNĐ/lượt', icon: Icons.Video, desc: '8.000 VNĐ/lượt' },
+                    { tier: 'micro_transcript' as SubscriptionTier, nameVi: 'AI Academic Record/CV Review', nameEn: 'AI Academic Record/CV Review', amount: 5000, priceFormatted: '5.000 VNĐ/lượt', icon: Icons.FileCheck, desc: '5.000 VNĐ/lượt' },
+                    { tier: 'micro10' as SubscriptionTier, nameVi: 'AI Credits (10 câu hỏi)', nameEn: 'AI Credits (10 queries)', amount: 25000, priceFormatted: '25.000 VNĐ/10 câu', icon: Icons.Zap, desc: '25.000 VNĐ/10 câu' },
                   ].map((pkg, idx) => (
                     <button
-                      key={idx}
+                      key={`micro-pkg-${pkg.tier}-${idx}`}
                       onClick={() => handleInitiatePayment(pkg)}
                       className="p-3 bg-white dark:bg-slate-800 hover:border-purple-500 border border-gray-200 dark:border-slate-700 rounded-xl text-left transition-all shadow-sm group cursor-pointer"
                     >
                       <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 block flex items-center gap-1">
                         <pkg.icon className="w-3 h-3 text-purple-500" />
-                        {pkg.desc}
+                        {pkg.nameVi}
                       </span>
                       <span className="text-sm font-black text-gray-900 dark:text-white group-hover:text-purple-600 transition-colors block">
                         {pkg.priceFormatted}
@@ -331,7 +330,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                 <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
                   <div className="space-y-3">
                     <span className="px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 text-xs font-black rounded-lg inline-block">
-                      CareerGuide Free
+                      Career Guide Free
                     </span>
                     <div>
                       <h4 className="text-2xl font-black text-gray-900 dark:text-white">0 VNĐ</h4>
@@ -339,10 +338,11 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                     </div>
 
                     <div className="border-t border-gray-100 dark:border-slate-800 pt-3 space-y-2 text-xs">
-                      <p className="font-bold text-gray-700 dark:text-gray-300">{isVi ? 'Quyền lợi miễn phí:' : 'Free benefits:'}</p>
+                      <p className="font-bold text-gray-700 dark:text-gray-300">{isVi ? 'Quyền lợi gói Miễn phí:' : 'Free benefits:'}</p>
                       <ul className="space-y-2 text-gray-600 dark:text-gray-400">
                         <li className="flex items-start gap-2"><Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" /> 3 câu hỏi AI đầu tiên</li>
-                        <li className="flex items-start gap-2"><Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Trắc nghiệm RIASEC cơ bản</li>
+                        <li className="flex items-start gap-2"><Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Test RIASEC cơ bản 13 câu</li>
+                        <li className="flex items-start gap-2"><Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" /> 1 lần AI soi học bạ</li>
                         <li className="flex items-start gap-2"><Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" /> Tra cứu điểm chuẩn cơ bản</li>
                       </ul>
                     </div>
@@ -352,7 +352,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                     disabled
                     className="w-full py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-400 font-bold text-xs rounded-xl cursor-default"
                   >
-                    {isVi ? "Gói Mặc Định" : "Default Tier"}
+                    {isVi ? "Gói Mặc Định (Miễn Phí)" : "Default Tier (Free)"}
                   </button>
                 </div>
 
@@ -364,14 +364,14 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
                   <div className="space-y-3">
                     <span className="px-3 py-1 bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-black rounded-lg inline-block">
-                      CareerGuide Premium
+                      Career Guide Premium
                     </span>
                     <div>
                       <h4 className="text-2xl font-black text-white">
-                        {billingCycle === 'monthly' ? "99.000 VNĐ" : "399.000 VNĐ"}
+                        {billingCycle === 'monthly' ? "59.000 VNĐ" : "299.000 VNĐ"}
                       </h4>
                       <span className="text-xs text-purple-200">
-                        {billingCycle === 'monthly' ? "/ tháng" : "/ năm (~33k/tháng)"}
+                        {billingCycle === 'monthly' ? "/ tháng" : "/ năm (~25k/tháng)"}
                       </span>
                     </div>
 
@@ -381,7 +381,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                         <li className="flex items-start gap-2"><Icons.Check className="w-4 h-4 text-emerald-400 shrink-0" /> AI không giới hạn (FUP chuẩn)</li>
                         <li className="flex items-start gap-2"><Icons.Check className="w-4 h-4 text-emerald-400 shrink-0" /> AI Mock Interview (Phỏng vấn ảo)</li>
                         <li className="flex items-start gap-2"><Icons.Check className="w-4 h-4 text-emerald-400 shrink-0" /> Tối ưu CV chuẩn ATS & Xuất PDF A4</li>
-                        <li className="flex items-start gap-2"><Icons.Check className="w-4 h-4 text-emerald-400 shrink-0" /> Đồng bộ Google Calendar</li>
+                        <li className="flex items-start gap-2"><Icons.Check className="w-4 h-4 text-emerald-400 shrink-0" /> Phân tích Career DNA & Google Calendar</li>
                       </ul>
                     </div>
                   </div>
@@ -389,15 +389,15 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   <button
                     onClick={() => handleInitiatePayment({
                       tier: billingCycle === 'monthly' ? 'premium_monthly' : 'premium_yearly',
-                      nameVi: `CareerGuide Premium (${billingCycle === 'monthly' ? 'Gói Tháng' : 'Gói Năm'})`,
-                      nameEn: `CareerGuide Premium (${billingCycle === 'monthly' ? 'Monthly' : 'Yearly'})`,
-                      amount: billingCycle === 'monthly' ? 99000 : 399000,
-                      priceFormatted: billingCycle === 'monthly' ? '99.000 VNĐ' : '399.000 VNĐ'
+                      nameVi: `Career Guide Premium (${billingCycle === 'monthly' ? '59k/Tháng' : '299k/Năm'})`,
+                      nameEn: `Career Guide Premium (${billingCycle === 'monthly' ? '59k/Monthly' : '299k/Yearly'})`,
+                      amount: billingCycle === 'monthly' ? 59000 : 299000,
+                      priceFormatted: billingCycle === 'monthly' ? '59.000 VNĐ' : '299.000 VNĐ'
                     })}
                     className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Icons.QrCode className="w-4 h-4" />
-                    <span>{billingCycle === 'monthly' ? "Thanh Toán VietQR (99k)" : "Thanh Toán VietQR (399k)"}</span>
+                    <span>{billingCycle === 'monthly' ? "Thanh Toán VietQR (59k/tháng)" : "Thanh Toán VietQR (299k/năm)"}</span>
                   </button>
                 </div>
 
@@ -409,14 +409,14 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
                   <div className="space-y-3">
                     <span className="px-3 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black rounded-lg inline-block">
-                      CareerGuide Max
+                      Career Guide Max
                     </span>
                     <div>
                       <h4 className="text-2xl font-black text-amber-300">
-                        {billingCycle === 'monthly' ? "129.000 VNĐ" : "999.000 VNĐ"}
+                        {billingCycle === 'monthly' ? "99.000 VNĐ" : "599.000 VNĐ"}
                       </h4>
                       <span className="text-xs text-amber-200/80">
-                        {billingCycle === 'monthly' ? "/ tháng" : "/ năm (~83k/tháng)"}
+                        {billingCycle === 'monthly' ? "/ tháng" : "/ năm (~50k/tháng)"}
                       </span>
                     </div>
 
@@ -434,44 +434,40 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   <button
                     onClick={() => handleInitiatePayment({
                       tier: billingCycle === 'monthly' ? 'max_monthly' : 'max_yearly',
-                      nameVi: `CareerGuide Max (${billingCycle === 'monthly' ? 'Gói Tháng' : 'Gói Năm'})`,
-                      nameEn: `CareerGuide Max (${billingCycle === 'monthly' ? 'Monthly' : 'Yearly'})`,
-                      amount: billingCycle === 'monthly' ? 129000 : 999000,
-                      priceFormatted: billingCycle === 'monthly' ? '129.000 VNĐ' : '999.000 VNĐ'
+                      nameVi: `Career Guide Max (${billingCycle === 'monthly' ? '99k/Tháng' : '599k/Năm'})`,
+                      nameEn: `Career Guide Max (${billingCycle === 'monthly' ? '99k/Monthly' : '599k/Yearly'})`,
+                      amount: billingCycle === 'monthly' ? 99000 : 599000,
+                      priceFormatted: billingCycle === 'monthly' ? '99.000 VNĐ' : '599.000 VNĐ'
                     })}
                     className="w-full py-3 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Icons.QrCode className="w-4 h-4" />
-                    <span>{billingCycle === 'monthly' ? "Thanh Toán VietQR (129k)" : "Thanh Toán VietQR (999k)"}</span>
+                    <span>{billingCycle === 'monthly' ? "Thanh Toán VietQR (99k/tháng)" : "Thanh Toán VietQR (599k/năm)"}</span>
                   </button>
                 </div>
               </div>
 
-              {/* Regional Subsidy Banner (29.000 VNĐ / tháng) */}
+              {/* School SaaS & Enterprise Banner */}
               <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-900 border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-white shadow-lg">
                 <div className="space-y-1 text-center sm:text-left">
                   <div className="flex items-center justify-center sm:justify-start gap-2">
                     <span className="px-2 py-0.5 bg-emerald-500 text-slate-950 text-[10px] font-black rounded-md uppercase">
-                      Trợ Giá Vùng Miền
+                      School SaaS
                     </span>
-                    <span className="text-xs font-bold text-emerald-300">Giảm 50% cho học sinh Nông Thôn / Tỉnh</span>
+                    <span className="text-xs font-bold text-emerald-300">Giải pháp toàn diện cho Trường học & Tổ chức giáo dục</span>
                   </div>
                   <p className="text-xs text-gray-300">
-                    Gói Premium đầy đủ tính năng AI dành cho học sinh vùng sâu, Tây Nguyên & Miền Tây: <strong className="text-amber-300">29.000 VNĐ / tháng</strong>
+                    Bản quyền toàn trường + Dashboard phân tích tâm lý & nguyện vọng học sinh: <strong className="text-amber-300">5 - 15 triệu VNĐ / trường / năm</strong>
                   </p>
                 </div>
                 <button
-                  onClick={() => handleInitiatePayment({
-                    tier: 'premium_monthly',
-                    nameVi: 'Gói Premium Trợ Giá Nông Thôn (29k/tháng)',
-                    nameEn: 'Subsidized Rural Premium Plan (29k/mo)',
-                    amount: 29000,
-                    priceFormatted: '29.000 VNĐ'
-                  })}
+                  onClick={() => {
+                    showToast(isVi ? "Đã ghi nhận yêu cầu tư vấn gói School SaaS cho nhà trường!" : "School SaaS consultation requested!", "success");
+                  }}
                   className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-2 shrink-0 cursor-pointer"
                 >
-                  <Icons.QrCode className="w-4 h-4" />
-                  <span>{isVi ? 'Thanh Toán VietQR (29k)' : 'Pay VietQR (29k)'}</span>
+                  <Icons.School className="w-4 h-4" />
+                  <span>{isVi ? 'Liên Hệ School SaaS' : 'School SaaS Demo'}</span>
                 </button>
               </div>
             </div>

@@ -28,7 +28,8 @@ export enum DashboardTab {
   SCORES = 'SCORES',
   COMPARE = 'COMPARE',
   TRENDING = 'TRENDING',
-  MOCK_INTERVIEW = 'MOCK_INTERVIEW'
+  MOCK_INTERVIEW = 'MOCK_INTERVIEW',
+  FOUNDERS = 'FOUNDERS'
 }
 
 export enum AIProvider {

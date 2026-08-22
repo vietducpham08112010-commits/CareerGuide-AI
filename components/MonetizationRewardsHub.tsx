@@ -288,25 +288,43 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
   };
 
   const handleSimulatePurchase = (packageName: string, price: string, tierKey?: SubscriptionTier) => {
-    const amountNum = price.includes('129') 
-      ? 129000 
-      : price.includes('999') 
-      ? 999000 
-      : price.includes('399') 
-      ? 399000 
-      : price.includes('29') 
+    const amountNum = price.includes('599') 
+      ? 599000 
+      : price.includes('299') 
+      ? 299000 
+      : price.includes('99.000') || price.includes('99k')
+      ? 99000
+      : price.includes('59.000') || price.includes('59k')
+      ? 59000 
+      : price.includes('29.000') || price.includes('29k')
       ? 29000 
       : price.includes('8.000') || price.includes('8k')
       ? 8000 
       : price.includes('5.000') || price.includes('5k')
       ? 5000 
-      : price.includes('15.000') || price.includes('15k')
-      ? 15000 
       : price.includes('25.000') || price.includes('25k')
       ? 25000 
-      : 99000;
+      : 59000;
 
-    const mappedTier = tierKey || (price.includes('129') ? 'max_monthly' : price.includes('999') ? 'max_yearly' : price.includes('399') ? 'premium_yearly' : 'premium_monthly');
+    let mappedTier = tierKey;
+    if (!mappedTier) {
+      if (price.includes('599') || (packageName.toLowerCase().includes('max') && price.includes('năm'))) {
+        mappedTier = 'max_yearly';
+      } else if (packageName.toLowerCase().includes('max') || (price.includes('99') && !packageName.toLowerCase().includes('premium'))) {
+        mappedTier = 'max_monthly';
+      } else if (price.includes('299') || packageName.toLowerCase().includes('năm')) {
+        mappedTier = 'premium_yearly';
+      } else if (price.includes('8.000') || price.includes('8k') || packageName.toLowerCase().includes('phỏng vấn') || packageName.toLowerCase().includes('interview')) {
+        mappedTier = 'micro_interview';
+      } else if (price.includes('5.000') || price.includes('5k') || packageName.toLowerCase().includes('học bạ') || packageName.toLowerCase().includes('cv') || packageName.toLowerCase().includes('record')) {
+        mappedTier = 'micro_transcript';
+      } else if (price.includes('25.000') || price.includes('25k') || packageName.toLowerCase().includes('credits') || packageName.toLowerCase().includes('10')) {
+        mappedTier = 'micro10';
+      } else {
+        mappedTier = 'premium_monthly';
+      }
+    }
+
     handleStartPayment({
       tier: mappedTier,
       nameVi: packageName,
@@ -317,9 +335,9 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
   };
 
   const calculateSchoolPricing = (students: number) => {
-    if (students <= 500) return { price: "15.000.000 VNĐ / năm học", tier: "Trường quy mô Vừa (dưới 500 học sinh)" };
-    if (students <= 1200) return { price: "22.000.000 VNĐ / năm học", tier: "Trường quy mô Tiêu chuẩn (500 - 1200 học sinh)" };
-    return { price: "30.000.000 VNĐ / năm học", tier: "Trường quy mô Lớn (trên 1200 học sinh)" };
+    if (students <= 500) return { price: "5.000.000 VNĐ / trường / năm", tier: "Trường quy mô Tiêu chuẩn (dưới 500 học sinh)" };
+    if (students <= 1200) return { price: "10.000.000 VNĐ / trường / năm", tier: "Trường quy mô Vừa (500 - 1200 học sinh)" };
+    return { price: "15.000.000 VNĐ / trường / năm", tier: "Trường quy mô Lớn (trên 1200 học sinh)" };
   };
 
   const schoolPriceInfo = calculateSchoolPricing(schoolStudentCount);
@@ -340,7 +358,7 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
             </h2>
             <p className="text-gray-300 text-xs md:text-sm max-w-2xl leading-relaxed">
               {isVi
-                ? "Theo dõi gói dịch vụ đang sử dụng, hạn ngạch lượt hỏi AI hàng ngày và quản lý nâng cấp gói linh hoạt từ 15k, 35k, 99k đến 399k."
+                ? "Theo dõi gói dịch vụ đang sử dụng, hạn ngạch lượt hỏi AI hàng ngày và quản lý nâng cấp gói linh hoạt từ mua lẻ 5k, 8k, AI Credits 25k, gói Premium 59k/tháng đến Max 99k/tháng."
                 : "Manage your active subscription tier, track daily AI queries, and unlock premium features smoothly."}
             </p>
           </div>
@@ -355,7 +373,7 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                 {isVi ? currentSub.tierNameVi : currentSub.tierNameEn}
               </span>
               <span className="text-[10px] text-emerald-400 font-bold block mt-0.5">
-                {currentSub.tier === 'free' ? (isVi ? "Free 5 câu/ngày" : "5 queries/day") : (isVi ? "⚡ Mở khóa Premium" : "⚡ Premium Unlocked")}
+                {currentSub.tier === 'free' ? (isVi ? "Free 3 câu + Test RIASEC + 1 Soi học bạ" : "Free 3 queries + RIASEC") : (isVi ? "⚡ Mở khóa Premium" : "⚡ Premium Unlocked")}
               </span>
             </div>
             <div className="h-8 w-px bg-white/20" />
@@ -485,21 +503,21 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                 {/* Quick Action Switcher */}
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => handleSimulatePurchase("CareerGuide Premium Tháng", "99.000 VNĐ", "premium_monthly")}
+                    onClick={() => handleSimulatePurchase("Career Guide Premium (Tháng)", "59.000 VNĐ", "premium_monthly")}
                     className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <Icons.Zap className="w-3.5 h-3.5 text-amber-300" />
-                    {isVi ? "Gói Premium (99k)" : "Premium (99k)"}
+                    {isVi ? "Gói Premium (59k/tháng)" : "Premium (59k/mo)"}
                   </button>
                   <button
-                    onClick={() => handleSimulatePurchase("CareerGuide Max Tháng", "129.000 VNĐ", "max_monthly")}
+                    onClick={() => handleSimulatePurchase("Career Guide Max (Tháng)", "99.000 VNĐ", "max_monthly")}
                     className="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    🔥 {isVi ? "Gói Max (129k)" : "Max Pass (129k)"}
+                    🔥 {isVi ? "Gói Max (99k/tháng)" : "Max Pass (99k/mo)"}
                   </button>
                   {currentSub.tier !== 'free' && (
                     <button
-                      onClick={() => handleSwitchTier('free', 'CareerGuide Free')}
+                      onClick={() => handleSwitchTier('free', 'Career Guide Free')}
                       className="px-3 py-2 bg-white/10 hover:bg-white/20 text-gray-300 font-bold text-xs rounded-xl transition-all"
                     >
                       {isVi ? "Chuyển Về Free" : "Switch to Free"}
@@ -655,7 +673,7 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                     </span>
                   </div>
                   <div>
-                    <h4 className="text-xl font-black text-gray-900 dark:text-white">CareerGuide Free</h4>
+                    <h4 className="text-xl font-black text-gray-900 dark:text-white">Career Guide Free</h4>
                     <div className="mt-2 flex items-baseline gap-1">
                       <span className="text-3xl font-black text-gray-900 dark:text-white">0 VNĐ</span>
                       <span className="text-xs text-gray-500">/ {isVi ? "vĩnh viễn" : "forever"}</span>
@@ -676,15 +694,15 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                       </li>
                       <li className="flex items-start gap-2">
                         <Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                        <span>Trắc nghiệm RIASEC cơ bản</span>
+                        <span>Test RIASEC cơ bản 13 câu</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                        <span>Gợi ý ngành nghề cơ bản</span>
+                        <span>1 lần AI soi học bạ</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <Icons.Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                        <span>Xem lộ trình học tập mẫu</span>
+                        <span>Gợi ý ngành nghề & lộ trình mẫu</span>
                       </li>
                     </ul>
 
@@ -696,14 +714,14 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                       </div>
                       <div className="flex items-center gap-2 text-[11px]">
                         <Icons.Lock className="w-3.5 h-3.5 text-amber-500/80 flex-shrink-0" />
-                        <span>Khóa: AI Mock Interview & CV Review</span>
+                        <span>Khóa: AI Mock Interview & CV Review theo JD</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => handleSwitchTier('free', 'CareerGuide Free')}
+                  onClick={() => handleSwitchTier('free', 'Career Guide Free')}
                   disabled={currentSub.tier === 'free'}
                   className={`w-full py-3 rounded-2xl font-bold text-xs transition-all ${
                     currentSub.tier === 'free'
@@ -729,13 +747,13 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                   </div>
 
                   <div>
-                    <h4 className="text-xl font-black text-gray-900 dark:text-white">CareerGuide Premium</h4>
+                    <h4 className="text-xl font-black text-gray-900 dark:text-white">Career Guide Premium</h4>
                     <div className="mt-2 flex items-baseline gap-1">
                       <span className="text-3xl font-black text-purple-600 dark:text-purple-400">
-                        {hubBillingCycle === 'monthly' ? "99.000 VNĐ" : "399.000 VNĐ"}
+                        {hubBillingCycle === 'monthly' ? "59.000 VNĐ" : "299.000 VNĐ"}
                       </span>
                       <span className="text-xs text-gray-500">
-                        / {hubBillingCycle === 'monthly' ? (isVi ? "tháng" : "month") : (isVi ? "năm (~33k/tháng)" : "year")}
+                        / {hubBillingCycle === 'monthly' ? (isVi ? "tháng" : "month") : (isVi ? "năm (~25k/tháng)" : "year")}
                       </span>
                     </div>
                   </div>
@@ -778,13 +796,13 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
 
                 <button
                   onClick={() => handleSimulatePurchase(
-                    hubBillingCycle === 'monthly' ? "CareerGuide Premium Tháng" : "CareerGuide Premium Năm",
-                    hubBillingCycle === 'monthly' ? "99.000 VNĐ" : "399.000 VNĐ",
+                    hubBillingCycle === 'monthly' ? "Career Guide Premium Tháng" : "Career Guide Premium Năm",
+                    hubBillingCycle === 'monthly' ? "59.000 VNĐ" : "299.000 VNĐ",
                     hubBillingCycle === 'monthly' ? "premium_monthly" : "premium_yearly"
                   )}
-                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-2xl shadow-md transition-all"
+                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-2xl shadow-md transition-all cursor-pointer"
                 >
-                  {hubBillingCycle === 'monthly' ? (isVi ? "Nâng Cấp Premium (99k/tháng)" : "Upgrade Premium (99k/mo)") : (isVi ? "Nâng Cấp Premium (399k/năm)" : "Upgrade Premium (399k/yr)")}
+                  {hubBillingCycle === 'monthly' ? (isVi ? "Nâng Cấp Premium (59k/tháng)" : "Upgrade Premium (59k/mo)") : (isVi ? "Nâng Cấp Premium (299k/năm)" : "Upgrade Premium (299k/yr)")}
                 </button>
               </div>
 
@@ -797,18 +815,18 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-extrabold uppercase tracking-wider border border-amber-500/30">
-                      CareerGuide Max
+                      Career Guide Max
                     </span>
                   </div>
 
                   <div>
-                    <h4 className="text-xl font-black text-white">CareerGuide Max</h4>
+                    <h4 className="text-xl font-black text-white">Career Guide Max</h4>
                     <div className="mt-2 flex items-baseline gap-1">
                       <span className="text-3xl font-black text-amber-400">
-                        {hubBillingCycle === 'monthly' ? "129.000 VNĐ" : "999.000 VNĐ"}
+                        {hubBillingCycle === 'monthly' ? "99.000 VNĐ" : "599.000 VNĐ"}
                       </span>
                       <span className="text-xs text-slate-300">
-                        / {hubBillingCycle === 'monthly' ? (isVi ? "tháng" : "month") : (isVi ? "năm (~83k/tháng)" : "year")}
+                        / {hubBillingCycle === 'monthly' ? (isVi ? "tháng" : "month") : (isVi ? "năm (~50k/tháng)" : "year")}
                       </span>
                     </div>
                   </div>
@@ -847,13 +865,13 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
 
                 <button
                   onClick={() => handleSimulatePurchase(
-                    hubBillingCycle === 'monthly' ? "CareerGuide Max Tháng" : "CareerGuide Max Năm",
-                    hubBillingCycle === 'monthly' ? "129.000 VNĐ" : "999.000 VNĐ",
+                    hubBillingCycle === 'monthly' ? "Career Guide Max Tháng" : "Career Guide Max Năm",
+                    hubBillingCycle === 'monthly' ? "99.000 VNĐ" : "599.000 VNĐ",
                     hubBillingCycle === 'monthly' ? "max_monthly" : "max_yearly"
                   )}
-                  className="w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs rounded-2xl shadow-lg transition-all"
+                  className="w-full py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs rounded-2xl shadow-lg transition-all cursor-pointer"
                 >
-                  {hubBillingCycle === 'monthly' ? (isVi ? "Sở Hữu Gói Max (129k/tháng)" : "Get Max (129k/mo)") : (isVi ? "Sở Hữu Gói Max (999k/năm)" : "Get Max (999k/yr)")}
+                  {hubBillingCycle === 'monthly' ? (isVi ? "Sở Hữu Gói Max (99k/tháng)" : "Get Max (99k/mo)") : (isVi ? "Sở Hữu Gói Max (599k/năm)" : "Get Max (599k/yr)")}
                 </button>
               </div>
 
@@ -874,81 +892,65 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               
-              {/* Phỏng vấn AI lẻ - 8.000 VNĐ */}
+              {/* Phỏng vấn AI lẻ - 8.000 VNĐ/lượt */}
               <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-purple-200 dark:border-purple-800/60 shadow-sm space-y-3 flex flex-col justify-between hover:border-purple-400 transition-all">
                 <div>
                   <span className="text-[10px] font-black uppercase px-2.5 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full inline-block">
-                    {isVi ? "Phỏng Vấn Lẻ" : "Mock Interview"}
+                    AI Mock Interview
                   </span>
                   <h5 className="text-2xl font-black text-gray-900 dark:text-white mt-2">8.000 VNĐ</h5>
+                  <span className="text-xs text-gray-500 font-bold block">/ lượt</span>
                   <p className="text-xs text-gray-500 mt-1">
                     {isVi ? "1 lượt phỏng vấn thử AI theo vị trí với chấm điểm rubric chi tiết." : "1 AI Mock interview session with rubric scoring."}
                   </p>
                 </div>
                 <button
-                  onClick={() => handleSimulatePurchase("Gói Phỏng Vấn AI Lẻ", "8.000 VNĐ", "micro_interview")}
-                  className="w-full py-2.5 bg-purple-600 text-white font-bold text-xs rounded-xl hover:bg-purple-700 transition-colors shadow-sm"
+                  onClick={() => handleSimulatePurchase("AI Mock Interview (1 lượt)", "8.000 VNĐ", "micro_interview")}
+                  className="w-full py-2.5 bg-purple-600 text-white font-bold text-xs rounded-xl hover:bg-purple-700 transition-colors shadow-sm cursor-pointer"
                 >
-                  {isVi ? "Mua Phỏng Vấn Lẻ (8k)" : "Buy Interview (8k)"}
+                  {isVi ? "Mua AI Mock Interview (8k/lượt)" : "Buy Interview (8k/turn)"}
                 </button>
               </div>
 
-              {/* Soi Học Bạ / CV Lẻ - 5.000 VNĐ */}
+              {/* Soi Học Bạ / CV Lẻ - 5.000 VNĐ/lượt */}
               <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-emerald-200 dark:border-emerald-800/60 shadow-sm space-y-3 flex flex-col justify-between hover:border-emerald-400 transition-all">
                 <div>
                   <span className="text-[10px] font-black uppercase px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-full inline-block">
-                    {isVi ? "Soi Học Bạ / CV" : "Transcript / CV Audit"}
+                    AI Academic Record/CV Review
                   </span>
                   <h5 className="text-2xl font-black text-gray-900 dark:text-white mt-2">5.000 VNĐ</h5>
+                  <span className="text-xs text-gray-500 font-bold block">/ lượt</span>
                   <p className="text-xs text-gray-500 mt-1">
                     {isVi ? "1 lượt AI soi học bạ phân tích cơ hội trúng tuyển hoặc audit CV." : "1 AI audit for high school grades or CV check."}
                   </p>
                 </div>
                 <button
-                  onClick={() => handleSimulatePurchase("Gói Soi Học Bạ / CV Lẻ", "5.000 VNĐ", "micro_transcript")}
-                  className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
+                  onClick={() => handleSimulatePurchase("AI Academic Record/CV Review (1 lượt)", "5.000 VNĐ", "micro_transcript")}
+                  className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition-colors shadow-sm cursor-pointer"
                 >
-                  {isVi ? "Soi Học Bạ Lẻ (5k)" : "Audit Transcript (5k)"}
+                  {isVi ? "Mua Soi Học Bạ / CV (5k/lượt)" : "Audit Record/CV (5k/turn)"}
                 </button>
               </div>
 
-              {/* Gói Lẻ 5 Câu Chat AI - 15.000 VNĐ */}
-              <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3 flex flex-col justify-between hover:border-blue-400 transition-all">
+              {/* AI Credits - 25.000 VNĐ / 10 câu */}
+              <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border-2 border-indigo-200 dark:border-indigo-800/60 shadow-sm space-y-3 flex flex-col justify-between hover:border-indigo-400 transition-all">
                 <div>
-                  <span className="text-[10px] font-bold uppercase px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full inline-block">
-                    {isVi ? "Nạp 5 Câu Chat" : "5 Queries Pack"}
-                  </span>
-                  <h5 className="text-2xl font-black text-gray-900 dark:text-white mt-2">15.000 VNĐ</h5>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {isVi ? "Nạp thêm 5 lượt hỏi AI định hướng công việc tức thì." : "5 additional instant AI career chat queries."}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleSimulatePurchase("Gói Lẻ 5 Câu Chat AI", "15.000 VNĐ", "micro5")}
-                  className="w-full py-2.5 bg-slate-900 dark:bg-white text-white dark:text-gray-900 font-bold text-xs rounded-xl hover:opacity-90 transition-opacity shadow-sm"
-                >
-                  {isVi ? "Mua 15k / 5 câu" : "Buy 15k (5 Pack)"}
-                </button>
-              </div>
-
-              {/* Gói Lẻ 10 Câu Chat AI - 25.000 VNĐ */}
-              <div className="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3 flex flex-col justify-between hover:border-indigo-400 transition-all">
-                <div>
-                  <span className="text-[10px] font-bold uppercase px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-full inline-block">
-                    {isVi ? "Nạp 10 Câu Chat" : "10 Queries Pack"}
+                  <span className="text-[10px] font-black uppercase px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-full inline-block">
+                    AI Credits
                   </span>
                   <h5 className="text-2xl font-black text-gray-900 dark:text-white mt-2">25.000 VNĐ</h5>
+                  <span className="text-xs text-gray-500 font-bold block">/ 10 câu hỏi</span>
                   <p className="text-xs text-gray-500 mt-1">
-                    {isVi ? "Nạp thêm 10 lượt tư vấn AI sâu về chọn ngành & chọn trường." : "10 deep AI queries for university selection."}
+                    {isVi ? "Nạp thêm 10 lượt tư vấn AI sâu về chọn ngành & chọn trường." : "10 deep AI queries for university & career selection."}
                   </p>
                 </div>
                 <button
-                  onClick={() => handleSimulatePurchase("Gói Lẻ 10 Câu Chat AI", "25.000 VNĐ", "micro10")}
-                  className="w-full py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+                  onClick={() => handleSimulatePurchase("AI Credits (10 câu hỏi)", "25.000 VNĐ", "micro10")}
+                  className="w-full py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors shadow-sm cursor-pointer"
                 >
-                  {isVi ? "Mua 25k / 10 câu" : "Buy 25k (10 Pack)"}
+                  {isVi ? "Mua AI Credits (25k / 10 câu)" : "Buy AI Credits (25k / 10)"}
                 </button>
               </div>
 
@@ -1135,17 +1137,17 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                     📍 {userDeclaredSchool}
                   </div>
                   <p className="text-xs text-gray-200">
-                    Mức Trợ Giá Tự Động Theo Tọa Độ GPS / IP: <strong className="text-amber-300 font-black text-sm">{selectedRegion === 'tier23' ? '29.000 VNĐ / tháng (Giảm -50% OFF)' : '99.000 VNĐ / tháng (Mức Đô Thị)'}</strong>
+                    Mức Trợ Giá Tự Động Theo Tọa Độ GPS / IP: <strong className="text-amber-300 font-black text-sm">{selectedRegion === 'tier23' ? '29.000 VNĐ / tháng (Giảm -50% OFF)' : '59.000 VNĐ / tháng (Mức Đô Thị)'}</strong>
                   </p>
                 </div>
 
                 <div className="flex items-center justify-between border-t border-white/10 pt-2 text-[10px] text-gray-400 relative z-10">
                   <span className="flex items-center gap-1"><Icons.ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Powered by Google Maps & IP Geolocation</span>
                   <button 
-                    onClick={() => handleSimulatePurchase("Gói Trợ Giá Vùng Miền Nông Thôn Google Maps", selectedRegion === 'tier23' ? "29.000 VNĐ" : "99.000 VNĐ", "monthly")}
-                    className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg transition-colors"
+                    onClick={() => handleSimulatePurchase("Gói Trợ Giá Vùng Miền Nông Thôn Google Maps", selectedRegion === 'tier23' ? "29.000 VNĐ" : "59.000 VNĐ", "monthly")}
+                    className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg transition-colors cursor-pointer"
                   >
-                    Kích hoạt giá {selectedRegion === 'tier23' ? '29k' : '99k'} &rarr;
+                    Kích hoạt giá {selectedRegion === 'tier23' ? '29k' : '59k'} &rarr;
                   </button>
                 </div>
               </div>
@@ -1175,7 +1177,7 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                 </p>
                 <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
                   <span className="text-xs text-gray-500">{isVi ? "Mức giá Premium:" : "Premium monthly rate:"}</span>
-                  <span className="text-xl font-black text-indigo-600 dark:text-indigo-400">99.000 VNĐ / tháng</span>
+                  <span className="text-xl font-black text-indigo-600 dark:text-indigo-400">59.000 VNĐ / tháng</span>
                 </div>
               </div>
 
@@ -1183,12 +1185,12 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedRegion('tier1');
-                  handleSimulatePurchase("Gói Premium Đô Thị (Hà Nội / TP.HCM / Đà Nẵng)", "99.000 VNĐ", "monthly");
+                  handleSimulatePurchase("Gói Premium Đô Thị (Hà Nội / TP.HCM / Đà Nẵng)", "59.000 VNĐ", "monthly");
                 }}
                 className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-2"
               >
                 <Icons.CreditCard className="w-4 h-4" />
-                {isVi ? "Mua Gói Đô Thị (99.000 VNĐ / tháng)" : "Purchase Urban Plan (99k/mo)"}
+                {isVi ? "Mua Gói Đô Thị (59.000 VNĐ / tháng)" : "Purchase Urban Plan (59k/mo)"}
               </button>
             </div>
 
@@ -1216,7 +1218,7 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                 <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
                   <span className="text-xs text-gray-500">{isVi ? "Giá sau trợ giá vùng miền:" : "Subsidized rate:"}</span>
                   <div className="text-right">
-                    <span className="text-xs line-through text-gray-400 mr-2">99.000đ</span>
+                    <span className="text-xs line-through text-gray-400 mr-2">59.000đ</span>
                     <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">29.000 VNĐ / tháng</span>
                   </div>
                 </div>
@@ -1250,7 +1252,7 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
               </h4>
               <p className="text-xs text-gray-300">
                 {isVi ? `Mã ưu đãi vị trí: ${appliedCoupon} • Giá thanh toán chính thức:` : `Location coupon: ${appliedCoupon} • Final Price:`}{' '}
-                <strong className="text-amber-300 font-black text-sm">{selectedRegion === 'tier23' ? '29.000 VNĐ / tháng' : '99.000 VNĐ / tháng'}</strong>
+                <strong className="text-amber-300 font-black text-sm">{selectedRegion === 'tier23' ? '29.000 VNĐ / tháng' : '59.000 VNĐ / tháng'}</strong>
               </p>
             </div>
 
@@ -1259,7 +1261,7 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                 const planName = selectedRegion === 'tier23' 
                   ? `Gói Trợ Giá Nông Thôn Vùng II/III (${userDeclaredSchool})`
                   : "Gói Premium Đô Thị Cấp I";
-                const priceStr = selectedRegion === 'tier23' ? "29.000 VNĐ" : "99.000 VNĐ";
+                const priceStr = selectedRegion === 'tier23' ? "29.000 VNĐ" : "59.000 VNĐ";
                 handleSimulatePurchase(planName, priceStr, "monthly");
               }}
               className="w-full md:w-auto px-6 py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 whitespace-nowrap"
@@ -1290,7 +1292,7 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
               </p>
             </div>
             <div className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-md flex-shrink-0">
-              15.000.000 - 30.000.000 VNĐ / {isVi ? "năm học" : "school year"}
+              5.000.000 - 15.000.000 VNĐ / {isVi ? "trường / năm" : "school year"}
             </div>
           </div>
 

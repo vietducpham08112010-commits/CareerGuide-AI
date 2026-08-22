@@ -1365,7 +1365,7 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
                 <div className="relative ml-4 md:ml-8 space-y-0">
                   {milestones.map((milestone, index) => (
                     <motion.div 
-                      key={milestone.id}
+                      key={milestone.id ? `${milestone.id}-${index}` : `ms-${index}`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.08 }}
@@ -1843,7 +1843,7 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
 
                         return (
                           <motion.g 
-                            key={skill.id} 
+                            key={`radar-skill-${skill.id}-${index}`} 
                             onClick={() => setSelectedSkillId(skill.id)} 
                             className="cursor-pointer group select-none"
                             initial={{ scale: 0, opacity: 0 }}
@@ -2124,14 +2124,14 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
 
                             {/* Required Skills list matching indicator */}
                             <div className="flex items-center flex-wrap gap-1.5 pt-1.5">
-                              {job.requiredSkills.map(s => {
+                              {job.requiredSkills.map((s, sIdx) => {
                                 // Match indicator: if skill progress > 40 is considered matched
                                 const foundSkillInCareer = careerSkills.find(cs => cs.name.toLowerCase() === s.toLowerCase() || s.toLowerCase().includes(cs.name.toLowerCase()));
                                 const userProgress = foundSkillInCareer ? (skillProgress[foundSkillInCareer.id] || 0) : 0;
                                 const isMatched = userProgress > 40;
 
                                 return (
-                                  <span key={s} className={`px-2 py-1 rounded-lg text-[10px] font-bold inline-flex items-center gap-1 ${
+                                  <span key={`${job.id}-${s}-${sIdx}`} className={`px-2 py-1 rounded-lg text-[10px] font-bold inline-flex items-center gap-1 ${
                                     isMatched 
                                       ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
                                       : 'bg-gray-150 dark:bg-white/5 text-gray-500 dark:text-gray-400 border border-gray-150/10'

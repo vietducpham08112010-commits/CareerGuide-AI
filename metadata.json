@@ -1,5 +1,5 @@
 {
-  "name": "CareerGuide AI",
+  "name": "Remix Career Compass AI beta 2",
   "description": "An AI-powered career counselor offering text and real-time voice consultations.",
   "requestFramePermissions": [
     "microphone"
