@@ -415,6 +415,7 @@ export const sendChatMessage = async (
   const activeKey = getGeminiApiKey(userProfile);
 
   const callGemini = async () => {
+    let lastFetchError: any = null;
     try {
       const response = await fetch('/api/chat', {
           method: 'POST',
@@ -424,7 +425,7 @@ export const sendChatMessage = async (
               message: newMessage,
               systemInstruction,
               file,
-              apiKey: activeKey
+              apiKey: activeKey || undefined
           })
       });
 
@@ -436,14 +437,21 @@ export const sendChatMessage = async (
           if (response.ok && data.text) {
             return cleanMarkdownAsterisks(data.text);
           }
+          if (data.error) {
+            lastFetchError = new Error(data.error);
+          }
+      } else if (!response.ok) {
+          lastFetchError = new Error(`Server returned HTTP ${response.status}`);
       }
     } catch (e: any) {
+      lastFetchError = e;
       console.warn("Backend chat proxy fetch error, switching to direct client-side SDK generation:", e);
     }
 
     // Direct Client GoogleGenAI SDK execution across candidate keys if available
     const candidateKeys = keysPool.length > 0 ? keysPool : (activeKey ? [activeKey] : []);
 
+    let lastClientError: any = null;
     for (const key of candidateKeys) {
       try {
         const ai = new GoogleGenAI({ apiKey: key });
@@ -461,11 +469,19 @@ export const sendChatMessage = async (
           return cleanMarkdownAsterisks(aiResponse.text);
         }
       } catch (err: any) {
+        lastClientError = err;
         console.warn("Client key attempt failed, trying next key:", err);
       }
     }
 
-    return t.noAiResponse;
+    if (lastFetchError) {
+      throw lastFetchError;
+    }
+    if (lastClientError) {
+      throw lastClientError;
+    }
+
+    throw new Error(t.noAiResponse);
   };
 
   try {
