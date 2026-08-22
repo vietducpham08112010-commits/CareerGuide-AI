@@ -1250,12 +1250,8 @@ export default function App() {
       return parsedMilestones.slice(0, 6);
     }
 
-    // Fallback default structure if context is roadmap but lines were unstructured
-    return [
-      { id: 'ms-f1', title: 'Giai đoạn 1: Đánh giá vị thế & Khám phá thế mạnh', description: 'Đánh giá năng lực cá nhân, làm rõ định hướng RIASEC và xác định ngành nghề mục tiêu.', status: 'in-progress' },
-      { id: 'ms-f2', title: 'Giai đoạn 2: Luyện tập kỹ năng & Hoàn thiện dự án', description: 'Tích lũy chứng chỉ chuyên môn, thực hiện dự án thực tế và xây dựng CV/Portfolio.', status: 'todo' },
-      { id: 'ms-f3', title: 'Giai đoạn 3: Thực hành phỏng vấn AI & Ứng tuyển', description: 'Luyện tập phỏng vấn giả lập AI và tự tin kết nối với các cơ hội việc làm mơ ước.', status: 'todo' }
-    ];
+    // Strictly return null if no dynamic milestones parsed from AI response (NO HARDCODED MOCK DATA)
+    return null;
   };
 
   const extractClarificationJson = (text: string): Clarification | null => {
@@ -3764,17 +3760,26 @@ export default function App() {
                                             disabled={isChatLoading}
                                         />
                                     )}
-                                    {m.role === 'model' && extractRoadmapJson(m.text) && (
-                                        <motion.button
-                                            whileHover={{ scale: 1.03 }}
-                                            whileTap={{ scale: 0.97 }}
-                                            onClick={() => handleSyncRoadmap(extractRoadmapJson(m.text)!)}
-                                            className="mt-4 flex items-center gap-2.5 px-5 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-2xl text-xs md:text-sm font-extrabold transition-all shadow-lg shadow-indigo-600/30 cursor-pointer"
-                                        >
-                                            <Icons.Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-                                            <span>{lang === Language.VI ? '🚀 Đồng bộ Lộ trình này vào Tiến độ AI' : '🚀 Sync Roadmap to Progress Board'}</span>
-                                        </motion.button>
-                                    )}
+                                    {m.role === 'model' && (() => {
+                                        const prevUserMsg = messages.slice(0, idx).reverse().find(msg => msg.role === 'user')?.text || '';
+                                        const hasProgressIntent = /bảng tiến độ|tiến độ|lộ trình|kế hoạch|mục tiêu|roadmap|progress|bảng theo dõi|tạo lộ trình/i.test(prevUserMsg) || /bảng tiến độ|tiến độ|lộ trình|kế hoạch|mục tiêu|roadmap|progress|bảng theo dõi|tạo lộ trình/i.test(m.text);
+                                        if (!hasProgressIntent) return null;
+
+                                        const parsedRoadmap = extractRoadmapJson(m.text);
+                                        if (!parsedRoadmap) return null;
+
+                                        return (
+                                            <motion.button
+                                                whileHover={{ scale: 1.03 }}
+                                                whileTap={{ scale: 0.97 }}
+                                                onClick={() => handleSyncRoadmap(parsedRoadmap)}
+                                                className="mt-4 flex items-center gap-2.5 px-5 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-2xl text-xs md:text-sm font-extrabold transition-all shadow-lg shadow-indigo-600/30 cursor-pointer"
+                                            >
+                                                <Icons.Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                                                <span>{lang === Language.VI ? '🚀 Đồng bộ Lộ trình này vào Tiến độ AI' : '🚀 Sync Roadmap to Progress Board'}</span>
+                                            </motion.button>
+                                        );
+                                    })()}
                                 </div>
                                 <span className={`text-[10px] mt-1.5 opacity-40 font-bold px-1 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>{m.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                             </div>

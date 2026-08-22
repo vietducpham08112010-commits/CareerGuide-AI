@@ -178,9 +178,9 @@ const generateClientContentWithFallback = async (
     }
 ): Promise<any> => {
     const modelsToTry = [
-        'gemini-3.7-flash',
-        'gemini-3.6-flash',
-        options.model || 'gemini-3.7-flash'
+        'gemini-2.5-flash',
+        'gemini-1.5-flash',
+        options.model || 'gemini-2.5-flash'
     ];
 
     const uniqueModels = Array.from(new Set(modelsToTry));
@@ -352,7 +352,7 @@ export const requestAiContent = async (
       try {
         const ai = new GoogleGenAI({ apiKey: key });
         const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-3.7-flash',
+          model: 'gemini-2.5-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { systemInstruction }
         });
@@ -491,7 +491,7 @@ export const generateRoadmap = async (
       const contents = chatHistory.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
       contents.push({ role: 'user', parts: [{ text: prompt }] });
       const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-3.7-flash',
+          model: 'gemini-2.5-flash',
           contents,
           config: { systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text." }
       });
@@ -501,14 +501,10 @@ export const generateRoadmap = async (
       console.warn("Direct client roadmap generation failed, returning resilient fallback:", err);
     }
 
-    return fallbackRoadmap;
+    throw new Error(isVi ? "Không thể kết nối AI (Kiểm tra API Key)" : "Cannot connect to AI (Check API Key)");
   };
 
-  try {
-    return await retryWithBackoff(callApi);
-  } catch (error: any) {
-    return fallbackRoadmap;
-  }
+  return await retryWithBackoff(callApi);
 };
 
 export const sendChatMessage = async (
@@ -579,7 +575,7 @@ export const sendChatMessage = async (
         contents.push({ role: 'user', parts: userParts });
         
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.7-flash',
+            model: 'gemini-2.5-flash',
             contents,
             config: { systemInstruction }
         });
@@ -1264,7 +1260,7 @@ export const generateChatTitle = async (message: string, language: Language) => 
         if (customKey) {
             const ai = new GoogleGenAI({ apiKey: customKey });
             const aiResponse = await generateClientContentWithFallback(ai, {
-                model: 'gemini-3.7-flash',
+                model: 'gemini-2.5-flash',
                 contents: [{ role: 'user', parts: [{ text: `Generate a 2-4 word title: "${firstMsg.slice(0, 50)}"` }] }],
                 config: { systemInstruction: "Return only 2 to 4 words" }
             });
@@ -1338,7 +1334,7 @@ export const searchUniversityScores = async (query: string, language: Language) 
       try {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.7-flash',
+            model: 'gemini-2.5-flash',
             contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
             config: { 
                 systemInstruction,
@@ -1354,14 +1350,10 @@ export const searchUniversityScores = async (query: string, language: Language) 
       }
     }
 
-    return synthesizeUniversitySearchFallback(query, language);
+    throw new Error(isVi ? "Không thể kết nối AI (Kiểm tra API Key)" : "Cannot connect to AI (Check API Key)");
   };
 
-  try {
-    return await retryWithBackoff(callApi);
-  } catch (error: any) {
-    return synthesizeUniversitySearchFallback(query, language);
-  }
+  return await retryWithBackoff(callApi);
 };
 
 export const compareCareers = async (career1: string, career2: string, language: Language) => {
@@ -1448,7 +1440,7 @@ Do NOT include any markdown formatting like \`\`\`json. Ensure all strings are t
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-3.7-flash',
+          model: 'gemini-2.5-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { systemInstruction }
       });
@@ -1466,15 +1458,10 @@ Do NOT include any markdown formatting like \`\`\`json. Ensure all strings are t
       console.warn("Client fallback comparison failed:", clientErr);
     }
 
-    // High quality resilient synthesis fallback
-    return cleanMarkdownAsterisks(synthesizeCareerComparison(career1, career2, language));
+    throw new Error(language === Language.VI ? "Không thể kết nối AI (Kiểm tra API Key)" : "Cannot connect to AI (Check API Key)");
   };
 
-  try {
-    return await retryWithBackoff(callApi);
-  } catch (error: any) {
-    return cleanMarkdownAsterisks(synthesizeCareerComparison(career1, career2, language));
-  }
+  return await retryWithBackoff(callApi);
 };
 
 export const searchScholarships = async (
@@ -1547,7 +1534,7 @@ Provide deep, factual, and actionable details without generic templates.`;
       try {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-3.7-flash',
+            model: 'gemini-2.5-flash',
             contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
             config: { 
               systemInstruction,
@@ -1737,7 +1724,7 @@ Return the output strictly as a JSON array of 4 string questions. Do not write a
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-3.7-flash',
+        model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         config: { systemInstruction: systemPrompt }
       });
@@ -1756,17 +1743,7 @@ Return the output strictly as a JSON array of 4 string questions. Do not write a
     }
   }
 
-  return isEn ? [
-    `What specific skills and experience make you a strong candidate for the ${job} position (${level})?`,
-    `Can you describe a challenging project or problem you encountered in ${job} and how you solved it?`,
-    `How do you stay updated with the latest tools, trends, and technologies relevant to ${job}?`,
-    `What are your career growth goals over the next 2-3 years as a ${job}?`
-  ] : [
-    `Những kỹ năng và kinh nghiệm cụ thể nào khiến bạn tin rằng mình phù hợp nhất với vị trí ${job} (Cấp độ ${level})?`,
-    `Hãy chia sẻ một bài toán hoặc dự án thách thức nhất bạn từng đảm nhận trong ngành ${job} và phương pháp bạn vượt qua?`,
-    `Làm thế nào để bạn liên tục cập nhật công nghệ và xu hướng chuyên môn mới nhất phục vụ công việc ${job}?`,
-    `Mục tiêu phát triển nghề nghiệp và nâng cao trình độ của bạn trong 2-3 năm tới là gì?`
-  ];
+  throw new Error(isEn ? "Failed to generate interview questions. Please verify your AI settings and API key." : "Không thể tạo câu hỏi phỏng vấn bằng AI. Vui lòng kiểm tra thiết lập API Key.");
 };
 
 export const evaluateMockInterviewTranscript = async (
@@ -1841,7 +1818,7 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-3.7-flash',
+        model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         config: { systemInstruction }
       });
@@ -1860,21 +1837,5 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
     }
   }
 
-  return {
-    score: 85,
-    overallFeedback: isVi
-      ? `Ứng viên trả lời tròn vai cho vị trí ${job} (${level}), lập luận có tư duy tốt nhưng cần bổ sung các ví dụ đo lường cụ thể.`
-      : `Solid answers for ${job} (${level}) with good reasoning, though more quantified metrics will strengthen impact.`,
-    strengths: [
-      isVi ? "Nắm vững nguyên lý và thuật ngữ cốt lõi" : "Solid grasp of core domain terminology",
-      isVi ? "Thái độ tự tin, tư duy logic mạch lạc" : "Confident demeanor and structured logical flow"
-    ],
-    weaknesses: [
-      isVi ? "Cần minh họa cụ thể hơn bằng kết quả dự án thực tế" : "Could provide more quantitative outcome metrics"
-    ],
-    recommendations: [
-      isVi ? "Áp dụng công thức STAR (Situation-Task-Action-Result) khi trình bày kinh nghiệm" : "Utilize the STAR framework for behavioral responses"
-    ],
-    categories: { knowledge: 85, communication: 88, problemSolving: 82, riasecFit: 86 }
-  };
+  throw new Error(isVi ? "Đánh giá bằng AI thất bại. Vui lòng kiểm tra API Key." : "AI Evaluation failed. Please check your API key.");
 };

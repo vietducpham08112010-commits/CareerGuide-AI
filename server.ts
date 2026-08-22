@@ -483,8 +483,8 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
-        'gemini-3.7-flash',
-        'gemini-3.6-flash'
+        'gemini-2.5-flash',
+        'gemini-1.5-flash'
     ];
 
     let lastError: any = null;
@@ -589,8 +589,8 @@ app.post("/api/chat", async (req, res) => {
     }
   }
 
-  // Graceful smart synthesis if network/model unavailable
-  return res.json({ text: synthesizeFallbackChatResponse(message || "", systemInstruction) });
+  // Return standard 500 error if all keys fail or no keys present
+  return res.status(500).json({ error: "Lỗi kết nối AI: Không thể truy cập mô hình (Vui lòng kiểm tra API Key)." });
 });
 
 app.post("/api/search", async (req, res) => {
@@ -630,9 +630,8 @@ app.post("/api/search", async (req, res) => {
     }
   }
 
-  return res.json({ 
-    text: synthesizeFallbackSearchResponse(message), 
-    groundingMetadata: null 
+  return res.status(500).json({ 
+    error: "AI Search failed. Please check your API key configuration." 
   });
 });
 
@@ -646,7 +645,7 @@ app.post("/api/generate-skill-map", async (req, res) => {
   try {
     const finalApiKey = getResolvedApiKey(apiKey);
     if (!finalApiKey) {
-      return res.json(synthesizeFallbackSkillMap(career));
+      return res.status(401).json({ error: "Missing Gemini API Key." });
     }
 
     const aiInstance = new GoogleGenAI({ 
@@ -699,7 +698,7 @@ Cấu trúc JSON chính xác như sau:
 
   } catch (error: any) {
     console.warn("Skill Map API fallback triggered:", error.message || error);
-    return res.json(synthesizeFallbackSkillMap(career));
+    return res.status(500).json({ error: "Failed to generate skill map via AI. " + error.message });
   }
 });
 

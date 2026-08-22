@@ -387,7 +387,7 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
-        'gemini-3.7-flash',
+        'gemini-2.5-flash',
         'gemini-2.5-flash',
         'gemini-flash-latest',
         'gemini-3.1-flash-lite'
