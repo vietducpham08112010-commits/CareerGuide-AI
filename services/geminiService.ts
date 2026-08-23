@@ -614,6 +614,7 @@ export class LiveSessionManager {
   speechSynthUtterance: SpeechSynthesisUtterance | null;
   isBrowserVoiceActive: boolean = false;
   isAiSpeaking: boolean = false;
+  speechRate: number = 1.5;
   conversationHistory: { role: string; text: string }[] = [];
   
   onConnect?: () => void;
@@ -1026,8 +1027,8 @@ export class LiveSessionManager {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = this.language === Language.VI ? 'vi-VN' : 'en-US';
-      // Faster, more natural & energetic speech rate (1.18x for VI, 1.1x for EN)
-      utterance.rate = this.language === Language.VI ? 1.18 : 1.1;
+      // Fast, responsive & energetic speech rate (configured rate or fast 1.5x default)
+      utterance.rate = this.speechRate || (this.language === Language.VI ? 1.5 : 1.35);
       utterance.pitch = 1.0;
 
       // Select high quality voice if available
@@ -1153,6 +1154,9 @@ export class LiveSessionManager {
     this.nextStartTime = Math.max(this.nextStartTime, this.outputContext.currentTime);
     const source = this.outputContext.createBufferSource();
     source.buffer = buffer;
+    if (this.speechRate && this.speechRate !== 1.0) {
+      source.playbackRate.value = Math.min(2.0, Math.max(0.75, this.speechRate));
+    }
     source.connect(this.outputContext.destination);
     source.addEventListener('ended', () => { this.sources.delete(source); });
     source.start(this.nextStartTime);

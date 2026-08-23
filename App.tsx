@@ -1145,6 +1145,7 @@ export default function App() {
   const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
+  const [speechRate, setSpeechRate] = useState<number>(1.5);
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -2167,6 +2168,7 @@ export default function App() {
       setVoiceStatus(t.connecting);
       setTranscripts([]);
       const session = new LiveSessionManager(lang, auth.user);
+      session.speechRate = speechRate;
       session.onConnect = () => { setIsVoiceActive(true); setVoiceStatus(t.listening); };
       session.onDisconnect = () => { 
           setIsVoiceActive(false); 
@@ -2206,7 +2208,7 @@ export default function App() {
           setIsVoiceActive(false);
       }
     }
-  }, [isVoiceActive, lang, t, selectedDeviceId]);
+  }, [isVoiceActive, lang, t, selectedDeviceId, speechRate]);
 
   const switchToVoice = () => {
       setTab(DashboardTab.VOICE);
@@ -4161,14 +4163,14 @@ export default function App() {
 
                  {/* Fixed Controls Toolbar */}
                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-xl flex items-center justify-between gap-3 bg-white/90 dark:bg-[#111]/90 backdrop-blur-xl px-5 py-3 rounded-full border border-gray-200/80 dark:border-white/10 shadow-2xl z-30">
-                     <div className="flex items-center gap-2 overflow-hidden">
+                     <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
                          <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isVoiceActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
                          <Icons.Settings className="w-4 h-4 text-gray-500 flex-shrink-0" />
                          <select 
                             value={selectedDeviceId} 
                             onChange={(e) => setSelectedDeviceId(e.target.value)} 
                             disabled={isVoiceActive} 
-                            className="appearance-none bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none font-medium text-xs sm:text-sm max-w-[150px] sm:max-w-[220px] truncate cursor-pointer disabled:opacity-50"
+                            className="appearance-none bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none font-medium text-xs sm:text-sm max-w-[100px] sm:max-w-[160px] truncate cursor-pointer disabled:opacity-50"
                          >
                              {inputDevices.map((device, devIdx) => (
                                 <option key={device.deviceId ? `${device.deviceId}-${devIdx}` : `dev-${devIdx}`} value={device.deviceId} className="bg-white dark:bg-black">
@@ -4177,6 +4179,27 @@ export default function App() {
                              ))}
                          </select>
                          <Icons.ChevronDown className="w-3.5 h-3.5 text-gray-400 pointer-events-none flex-shrink-0" />
+
+                         <div className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 px-2 py-0.5 rounded-full flex-shrink-0">
+                             <select
+                                value={speechRate}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    setSpeechRate(val);
+                                    if (liveSessionRef.current) {
+                                        liveSessionRef.current.speechRate = val;
+                                    }
+                                }}
+                                className="appearance-none bg-transparent text-indigo-700 dark:text-indigo-300 font-bold text-xs focus:outline-none cursor-pointer pr-1"
+                             >
+                                 <option value="1" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.0x Chuẩn</option>
+                                 <option value="1.25" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.25x Nhanh vừa</option>
+                                 <option value="1.5" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.5x Nhanh</option>
+                                 <option value="1.75" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.75x Rất nhanh</option>
+                                 <option value="2" className="bg-white dark:bg-black text-gray-900 dark:text-white">2.0x Siêu tốc</option>
+                             </select>
+                             <Icons.ChevronDown className="w-3 h-3 text-indigo-500 pointer-events-none flex-shrink-0" />
+                         </div>
                      </div>
                      
                      <div className="w-px h-6 bg-gray-200 dark:bg-white/10 flex-shrink-0" />
