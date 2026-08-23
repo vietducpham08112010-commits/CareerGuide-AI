@@ -1030,10 +1030,14 @@ export class LiveSessionManager {
         const downsampled = downsampleBuffer(inputData, this.inputContext?.sampleRate || 16000, 16000);
         const pcmBlob = createBlobFn(downsampled, 16000);
         
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            realtimeInput: [{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]
-          }));
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          try {
+            ws.send(JSON.stringify({
+              realtimeInput: [{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]
+            }));
+          } catch (wsErr) {
+            // Ignore socket closure frame errors during teardown
+          }
         }
       };
       this.inputSource.connect(this.processor);

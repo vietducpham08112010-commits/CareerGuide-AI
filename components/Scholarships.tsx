@@ -194,11 +194,11 @@ export const Scholarships = ({
     
     try {
       const result = await searchScholarships(searchQueryWithFilters, language, userProfile);
-      if (typeof result === 'object' && result !== null) {
+      if (result && typeof result === 'object' && 'text' in result) {
         setSearchResults(result.text || '');
         setGroundingMetadata(result.groundingMetadata || null);
       } else {
-        setSearchResults(result || '');
+        setSearchResults(typeof result === 'string' ? result : '');
         setGroundingMetadata(null);
       }
     } catch (e: any) {
