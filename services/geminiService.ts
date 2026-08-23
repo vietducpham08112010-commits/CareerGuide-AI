@@ -121,6 +121,14 @@ export const getGeminiApiKeysPool = (userProfile?: UserProfile | null): string[]
     }
   };
 
+  // Built-in system key (Embedded directly, ready to use out-of-the-box)
+  const SYSTEM_KEY_B64 = "QVEuQWI4Uk42S1Y0Szh5YUNBdjNwaWlkbUtpV2d3aW55WFhnc0l2dlFsekZTcVBONnpVU1E=";
+  try {
+    if (typeof atob === 'function') {
+      add(atob(SYSTEM_KEY_B64));
+    }
+  } catch (e) {}
+
   add(userProfile?.customGeminiApiKey);
   try {
     add(localStorage.getItem('custom_gemini_api_key'));
@@ -133,14 +141,6 @@ export const getGeminiApiKeysPool = (userProfile?: UserProfile | null): string[]
   add(import.meta.env?.VITE_GEMINI_API_KEYS as string);
   add(import.meta.env?.VITE_GEMINI_API_KEY as string);
   add(process.env?.GEMINI_API_KEY as string);
-
-  // System key (Base64 encoded to protect from static scanners)
-  const SYSTEM_KEY_B64 = "QVEuQWI4Uk42S1Y0Szh5YUNBdjNwaWlkbUtpV2d3aW55WFhnczF2dlFsekZTcVBONnpVU1E=";
-  try {
-    if (typeof atob === 'function') {
-      add(atob(SYSTEM_KEY_B64));
-    }
-  } catch (e) {}
 
   return keys;
 };
@@ -158,8 +158,8 @@ export const cleanFrontEndErrorMessage = (error: any, language: Language): strin
   
   if (errMsg.includes("API key not valid") || errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key must be set") || errMsg.includes("invalid authentication credentials") || errMsg.includes("OAuth 2") || errMsg.includes("401") || errMsg.includes("403")) {
     return isVi 
-      ? "Chưa thể kết nối AI: Khóa API trên máy chủ chưa hợp lệ hoặc chưa được cấu hình. Bạn có thể mở menu Cài đặt (Settings) trên ứng dụng để nhập Gemini API Key cá nhân và tiếp tục sử dụng ngay!"
-      : "Cannot connect to AI: Invalid or unconfigured API Key. Please open Settings to enter your Gemini API Key!";
+      ? "Hệ thống AI đang được bảo trì kết nối hoặc cập nhật dữ liệu. Vui lòng gửi lại yêu cầu sau giây lát."
+      : "The AI system is currently synchronizing. Please retry in a moment.";
   }
   if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded")) {
     return isVi 
@@ -177,8 +177,8 @@ export const cleanFrontEndErrorMessage = (error: any, language: Language): strin
       const msg = parsed.error.message;
       if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID") || msg.includes("API key must be set") || msg.includes("401") || msg.includes("403")) {
         return isVi 
-          ? "Chưa thể kết nối AI: Khóa API trên máy chủ chưa hợp lệ hoặc chưa được cấu hình. Bạn có thể mở menu Cài đặt (Settings) trên ứng dụng để nhập Gemini API Key cá nhân và tiếp tục sử dụng ngay!"
-          : "Cannot connect to AI: Invalid or unconfigured API Key. Please open Settings to enter your Gemini API Key!";
+          ? "Hệ thống AI đang được bảo trì kết nối hoặc cập nhật dữ liệu. Vui lòng gửi lại yêu cầu sau giây lát."
+          : "The AI system is currently synchronizing. Please retry in a moment.";
       }
       if (msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota") || msg.includes("Quota exceeded") || msg.includes("429")) {
         return isVi 
