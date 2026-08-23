@@ -95,7 +95,7 @@ const formatHistoryForGemini = (history: { role: string; text: string }[], newMe
 
 const cleanGeminiErrorMessage = (error: any): string => {
   const errMsg = error?.message || String(error);
-  if (errMsg.includes("API key not valid") || errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key must be set") || errMsg.includes("401") || errMsg.includes("403")) {
+  if (errMsg.includes("API key not valid") || errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key must be set") || errMsg.includes("invalid authentication credentials") || errMsg.includes("OAuth 2") || errMsg.includes("401") || errMsg.includes("403")) {
     return "Chưa thể kết nối AI: Khóa API trên máy chủ chưa được thiết lập hoặc chưa hợp lệ. Bạn có thể mở menu Cài đặt (Settings) trên ứng dụng để nhập Gemini API Key cá nhân của mình và tiếp tục sử dụng ngay!";
   }
   if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded")) {

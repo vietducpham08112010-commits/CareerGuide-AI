@@ -156,7 +156,7 @@ export const cleanFrontEndErrorMessage = (error: any, language: Language): strin
   const errMsg = error?.message || String(error);
   const isVi = language === Language.VI;
   
-  if (errMsg.includes("API key not valid") || errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key must be set") || errMsg.includes("401") || errMsg.includes("403")) {
+  if (errMsg.includes("API key not valid") || errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key must be set") || errMsg.includes("invalid authentication credentials") || errMsg.includes("OAuth 2") || errMsg.includes("401") || errMsg.includes("403")) {
     return isVi 
       ? "Chưa thể kết nối AI: Khóa API trên máy chủ chưa hợp lệ hoặc chưa được cấu hình. Bạn có thể mở menu Cài đặt (Settings) trên ứng dụng để nhập Gemini API Key cá nhân và tiếp tục sử dụng ngay!"
       : "Cannot connect to AI: Invalid or unconfigured API Key. Please open Settings to enter your Gemini API Key!";
@@ -398,7 +398,7 @@ export const generateRoadmap = async (
       const contents = chatHistory.map(h => ({ role: h.role === 'model' ? 'model' : 'user', parts: [{ text: h.text }] }));
       contents.push({ role: 'user', parts: [{ text: prompt }] });
       const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.6-flash',
           contents,
           config: { systemInstruction: "You are an expert career counselor. Output ONLY valid JSON array. No other text." }
       });
@@ -490,7 +490,7 @@ export const sendChatMessage = async (
         contents.push({ role: 'user', parts: userParts });
         
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.6-flash',
             contents,
             config: { systemInstruction }
         });
@@ -1281,7 +1281,7 @@ export const generateChatTitle = async (message: string, language: Language) => 
         if (customKey) {
             const ai = new GoogleGenAI({ apiKey: customKey });
             const aiResponse = await generateClientContentWithFallback(ai, {
-                model: 'gemini-2.5-flash-lite',
+                model: 'gemini-3.6-flash',
                 contents: [{ role: 'user', parts: [{ text: `Generate a 2-4 word title: "${firstMsg.slice(0, 50)}"` }] }],
                 config: { systemInstruction: "Return only 2 to 4 words" }
             });
@@ -1349,7 +1349,7 @@ export const searchUniversityScores = async (query: string, language: Language) 
       try {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.6-flash',
             contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
             config: { 
                 systemInstruction,
@@ -1455,7 +1455,7 @@ Do NOT include any markdown formatting like \`\`\`json. Ensure all strings are t
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.6-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { systemInstruction }
       });
@@ -1552,7 +1552,7 @@ IMPORTANT: Always include clickable Markdown links for official application port
       try {
         const ai = new GoogleGenAI({ apiKey: customKey });
         const aiResponse = await generateClientContentWithFallback(ai, {
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.6-flash',
             contents: [{ role: 'user', parts: [{ text: promptMessage }] }],
             config: { 
               systemInstruction,
@@ -1748,7 +1748,7 @@ Return the output strictly as a JSON array of 4 string questions. Do not write a
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         config: { systemInstruction: systemPrompt }
       });
@@ -1842,7 +1842,7 @@ Rule: Do NOT output anything other than this JSON structure. Do NOT write markdo
     try {
       const ai = new GoogleGenAI({ apiKey: customKey });
       const aiResponse = await generateClientContentWithFallback(ai, {
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         config: { systemInstruction }
       });
