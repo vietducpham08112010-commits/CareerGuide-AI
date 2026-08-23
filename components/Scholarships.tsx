@@ -13,7 +13,10 @@ import {
   Copy, 
   Check, 
   Globe2, 
-  Target
+  Target,
+  ExternalLink,
+  ShieldCheck,
+  Globe
 } from 'lucide-react';
 import { searchScholarships } from '../services/geminiService';
 import Markdown from 'react-markdown';
@@ -154,10 +157,12 @@ export const Scholarships = ({
   
   // Search State
   const [query, setQuery] = useState('');
+  const [searchedQuery, setSearchedQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedDegree, setSelectedDegree] = useState('all');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<string>('');
+  const [groundingMetadata, setGroundingMetadata] = useState<any | null>(null);
   const [copiedResult, setCopiedResult] = useState(false);
 
   const handleSearch = async (overrideQuery?: string) => {
@@ -167,6 +172,7 @@ export const Scholarships = ({
     if (overrideQuery !== undefined) {
       setQuery(overrideQuery);
     }
+    setSearchedQuery(finalQuery);
 
     // Append filter context if relevant
     let filterContext = '';
@@ -183,11 +189,18 @@ export const Scholarships = ({
 
     setIsSearching(true);
     setSearchResults('');
+    setGroundingMetadata(null);
     setActiveTab(ScholarshipTab.AI_SEARCH);
     
     try {
-      const resultText = await searchScholarships(searchQueryWithFilters, language, userProfile);
-      setSearchResults(resultText);
+      const result = await searchScholarships(searchQueryWithFilters, language, userProfile);
+      if (typeof result === 'object' && result !== null) {
+        setSearchResults(result.text || '');
+        setGroundingMetadata(result.groundingMetadata || null);
+      } else {
+        setSearchResults(result || '');
+        setGroundingMetadata(null);
+      }
     } catch (e: any) {
       console.error(e);
       setSearchResults(
@@ -387,18 +400,18 @@ export const Scholarships = ({
               >
                 <LuxuryAiThinking
                   variant="scholarship"
-                  title={isVi ? `CareerGuide AI Đang Tìm Kiếm & So Khớp Học Bổng Cho "${query}"...` : `CareerGuide AI is Scanning & Matching Scholarships for "${query}"...`}
+                  title={isVi ? `CareerGuide AI Đang Tìm Kiếm & So Khớp Học Bổng Cho "${searchedQuery || query}"...` : `CareerGuide AI is Scanning & Matching Scholarships for "${searchedQuery || query}"...`}
                   subtitle={isVi ? `Rà soát các quỹ học bổng Chính phủ, Tập đoàn & Tổ chức Quốc tế phù hợp với mục tiêu và hồ sơ học thuật.` : `Searching government, corporate, and university grant databases tailored to your academic profile.`}
                   badge="CareerGuide AI"
                   themeColor="emerald"
                   stageSteps={
                     isVi ? [
-                      `Rà soát kho học bổng toàn cầu cho từ khóa "${query}"`,
+                      `Rà soát kho học bổng toàn cầu cho từ khóa "${searchedQuery || query}"`,
                       "Phân tích điều kiện xét tuyển (GPA, IELTS/TOEFL, tiêu chí)",
                       "Kiểm tra giá trị học bổng (Toàn phần 100%, bán phần, trợ cấp sinh hoạt)",
                       "Tổng hợp danh mục học bổng khả thi nhất kèm mốc thời gian nộp đơn"
                     ] : [
-                      `Querying global scholarship databases for "${query}"`,
+                      `Querying global scholarship databases for "${searchedQuery || query}"`,
                       "Auditing eligibility criteria (GPA, English proficiency)",
                       "Evaluating funding value (Full tuition, partial, living stipends)",
                       "Compiling targeted scholarship list with application timelines"
@@ -409,47 +422,166 @@ export const Scholarships = ({
             )}
 
             {/* AI Search Results */}
-            {searchResults && !isSearching && (
-              <motion.div 
-                key="result" 
-                initial={{ opacity: 0, y: 15 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                className="w-full bg-white dark:bg-[#0c0c0c] border border-gray-200 dark:border-white/10 rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden"
-              >
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500" />
-                
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400">
-                      <Award className="w-6 h-6" />
+            {searchResults && !isSearching && (() => {
+              const webCitations = (groundingMetadata?.groundingChunks || [])
+                .map((chunk: any) => chunk?.web)
+                .filter((webItem: any) => webItem && webItem.uri);
+
+              const uniqueCitations: { uri: string; title?: string }[] = [];
+              const seenUris = new Set();
+              for (const webItem of webCitations) {
+                if (webItem && webItem.uri && !seenUris.has(webItem.uri)) {
+                  seenUris.add(webItem.uri);
+                  uniqueCitations.push(webItem);
+                }
+              }
+
+              return (
+                <motion.div 
+                  key="result" 
+                  initial={{ opacity: 0, y: 15 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  className="w-full bg-white dark:bg-[#0c0c0c] border border-gray-200 dark:border-white/10 rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden space-y-6"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500" />
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400">
+                        <Award className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight">
+                          {isVi ? `Kết Quả Học Bổng AI Đề Xuất Cho: "${searchedQuery}"` : `AI-Matched Scholarship Results: "${searchedQuery}"`}
+                        </h4>
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          {isVi ? 'Dữ liệu thời gian thực từ CareerGuide AI' : 'Live Data from CareerGuide AI'}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight">
-                        {isVi ? `Kết Quả Học Bổng AI Đề Xuất Cho: "${query}"` : `AI-Matched Scholarship Results: "${query}"`}
-                      </h4>
-                      <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        {isVi ? 'Dữ liệu thời gian thực từ CareerGuide AI' : 'Live Data from CareerGuide AI'}
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => copyToClipboard(searchResults)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 flex items-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        {copiedResult ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedResult ? (isVi ? 'Đã sao chép' : 'Copied') : (isVi ? 'Sao chép' : 'Copy')}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="markdown-body text-sm md:text-base leading-relaxed text-gray-800 dark:text-gray-200">
+                    <Markdown
+                      components={{
+                        a: ({ node, href, children, ...props }) => {
+                          let finalHref = href || '#';
+                          if (finalHref !== '#' && !finalHref.startsWith('http://') && !finalHref.startsWith('https://')) {
+                            finalHref = 'https://' + finalHref;
+                          }
+                          return (
+                            <a
+                              href={finalHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 underline font-semibold inline-flex items-center gap-1 transition-colors group"
+                              {...props}
+                            >
+                              <span>{children}</span>
+                              <ExternalLink className="w-3.5 h-3.5 inline-block opacity-80 group-hover:opacity-100 shrink-0" />
+                            </a>
+                          );
+                        }
+                      }}
+                    >
+                      {searchResults}
+                    </Markdown>
+                  </div>
+
+                  {/* Grounding & Official Portals Link Section */}
+                  <div className="pt-6 border-t border-gray-100 dark:border-white/5 space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                      <span>
+                        {isVi 
+                          ? "Cổng nộp đơn & Nguồn học bổng trực tiếp:" 
+                          : "Official Application Portals & References:"}
                       </span>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => copyToClipboard(searchResults)}
-                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 flex items-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      {copiedResult ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedResult ? (isVi ? 'Đã sao chép' : 'Copied') : (isVi ? 'Sao chép' : 'Copy')}</span>
-                    </button>
+                    {uniqueCitations.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        {uniqueCitations.map((cit, idx) => {
+                          let linkUrl = cit.uri || '';
+                          if (linkUrl && !linkUrl.startsWith('http://') && !linkUrl.startsWith('https://')) {
+                            linkUrl = 'https://' + linkUrl;
+                          }
+                          return (
+                            <a
+                              key={cit.uri || `sch-cit-${idx}`}
+                              href={linkUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 hover:bg-indigo-50/50 dark:bg-white/[0.02] dark:hover:bg-indigo-950/20 text-xs text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200/80 dark:border-white/10 transition-all duration-200 font-medium group cursor-pointer shadow-sm hover:border-indigo-300"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center shrink-0">
+                                  <Globe className="w-3.5 h-3.5" />
+                                </div>
+                                <span className="truncate pr-1 font-semibold text-gray-800 dark:text-gray-200">
+                                  {cit.title || cit.uri}
+                                </span>
+                              </div>
+                              <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-500 shrink-0" />
+                            </a>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <a
+                          href="https://www.chevening.org"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50 hover:bg-indigo-50/50 dark:bg-white/[0.02] dark:hover:bg-indigo-950/20 text-xs text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200/80 dark:border-white/10 transition-all duration-200 group"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Globe className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="truncate font-semibold text-gray-800 dark:text-gray-200">UK Chevening Portal</span>
+                          </div>
+                          <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-500 shrink-0" />
+                        </a>
+                        <a
+                          href="https://vn.usembassy.gov/education-culture/fulbright-program-vietnam"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50 hover:bg-indigo-50/50 dark:bg-white/[0.02] dark:hover:bg-indigo-950/20 text-xs text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200/80 dark:border-white/10 transition-all duration-200 group"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Globe className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="truncate font-semibold text-gray-800 dark:text-gray-200">US Fulbright Vietnam</span>
+                          </div>
+                          <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-500 shrink-0" />
+                        </a>
+                        <a
+                          href="https://vinuni.edu.vn/admission"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50 hover:bg-indigo-50/50 dark:bg-white/[0.02] dark:hover:bg-indigo-950/20 text-xs text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200/80 dark:border-white/10 transition-all duration-200 group"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Globe className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="truncate font-semibold text-gray-800 dark:text-gray-200">VinUni Scholarships</span>
+                          </div>
+                          <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-500 shrink-0" />
+                        </a>
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                <div className="markdown-body text-sm md:text-base leading-relaxed text-gray-800 dark:text-gray-200">
-                  <Markdown>{searchResults}</Markdown>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              );
+            })()}
           </AnimatePresence>
         </div>
       )}

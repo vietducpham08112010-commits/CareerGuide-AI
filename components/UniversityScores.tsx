@@ -22,6 +22,7 @@ const QUICK_CHIPS = [
 
 export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, Icons: any }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchedTerm, setSearchedTerm] = useState('Đại học Bách Khoa, Ngoại Thương, Kinh tế Quốc dân');
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [groundingMetadata, setGroundingMetadata] = useState<any | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -29,10 +30,11 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
   const [copied, setCopied] = useState(false);
 
   const handleSearch = async (overrideQuery?: string) => {
-    const term = (overrideQuery !== undefined ? overrideQuery : searchTerm).trim() || 'Điểm chuẩn các trường Đại học Bách Khoa, Ngoại Thương, Kinh tế Quốc dân, Y Hà Nội 2024-2025';
+    const term = (overrideQuery !== undefined ? overrideQuery : searchTerm).trim() || 'Điểm chuẩn các trường Đại học Bách Khoa, Ngoại Thương, Kinh tế Quốc dân';
     if (overrideQuery !== undefined) {
       setSearchTerm(overrideQuery);
     }
+    setSearchedTerm(term);
     setIsSearching(true);
     setError(null);
     setAiResult(null);
@@ -150,18 +152,18 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
           >
             <LuxuryAiThinking
               variant="admission"
-              title={lang === Language.VI ? `CareerGuide AI Đang Tra Cứu Điểm Chuẩn Cho "${searchTerm}"...` : `CareerGuide AI is Querying Official Admission Scores for "${searchTerm}"...`}
+              title={lang === Language.VI ? `CareerGuide AI Đang Tra Cứu Điểm Chuẩn Cho "${searchedTerm}"...` : `CareerGuide AI is Querying Official Admission Scores for "${searchedTerm}"...`}
               subtitle={lang === Language.VI ? "Kết nối Google Search Grounding thời gian thực để trích xuất điểm chuẩn, tổ hợp xét tuyển và chỉ tiêu mới nhất." : "Connecting real-time Google Search Grounding to extract verified cutoff scores and admission criteria."}
               badge="CareerGuide AI"
               themeColor="indigo"
               stageSteps={
                 lang === Language.VI ? [
-                  `Quét radar cổng tuyển sinh & Đề án tuyển sinh "${searchTerm}"`,
+                  `Quét radar cổng tuyển sinh & Đề án tuyển sinh "${searchedTerm}"`,
                   "Đối chiếu điểm chuẩn các năm gần nhất & biến động tổ hợp môn",
                   "Xác thực nguồn tin qua Google Search Grounding thời gian thực",
                   "Hoàn thiện báo cáo chiến lược xếp thứ tự nguyện vọng"
                 ] : [
-                  `Scanning official university admission databases for "${searchTerm}"`,
+                  `Scanning official university admission databases for "${searchedTerm}"`,
                   "Analyzing historical cutoff score trends & subject code combinations",
                   "Grounding facts against live university admission portals",
                   "Generating strategic application guidance & match forecasts"
@@ -227,7 +229,7 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
                       <span>CareerGuide AI • Admission Report</span>
                     </div>
                     <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                      {searchTerm.toUpperCase()}
+                      {searchedTerm.toUpperCase()}
                     </h3>
                     <p className="text-xs sm:text-sm text-indigo-200/80 max-w-xl">
                       {lang === Language.VI 
@@ -270,45 +272,113 @@ export const UniversityScores = ({ lang, t, Icons }: { lang: Language, t: any, I
                   prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-50/50 dark:prose-blockquote:bg-indigo-950/20 prose-blockquote:p-4 prose-blockquote:rounded-r-2xl prose-blockquote:my-4
                   markdown-body"
                 >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({ node, href, children, ...props }) => {
+                        let finalHref = href || '#';
+                        if (finalHref !== '#' && !finalHref.startsWith('http://') && !finalHref.startsWith('https://')) {
+                          finalHref = 'https://' + finalHref;
+                        }
+                        return (
+                          <a
+                            href={finalHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 underline font-semibold inline-flex items-center gap-1 transition-colors group"
+                            {...props}
+                          >
+                            <span>{children}</span>
+                            <ExternalLink className="w-3.5 h-3.5 inline-block opacity-80 group-hover:opacity-100 shrink-0" />
+                          </a>
+                        );
+                      }
+                    }}
+                  >
                     {aiResult}
                   </ReactMarkdown>
                 </div>
 
-                {/* Verified Grounding Citations */}
-                {uniqueCitations.length > 0 && (
-                  <div className="mt-10 pt-6 border-t border-gray-100 dark:border-white/5">
-                    <div className="flex items-center gap-2 mb-4 text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                      <span>
-                        {lang === Language.VI 
-                          ? "Nguồn thông tin xác thực thời gian thực (Google Search Grounding):" 
-                          : "Verified real-time citations (Google Search Grounding):"}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                      {uniqueCitations.map((cit, idx) => (
-                        <a
-                          key={cit.uri || `cit-${idx}`}
-                          href={cit.uri}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 hover:bg-indigo-50/50 dark:bg-white/[0.02] dark:hover:bg-indigo-950/20 text-xs text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200/80 dark:border-white/10 transition-all duration-200 font-medium group cursor-pointer shadow-sm hover:border-indigo-300"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center shrink-0">
-                              <Globe className="w-3.5 h-3.5" />
-                            </div>
-                            <span className="truncate pr-1 font-semibold text-gray-800 dark:text-gray-200">
-                              {cit.title || cit.uri}
-                            </span>
-                          </div>
-                          <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-500 shrink-0" />
-                        </a>
-                      ))}
-                    </div>
+                {/* Verified Grounding Citations & Direct Link Portals */}
+                <div className="mt-10 pt-6 border-t border-gray-100 dark:border-white/5 space-y-4">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                    <span>
+                      {lang === Language.VI 
+                        ? "Nguồn thông tin & Link đối chiếu trực tiếp:" 
+                        : "Verified Sources & Direct Reference Links:"}
+                    </span>
                   </div>
-                )}
+
+                  {uniqueCitations.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                      {uniqueCitations.map((cit, idx) => {
+                        let linkUrl = cit.uri || '';
+                        if (linkUrl && !linkUrl.startsWith('http://') && !linkUrl.startsWith('https://')) {
+                          linkUrl = 'https://' + linkUrl;
+                        }
+                        return (
+                          <a
+                            key={cit.uri || `cit-${idx}`}
+                            href={linkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 hover:bg-indigo-50/50 dark:bg-white/[0.02] dark:hover:bg-indigo-950/20 text-xs text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200/80 dark:border-white/10 transition-all duration-200 font-medium group cursor-pointer shadow-sm hover:border-indigo-300"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center shrink-0">
+                                <Globe className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="truncate pr-1 font-semibold text-gray-800 dark:text-gray-200">
+                                {cit.title || cit.uri}
+                              </span>
+                            </div>
+                            <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-500 shrink-0" />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <a
+                        href="https://thisinh.thitotnghiepthpt.edu.vn"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50 hover:bg-indigo-50/50 dark:bg-white/[0.02] dark:hover:bg-indigo-950/20 text-xs text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200/80 dark:border-white/10 transition-all duration-200 group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Globe className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                          <span className="truncate font-semibold text-gray-800 dark:text-gray-200">Cổng Tuyển sinh Bộ GD&ĐT</span>
+                        </div>
+                        <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-500 shrink-0" />
+                      </a>
+                      <a
+                        href="https://vnexpress.net/giao-duc/tuyen-sinh"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50 hover:bg-indigo-50/50 dark:bg-white/[0.02] dark:hover:bg-indigo-950/20 text-xs text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200/80 dark:border-white/10 transition-all duration-200 group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Globe className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                          <span className="truncate font-semibold text-gray-800 dark:text-gray-200">VnExpress Tuyển sinh</span>
+                        </div>
+                        <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-500 shrink-0" />
+                      </a>
+                      <a
+                        href="https://tuoitre.vn/giao-duc.htm"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50 hover:bg-indigo-50/50 dark:bg-white/[0.02] dark:hover:bg-indigo-950/20 text-xs text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200/80 dark:border-white/10 transition-all duration-200 group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Globe className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                          <span className="truncate font-semibold text-gray-800 dark:text-gray-200">Tuổi Trẻ Giáo dục</span>
+                        </div>
+                        <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover:text-indigo-500 shrink-0" />
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           );

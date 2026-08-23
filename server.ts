@@ -404,11 +404,11 @@ wss.on("connection", (ws: WebSocket) => {
                   responseModalities: [Modality.AUDIO],
                   outputAudioTranscription: {},
                   inputAudioTranscription: {},
-                  systemInstruction: msg.systemInstruction || "You are a helpful assistant.",
+                  systemInstruction: msg.systemInstruction || "You are an intelligent, friendly AI Career Counselor speaking naturally in Vietnamese or English.",
                   speechConfig: { 
                     voiceConfig: {
                        prebuiltVoiceConfig: { 
-                        voiceName: msg.voiceName || 'Kore'
+                        voiceName: msg.voiceName || 'Aoede'
                       }
                     }
                   }
@@ -416,7 +416,7 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash-lite'];
+        const liveModels = ['gemini-2.0-flash', 'gemini-2.0-flash-exp'];
         let connected = false;
         for (const model of liveModels) {
           try {
@@ -424,7 +424,7 @@ wss.on("connection", (ws: WebSocket) => {
             connected = true;
             break;
           } catch (err) {
-            console.warn(`Failed with model ${model}, trying next...`);
+            console.warn(`Failed with model ${model}, trying next...`, err);
           }
         }
         
@@ -434,8 +434,8 @@ wss.on("connection", (ws: WebSocket) => {
 
       } else if (msg.realtimeInput) {
           if (session) {
-              const input = Array.isArray(msg.realtimeInput) ? msg.realtimeInput[0] : msg.realtimeInput;
-              session.sendRealtimeInput(input);
+              const inputChunks = Array.isArray(msg.realtimeInput) ? msg.realtimeInput : [msg.realtimeInput];
+              session.sendRealtimeInput(inputChunks);
           }
       } else if (msg.toolResponse) {
           if (session) {

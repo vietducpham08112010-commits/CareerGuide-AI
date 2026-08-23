@@ -704,7 +704,7 @@ export class LiveSessionManager {
       // If user has custom key, connect via client SDK Live API
       if (customKey) {
         const ai = new GoogleGenAI({ apiKey: customKey });
-        const liveModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash-lite'];
+        const liveModels = ['gemini-2.0-flash', 'gemini-2.0-flash-exp'];
         let modelIndex = 0;
 
         const attemptNextModel = async (): Promise<any> => {
@@ -774,7 +774,7 @@ export class LiveSessionManager {
                 speechConfig: { 
                   voiceConfig: { 
                     prebuiltVoiceConfig: { 
-                      voiceName: 'Kore' 
+                      voiceName: 'Aoede' 
                     } 
                   } 
                 }
@@ -802,13 +802,13 @@ export class LiveSessionManager {
               try { ws.close(); } catch (e) {}
               this.startBrowserVoiceFallback(systemInstruction);
             }
-          }, 2500);
+          }, 3500);
 
           ws.onopen = () => {
             ws.send(JSON.stringify({
               type: "config",
               systemInstruction,
-              voiceName: "Kore"
+              voiceName: "Aoede"
             }));
           };
 
@@ -1032,7 +1032,7 @@ export class LiveSessionManager {
         
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
-            realtimeInput: { audio: { data: pcmBlob.data, mimeType: pcmBlob.mimeType } }
+            realtimeInput: [{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]
           }));
         }
       };
@@ -1061,11 +1061,11 @@ export class LiveSessionManager {
             if (sessionPromise) {
                 sessionPromise.then(session => {
                     if (this.isConnected) {
-                        session.sendRealtimeInput({ audio: { data: pcmBlob.data, mimeType: pcmBlob.mimeType } });
+                        session.sendRealtimeInput([{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]);
                     }
                 });
             } else if (this.session && this.isConnected) {
-                this.session.sendRealtimeInput({ audio: { data: pcmBlob.data, mimeType: pcmBlob.mimeType } });
+                this.session.sendRealtimeInput([{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]);
             }
         };
         this.inputSource.connect(this.processor);
@@ -1085,11 +1085,11 @@ export class LiveSessionManager {
           if (sessionPromise) {
               sessionPromise.then(session => {
                   if (this.isConnected) {
-                      session.sendRealtimeInput({ audio: { data: pcmBlob.data, mimeType: pcmBlob.mimeType } });
+                      session.sendRealtimeInput([{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]);
                   }
               });
           } else if (this.session && this.isConnected) {
-              this.session.sendRealtimeInput({ audio: { data: pcmBlob.data, mimeType: pcmBlob.mimeType } });
+              this.session.sendRealtimeInput([{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]);
           }
         };
         this.inputSource.connect(this.processor);
@@ -1204,7 +1204,6 @@ export const generateChatTitle = async (message: string, language: Language) => 
   try {
     return await retryWithBackoff(callApi);
   } catch (error) {
-    // console.error("Title generation error:", error);
     return firstMsg.length > 25 ? firstMsg.slice(0, 25) + '...' : firstMsg;
   }
 };
@@ -1212,15 +1211,15 @@ export const generateChatTitle = async (message: string, language: Language) => 
 export const searchUniversityScores = async (query: string, language: Language) => {
   const isVi = language === Language.VI;
   const systemInstruction = isVi
-    ? "Bạn là một chuyên gia tư vấn tuyển sinh đại học hàng đầu Việt Nam. Hãy sử dụng tính năng Google Search đi kèm để tìm kiếm ĐIỂM CHUẨN (điểm chuẩn học bạ, điểm chuẩn thi tốt nghiệp THPT, hoặc điểm chuẩn ĐGNL) mới nhất và chính xác nhất phù hợp với yêu cầu. Luôn ưu tiên thông tin chính thống từ các nguồn uy tín như VnExpress (vnexpress.net), Báo Tuổi Trẻ (tuoitre.vn), Báo Thanh Niên (thanhnien.vn), hoặc Cổng thông tin tuyển sinh chính thức của trường Đại học. Trình bày thông tin rõ ràng dưới dạng bảng Markdown (gồm các cột: Trường, Ngành/Mã ngành, Tổ hợp xét tuyển, Điểm chuẩn, Năm áp dụng) và đưa ra lời khuyên hữu ích cho học sinh."
-    : "You are an elite university admission advisor in Vietnam. Use the Google Search tool to find the absolute latest and most accurate admission scores matching the university or major requested. Prioritize official and prestigious Vietnamese sources like VnExpress, Tuoi Tre, Thanh Nien, or official university portals. Present results in a neat Markdown table containing: University, Major/Code, Exam Group, Score, and Year. Provide strategic advice below.";
+    ? "Bạn là một chuyên gia tư vấn tuyển sinh đại học hàng đầu Việt Nam. Hãy sử dụng tính năng Google Search đi kèm để tìm kiếm ĐIỂM CHUẨN (điểm chuẩn học bạ, điểm chuẩn thi tốt nghiệp THPT, hoặc điểm chuẩn ĐGNL) mới nhất và chính xác nhất phù hợp với yêu cầu. Luôn ưu tiên thông tin chính thống từ các nguồn uy tín như Báo VnExpress (https://vnexpress.net/giao-duc/tuyen-sinh), Báo Tuổi Trẻ (https://tuoitre.vn/giao-duc.htm), Báo Thanh Niên (https://thanhnien.vn/giao-duc.html), Cổng Bộ GD&ĐT (https://thisinh.thitotnghiepthpt.edu.vn) hoặc Cổng thông tin tuyển sinh chính thức của trường Đại học. Trình bày thông tin rõ ràng dưới dạng bảng Markdown (gồm các cột: Trường, Ngành/Mã ngành, Tổ hợp xét tuyển, Điểm chuẩn, Năm áp dụng) và đưa ra lời khuyên hữu ích cho học sinh. QUAN TRỌNG: Ở phần nguồn tham khảo, hãy luôn gắn link Markdown có thể bấm được (ví dụ: [VnExpress Tuyển sinh](https://vnexpress.net/giao-duc/tuyen-sinh), [Cổng tuyển sinh](https://...)) thay vì chỉ để chữ văn bản thuần."
+    : "You are an elite university admission advisor in Vietnam. Use the Google Search tool to find the absolute latest and most accurate admission scores matching the university or major requested. Prioritize official and prestigious Vietnamese sources like VnExpress, Tuoi Tre, Thanh Nien, or official university portals. Present results in a neat Markdown table containing: University, Major/Code, Exam Group, Score, and Year. Provide strategic advice below. IMPORTANT: In the sources section, always provide clickable Markdown links (e.g. [Official Portal](https://...)) instead of plain text names.";
   
   const customKey = getGeminiApiKey();
 
   const callApi = async () => {
     const promptMessage = isVi
-      ? `Tra cứu điểm chuẩn đại học mới nhất của trường/ngành: "${query}". Chú ý: Hiện tại đang là năm 2026. Hãy tìm kiếm các dữ liệu mới nhất có sẵn (ví dụ điểm chuẩn năm 2025, 2024). Luôn cung cấp tên nguồn báo hoặc trang tuyển sinh chính thống mà bạn lấy dữ liệu.`
-      : `Find the latest university admission scores for: "${query}". Note: The current year is 2026, so look for the most recent data (e.g., 2025, 2024 figures) using actual search grounding and specify the sources clearly.`;
+      ? `Tra cứu điểm chuẩn đại học mới nhất của trường/ngành: "${query}". Chú ý: Hiện tại đang là năm 2026. Hãy tìm kiếm các dữ liệu mới nhất có sẵn (ví dụ điểm chuẩn năm 2025, 2024). Luôn cung cấp liên kết URL web và tên nguồn báo hoặc trang tuyển sinh chính thống mà bạn lấy dữ liệu dạng liên kết [Tên nguồn](URL).`
+      : `Find the latest university admission scores for: "${query}". Note: The current year is 2026, so look for the most recent data (e.g., 2025, 2024 figures) using actual search grounding and specify the sources with clickable Markdown links [Source Name](URL).`;
 
     try {
       const response = await fetch('/api/search', {
@@ -1402,9 +1401,9 @@ Với mỗi học bổng, trình bày chi tiết theo định dạng:
 - **Giá trị tài trợ**: Số tiền hoặc % học phí cụ thể (Toàn phần, 50-100% học phí, sinh hoạt phí)
 - **Đối tượng & Điều kiện xét tuyển**: Điểm GPA yêu cầu, chứng chỉ tiếng Anh (IELTS/TOEFL), bài luận hoặc kinh nghiệm
 - **Hạn nộp hồ sơ & Kỳ nhập học**: Mốc thời gian tuyển sinh cụ thể
-- **Hướng dẫn ứng tuyển & Link/Cổng thông tin**: Nơi tiếp nhận hồ sơ
+- **Hướng dẫn ứng tuyển & Link/Cổng thông tin**: Nơi tiếp nhận hồ sơ dạng Link Markdown có thể bấm được: [Tên cổng thông tin / Link nộp hồ sơ](https://...)
 
-Hãy trả lời chuyên sâu, đầy đủ, không sử dụng câu trả lời mẫu chung chung.`
+QUAN TRỌNG: Hãy luôn gắn link Markdown có thể bấm trực tiếp cho các cổng thông tin, trang học bổng chính thức hoặc website trường/đại sứ quán.`
     : `You are a premier scholarship and study abroad advisor. Search for 3 - 5 real, active or recurring scholarship programs matching the search query: "${query}".
 For each scholarship, provide:
 ### 🎓 [Full Scholarship Name]
@@ -1412,16 +1411,16 @@ For each scholarship, provide:
 - **Funding Value**: Exact grant amounts or tuition coverage (Full tuition, stipend, flight)
 - **Eligibility & Requirements**: Minimum GPA, English certificates (IELTS/TOEFL), essays, achievements
 - **Application Deadline & Intakes**: Specific timeline and deadlines
-- **Application Process & Portal**: Official portal guidance
+- **Application Process & Portal**: Official portal guidance with clickable Markdown link [Official Portal / Application Link](https://...)
 
-Provide deep, factual, and actionable details without generic templates.`;
+IMPORTANT: Always include clickable Markdown links for official application portals.`;
 
   const customKey = getGeminiApiKey(userProfile);
 
   const callApi = async () => {
     const promptMessage = isVi
-      ? `Tìm kiếm các chương trình học bổng, quỹ tài trợ du học hoặc học bổng đại học cho từ khóa: "${query}"${profileDetails}. Yêu cầu cung cấp thông tin chi tiết và chính xác.`
-      : `Search for live scholarships and grants for: "${query}"${profileDetails}. Provide concrete, detailed scholarship opportunities.`;
+      ? `Tìm kiếm các chương trình học bổng, quỹ tài trợ du học hoặc học bổng đại học cho từ khóa: "${query}"${profileDetails}. Yêu cầu cung cấp thông tin chi tiết, chính xác kèm đường link Markdown có thể bấm được.`
+      : `Search for live scholarships and grants for: "${query}"${profileDetails}. Provide concrete, detailed scholarship opportunities with clickable links.`;
 
     try {
       const response = await fetch('/api/search', {
@@ -1442,7 +1441,10 @@ Provide deep, factual, and actionable details without generic templates.`;
         const textResponse = await response.text();
         const data = JSON.parse(textResponse);
         if (response.ok && data?.text && !data.text.includes("Dưới đây là các thông tin trọng tâm tổng hợp từ dữ liệu tuyển sinh")) {
-          return cleanMarkdownAsterisks(data.text);
+          return {
+            text: cleanMarkdownAsterisks(data.text),
+            groundingMetadata: data.groundingMetadata || null
+          };
         }
       }
     } catch (e) {
@@ -1462,7 +1464,10 @@ Provide deep, factual, and actionable details without generic templates.`;
             }
         });
         if (aiResponse.text) {
-          return cleanMarkdownAsterisks(aiResponse.text);
+          return {
+            text: cleanMarkdownAsterisks(aiResponse.text),
+            groundingMetadata: aiResponse.candidates?.[0]?.groundingMetadata || null
+          };
         }
       } catch (clientErr) {
         console.warn("Client-side scholarship search error:", clientErr);
@@ -1470,9 +1475,12 @@ Provide deep, factual, and actionable details without generic templates.`;
     }
 
     // Dynamic AI structured synthesis if remote search tool is offline
-    const fallbackPrompt = `Lập danh sách 3 chương trình học bổng uy tín nhất phù hợp với ngành/chủ đề "${query}" kèm điều kiện xét tuyển, giá trị học bổng và hạn nộp.`;
+    const fallbackPrompt = `Lập danh sách 3 chương trình học bổng uy tín nhất phù hợp với ngành/chủ đề "${query}" kèm điều kiện xét tuyển, giá trị học bổng và hạn nộp có link tham khảo.`;
     const text = await requestAiContent(fallbackPrompt, systemInstruction, language);
-    return cleanMarkdownAsterisks(text);
+    return {
+      text: cleanMarkdownAsterisks(text),
+      groundingMetadata: null
+    };
   };
 
   try {
