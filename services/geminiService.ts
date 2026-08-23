@@ -942,18 +942,29 @@ export class LiveSessionManager {
       recognition.lang = this.language === Language.VI ? 'vi-VN' : 'en-US';
 
       recognition.onresult = async (event: any) => {
+        // Guard: Ignore mic input while AI is speaking or synthesis is active
+        if (this.isAiSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking)) {
+          return;
+        }
+
         const results = event.results;
         const lastResult = results[results.length - 1];
         if (lastResult && lastResult[0]) {
           const userSpeech = lastResult[0].transcript?.trim();
-          if (userSpeech) {
+          if (userSpeech && userSpeech.length > 1) {
+            // Avoid processing duplicate consecutive speech
+            const lastMsg = this.conversationHistory[this.conversationHistory.length - 1];
+            if (lastMsg && lastMsg.role === 'user' && lastMsg.text === userSpeech) {
+              return;
+            }
+
             if (this.onTranscript) this.onTranscript(userSpeech, true);
             this.conversationHistory.push({ role: 'user', text: userSpeech });
             
             // Generate AI Response
             try {
               this.isAiSpeaking = true;
-              const prompt = `${systemInstruction}\n\nUser spoken input: "${userSpeech}"\n\nPlease give a natural, concise, and helpful career counseling response in 1-3 conversational sentences without any asterisks or markdown code.`;
+              const prompt = `${systemInstruction}\n\nNgười dùng vừa nói: "${userSpeech}"\n\nHãy trả lời bằng 1-2 câu cực kỳ ngắn gọn, tự nhiên, đi thẳng vào vấn đề. Tuyệt đối không dùng ký tự đặc biệt hoặc định dạng markdown.`;
               const aiRaw = await requestAiContent(prompt, systemInstruction, this.language);
               const aiText = cleanMarkdownAsterisks(aiRaw);
               
@@ -971,16 +982,29 @@ export class LiveSessionManager {
       };
 
       recognition.onerror = (err: any) => {
-        if (err.error !== 'no-speech') {
+        if (err.error !== 'no-speech' && err.error !== 'aborted') {
           console.warn("Speech recognition notice:", err.error || err);
+        }
+        if (this.isBrowserVoiceActive && this.isConnected) {
+          setTimeout(() => {
+            try {
+              if (this.speechRecognition === recognition) {
+                recognition.start();
+              }
+            } catch (e) {}
+          }, 400);
         }
       };
 
       recognition.onend = () => {
         if (this.isBrowserVoiceActive && this.isConnected) {
-          try {
-            recognition.start();
-          } catch (e) {}
+          setTimeout(() => {
+            try {
+              if (this.speechRecognition === recognition) {
+                recognition.start();
+              }
+            } catch (e) {}
+          }, 300);
         }
       };
 
@@ -1002,13 +1026,14 @@ export class LiveSessionManager {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = this.language === Language.VI ? 'vi-VN' : 'en-US';
-      utterance.rate = 1.0;
+      // Faster, more natural & energetic speech rate (1.18x for VI, 1.1x for EN)
+      utterance.rate = this.language === Language.VI ? 1.18 : 1.1;
       utterance.pitch = 1.0;
 
       // Select high quality voice if available
       const voices = window.speechSynthesis.getVoices();
       const matchedVoice = voices.find(v => 
-        (this.language === Language.VI && v.lang.startsWith('vi')) ||
+        (this.language === Language.VI && (v.lang.startsWith('vi') || v.lang.includes('vi-VN'))) ||
         (this.language === Language.EN && (v.lang.startsWith('en-US') || v.lang.startsWith('en-GB')))
       );
       if (matchedVoice) utterance.voice = matchedVoice;
@@ -1016,21 +1041,21 @@ export class LiveSessionManager {
       this.isAiSpeaking = true;
       let pulseInterval: any = setInterval(() => {
         if (this.isAiSpeaking && this.onAudioLevel) {
-          this.onAudioLevel(0.3 + Math.random() * 0.4);
+          this.onAudioLevel(0.25 + Math.random() * 0.45);
         }
       }, 100);
 
-      utterance.onend = () => {
-        this.isAiSpeaking = false;
+      const finishSpeaking = () => {
         clearInterval(pulseInterval);
         if (this.onAudioLevel) this.onAudioLevel(0);
+        // Add 350ms delay before allowing speech recognition to hear user again to avoid room echo
+        setTimeout(() => {
+          this.isAiSpeaking = false;
+        }, 350);
       };
 
-      utterance.onerror = () => {
-        this.isAiSpeaking = false;
-        clearInterval(pulseInterval);
-        if (this.onAudioLevel) this.onAudioLevel(0);
-      };
+      utterance.onend = finishSpeaking;
+      utterance.onerror = finishSpeaking;
 
       this.speechSynthUtterance = utterance;
       window.speechSynthesis.speak(utterance);

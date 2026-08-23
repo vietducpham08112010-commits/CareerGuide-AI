@@ -4079,70 +4079,96 @@ export default function App() {
             </div>
         )}
         {tab === DashboardTab.VOICE && (
-             <div className="flex-1 flex flex-col h-full bg-[#f8fafc] dark:bg-[#030303] overflow-hidden relative">
+             <div className="flex-1 flex flex-col h-full bg-gradient-to-b from-slate-50 via-indigo-50/20 to-slate-100 dark:from-[#06060a] dark:via-[#090912] dark:to-[#030303] overflow-hidden relative">
                  {/* Abstract ambient background */}
                  <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                    <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] sm:w-[800px] sm:h-[800px] bg-gradient-to-tr from-indigo-500/20 via-purple-500/10 to-transparent blur-[100px] rounded-full transition-all duration-1000 ${isVoiceActive ? 'scale-110 opacity-100' : 'scale-90 opacity-40'}`} />
+                    <div className={`absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] sm:w-[700px] sm:h-[700px] bg-gradient-to-tr from-indigo-500/20 via-purple-500/15 to-transparent blur-[120px] rounded-full transition-all duration-1000 ${isVoiceActive ? 'scale-110 opacity-100' : 'scale-90 opacity-40'}`} />
                  </div>
 
-                 {/* Center Stage */}
-                 <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6">
-                    
-                    {/* Glowing Orb */}
+                 {/* Top Status Header */}
+                 <div className="relative z-10 pt-6 pb-2 px-6 text-center flex-shrink-0">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 shadow-sm backdrop-blur-md mb-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${isVoiceActive ? (audioLevel > 0.1 ? 'bg-purple-500 animate-ping' : 'bg-emerald-500 animate-pulse') : 'bg-gray-400'}`} />
+                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                            {isVoiceActive 
+                                ? (audioLevel > 0.1 ? (lang === Language.VI ? 'AI đang nói...' : 'AI Speaking...') : (lang === Language.VI ? 'Đang lắng nghe...' : 'Listening...')) 
+                                : (lang === Language.VI ? 'Chưa kết nối' : 'Disconnected')}
+                        </span>
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                        {lang === Language.VI ? 'Trợ lý Giọng nói CareerGuide AI' : 'CareerGuide AI Voice Counselor'}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 max-w-md mx-auto truncate">
+                        {voiceStatus || (isVoiceActive 
+                            ? (lang === Language.VI ? 'Trải nghiệm cuộc nói chuyện tư vấn nghề nghiệp trực tiếp' : 'Live career counseling voice session') 
+                            : (lang === Language.VI ? 'Nhấn "Kết nối thoại" bên dưới để bắt đầu' : 'Click "Connect Voice" below to start'))}
+                    </p>
+                 </div>
+
+                 {/* Center Orb Stage */}
+                 <div className="relative z-10 flex-shrink-0 my-3 sm:my-5 flex items-center justify-center">
                     <div 
-                        className="relative w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center cursor-pointer group"
+                        className="relative w-36 h-36 sm:w-48 sm:h-48 flex items-center justify-center cursor-pointer group"
                         onClick={handleVoiceToggle}
                     >
                         {/* Audio Reactive Rings */}
                         {isVoiceActive && (
                             <>
-                                <div className="absolute inset-0 rounded-full border-2 border-indigo-500/30 animate-[ping_2s_ease-out_infinite]" style={{ transform: `scale(${1 + (audioLevel / 100) * 0.5})` }} />
-                                <div className="absolute inset-[-20px] rounded-full border border-purple-500/20 animate-[ping_3s_ease-out_infinite_200ms]" style={{ transform: `scale(${1 + (audioLevel / 100) * 0.8})` }} />
+                                <div className="absolute inset-0 rounded-full border-2 border-indigo-500/30 animate-[ping_2.5s_ease-out_infinite]" style={{ transform: `scale(${1 + (audioLevel / 100) * 0.4})` }} />
+                                <div className="absolute inset-[-15px] rounded-full border border-purple-500/20 animate-[ping_3.5s_ease-out_infinite_300ms]" style={{ transform: `scale(${1 + (audioLevel / 100) * 0.6})` }} />
                             </>
                         )}
                         
                         {/* Main Sphere */}
-                        <div className={`relative w-full h-full rounded-full flex flex-col items-center justify-center transition-all duration-700 overflow-hidden shadow-2xl backdrop-blur-md border ${isVoiceActive ? 'bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 border-indigo-400/50 scale-105 shadow-indigo-500/30' : 'bg-white/80 dark:bg-white/5 border-gray-200 dark:border-white/10 group-hover:scale-105 group-hover:border-indigo-500/50 shadow-black/5'}`}>
+                        <div className={`relative w-full h-full rounded-full flex flex-col items-center justify-center transition-all duration-500 overflow-hidden shadow-2xl backdrop-blur-md border ${isVoiceActive ? 'bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 border-indigo-400/50 scale-105 shadow-indigo-500/30' : 'bg-white/80 dark:bg-white/5 border-gray-200 dark:border-white/10 group-hover:scale-105 group-hover:border-indigo-500/50 shadow-black/5'}`}>
                             {isVoiceActive && <div className="absolute inset-0 bg-black/10 animate-pulse" />}
-                            <Icons.Microphone className={`w-16 h-16 transition-colors duration-500 relative z-10 ${isVoiceActive ? 'text-white drop-shadow-lg' : 'text-gray-400 group-hover:text-indigo-500'}`} />
+                            <Icons.Microphone className={`w-12 h-12 sm:w-16 sm:h-16 transition-colors duration-500 relative z-10 ${isVoiceActive ? 'text-white drop-shadow-lg' : 'text-gray-400 group-hover:text-indigo-500'}`} />
                         </div>
                     </div>
-
-                    {/* Status Text */}
-                    <div className="mt-8 text-center space-y-2 z-10">
-                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white transition-all">
-                             {isVoiceActive ? (lang === Language.VI ? 'Đang lắng nghe & tương tác thoại...' : 'Listening & Voice Chat active...') : (lang === Language.VI ? 'Chạm hoặc nhập câu hỏi để kết nối' : 'Tap or type to start live voice')}
-                        </h2>
-                        <p className={`text-xs sm:text-sm font-medium transition-colors ${isVoiceActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                             {voiceStatus || (isVoiceActive ? (lang === Language.VI ? 'Trợ lý AI đang xử lý giọng nói của bạn' : 'AI is processing your voice') : (lang === Language.VI ? 'Trợ lý AI hướng nghiệp thông minh' : 'Intelligent Career AI Assistant'))}
-                        </p>
-                    </div>
-
                  </div>
 
-                 {/* Floating Transcript (Latest messages) */}
-                 <div className="absolute bottom-32 left-0 right-0 max-w-3xl mx-auto px-6 max-h-[30vh] flex flex-col justify-end overflow-hidden pointer-events-none z-10">
-                    <div className="flex flex-col space-y-3 pb-2 overflow-y-auto no-scrollbar" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 15%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%)' }}>
-                        {transcripts.slice(-4).map((tr, i) => (
-                            <div key={`tr-${i}-${tr.isUser ? 'u' : 'm'}-${tr.text.slice(0, 10)}`} className={`flex ${tr.isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
-                                <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-xs sm:text-sm leading-relaxed pointer-events-auto backdrop-blur-md shadow-sm ${tr.isUser ? 'bg-indigo-600/95 text-white rounded-tr-sm' : 'bg-white/95 dark:bg-[#1A1A1A]/95 text-gray-800 dark:text-gray-100 rounded-tl-sm border border-gray-200/50 dark:border-white/10'}`}>
-                                    {tr.text}
-                                </div>
+                 {/* Dedicated Transcript Display (Scrollable Box BELOW the Orb) */}
+                 <div className="relative z-10 flex-1 max-w-2xl w-full mx-auto px-4 min-h-0 flex flex-col justify-end mb-20">
+                    <div className="w-full h-full max-h-[35vh] sm:max-h-[40vh] overflow-y-auto px-4 py-3 space-y-3 rounded-2xl bg-white/70 dark:bg-[#121216]/70 backdrop-blur-md border border-gray-200/60 dark:border-white/10 shadow-inner no-scrollbar">
+                        {transcripts.length === 0 ? (
+                            <div className="h-full min-h-[100px] flex flex-col items-center justify-center text-center p-4 text-gray-400 dark:text-gray-500">
+                                <Icons.MessageSquare className="w-6 h-6 mb-2 opacity-50" />
+                                <p className="text-xs sm:text-sm font-medium">
+                                    {isVoiceActive 
+                                        ? (lang === Language.VI ? 'Hãy bắt đầu nói câu hỏi của bạn...' : 'Start speaking your question...')
+                                        : (lang === Language.VI ? 'Lịch sử hội thoại sẽ hiển thị tại đây khi bạn kết nối.' : 'Voice transcript will appear here upon connection.')}
+                                </p>
                             </div>
-                        ))}
+                        ) : (
+                            transcripts.map((tr, i) => (
+                                <div key={`tr-${i}-${tr.isUser ? 'u' : 'm'}`} className={`flex ${tr.isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                                    <div className={`max-w-[88%] px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm ${
+                                        tr.isUser 
+                                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-tr-xs' 
+                                            : 'bg-white dark:bg-[#1e1e24] text-gray-800 dark:text-gray-100 rounded-tl-xs border border-gray-200/70 dark:border-white/10'
+                                    }`}>
+                                        <div className="text-[10px] uppercase font-bold tracking-wider mb-1 opacity-75">
+                                            {tr.isUser ? (lang === Language.VI ? 'Bạn' : 'You') : 'CareerGuide AI'}
+                                        </div>
+                                        {tr.text}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                        <div ref={transcriptEndRef} />
                     </div>
                  </div>
 
-                 {/* Floating Controls Toolbar */}
-                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-4 bg-white/90 dark:bg-[#111]/90 backdrop-blur-xl px-4 py-2.5 rounded-full border border-gray-200/50 dark:border-white/10 shadow-xl z-20">
-                     <div className="flex items-center gap-2 pl-2">
-                         <div className={`w-2 h-2 rounded-full ${isVoiceActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
-                         <Icons.Settings className="w-4 h-4 text-gray-500" />
+                 {/* Fixed Controls Toolbar */}
+                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-xl flex items-center justify-between gap-3 bg-white/90 dark:bg-[#111]/90 backdrop-blur-xl px-5 py-3 rounded-full border border-gray-200/80 dark:border-white/10 shadow-2xl z-30">
+                     <div className="flex items-center gap-2 overflow-hidden">
+                         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isVoiceActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+                         <Icons.Settings className="w-4 h-4 text-gray-500 flex-shrink-0" />
                          <select 
                             value={selectedDeviceId} 
                             onChange={(e) => setSelectedDeviceId(e.target.value)} 
                             disabled={isVoiceActive} 
-                            className="appearance-none bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none font-medium text-xs sm:text-sm w-28 sm:w-40 truncate cursor-pointer disabled:opacity-50"
+                            className="appearance-none bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none font-medium text-xs sm:text-sm max-w-[150px] sm:max-w-[220px] truncate cursor-pointer disabled:opacity-50"
                          >
                              {inputDevices.map((device, devIdx) => (
                                 <option key={device.deviceId ? `${device.deviceId}-${devIdx}` : `dev-${devIdx}`} value={device.deviceId} className="bg-white dark:bg-black">
@@ -4150,28 +4176,28 @@ export default function App() {
                                 </option>
                              ))}
                          </select>
-                         <Icons.ChevronDown className="w-3 h-3 text-gray-400 mr-2 pointer-events-none" />
+                         <Icons.ChevronDown className="w-3.5 h-3.5 text-gray-400 pointer-events-none flex-shrink-0" />
                      </div>
                      
-                     <div className="w-px h-6 bg-gray-200 dark:bg-white/10" />
+                     <div className="w-px h-6 bg-gray-200 dark:bg-white/10 flex-shrink-0" />
 
                      <button
                         onClick={handleVoiceToggle}
-                        className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                        className={`whitespace-nowrap flex-shrink-0 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer shadow-md ${
                             isVoiceActive
-                                ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/20'
-                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20'
+                                ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20'
+                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20'
                         }`}
                      >
                          {isVoiceActive ? (
                              <>
-                                 <Icons.Square className="w-3.5 h-3.5 fill-current" />
-                                 {lang === Language.VI ? 'Dừng cuộc gọi' : 'End Call'}
+                                 <Icons.Square className="w-3.5 h-3.5 fill-current flex-shrink-0" />
+                                 <span>{lang === Language.VI ? 'Dừng cuộc gọi' : 'End Call'}</span>
                              </>
                          ) : (
                              <>
-                                 <Icons.PhoneCall className="w-3.5 h-3.5" />
-                                 {lang === Language.VI ? 'Kết nối thoại' : 'Connect Voice'}
+                                 <Icons.PhoneCall className="w-3.5 h-3.5 flex-shrink-0" />
+                                 <span>{lang === Language.VI ? 'Kết nối thoại' : 'Connect Voice'}</span>
                              </>
                          )}
                      </button>
