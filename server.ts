@@ -416,7 +416,7 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-2.0-flash', 'gemini-2.0-flash-exp'];
+        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-2.5-flash', 'gemini-2.0-flash-exp'];
         let connected = false;
         for (const model of liveModels) {
           try {
@@ -435,7 +435,15 @@ wss.on("connection", (ws: WebSocket) => {
       } else if (msg.realtimeInput) {
           if (session) {
               const inputChunks = Array.isArray(msg.realtimeInput) ? msg.realtimeInput : [msg.realtimeInput];
-              session.sendRealtimeInput(inputChunks);
+              for (const chunk of inputChunks) {
+                if (chunk && chunk.data) {
+                  session.sendRealtimeInput({
+                    audio: { data: chunk.data, mimeType: chunk.mimeType || "audio/pcm;rate=16000" }
+                  });
+                } else if (chunk && chunk.audio) {
+                  session.sendRealtimeInput({ audio: chunk.audio });
+                }
+              }
           }
       } else if (msg.toolResponse) {
           if (session) {

@@ -9,9 +9,9 @@ export const DEFAULT_FREE_SUBSCRIPTION: UserSubscription = {
   dailyQueriesLimit: 3,
   extraQueriesCredits: 0,
   mockInterviewCredits: 0,
-  cvAuditCredits: 0,
+  cvAuditCredits: 1,
   unlockedFeatures: {
-    aiChat5PerDay: true,
+    aiChat5PerDay: false,
     personalityQuiz: true,
     aiDeepDive: false,
     scholarshipEssayEditor: false,

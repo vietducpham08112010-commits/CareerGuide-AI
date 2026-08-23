@@ -542,10 +542,10 @@ export const MonetizationRewardsHub: React.FC<MonetizationRewardsHubProps> = ({
                     +{currentSub.extraQueriesCredits} {isVi ? "câu" : "queries"}
                   </span>
                   <button
-                    onClick={() => handleSimulatePurchase("Gói Lẻ 5 Câu Chat AI", "15.000 VNĐ", "micro5")}
+                    onClick={() => handleSimulatePurchase("AI Credits (10 câu hỏi)", "25.000 VNĐ", "micro10")}
                     className="text-[10px] text-amber-300 underline font-bold block mt-1 hover:text-amber-200 cursor-pointer"
                   >
-                    + Nạp thêm gói 15k
+                    + Nạp AI Credits (25k/10 câu)
                   </button>
                 </div>
 

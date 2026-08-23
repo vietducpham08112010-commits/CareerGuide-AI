@@ -239,9 +239,9 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
     const hasMockInterviewPermission = Boolean(currentSub.unlockedFeatures?.fullMockInterview) || (currentSub.mockInterviewCredits || 0) > 0;
     if (!hasMockInterviewPermission) {
       if (onRequestUpgrade) {
-        onRequestUpgrade(isVi ? 'Phỏng vấn thử AI Mock Interview (Gói Premium/Max hoặc Mua lượt lẻ 19k)' : 'AI Mock Interview (Premium/Max or 19k micro-pack)');
+        onRequestUpgrade(isVi ? 'Phỏng vấn thử AI Mock Interview (Gói Premium/Max hoặc Mua lượt lẻ 8.000 VNĐ)' : 'AI Mock Interview (Premium/Max or 8k VNĐ single-use credit)');
       }
-      setErrorMsg(isEn ? 'AI Mock Interview is a Premium/Max feature. Please upgrade or purchase a 19k VNĐ single-use credit.' : 'Phỏng vấn thử AI là tính năng của gói Premium/Max hoặc mua lẻ (19.000 VNĐ). Vui lòng nâng cấp để bắt đầu.');
+      setErrorMsg(isEn ? 'AI Mock Interview is a Premium/Max feature. Please upgrade or purchase an 8.000 VNĐ single-use credit.' : 'Phỏng vấn thử AI là tính năng của gói Premium/Max hoặc mua lẻ (8.000 VNĐ / lượt). Vui lòng nâng cấp để bắt đầu.');
       return;
     }
 

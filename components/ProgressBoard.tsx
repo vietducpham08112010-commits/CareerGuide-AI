@@ -5,7 +5,7 @@ import * as Icons from 'lucide-react';
 import { captureElementToCanvasDataUrl } from '../utils/exportUtils';
 import { ChatSession, UserProfile, Language, ChatMessage, Milestone, Theme } from '../types';
 import { generateRoadmap, requestAiContent, getGeminiApiKey, cleanMarkdownAsterisks } from '../services/geminiService';
-import { getSubscriptionDetails } from '../utils/subscriptionUtils';
+import { getSubscriptionDetails, isFeatureUnlocked } from '../utils/subscriptionUtils';
 import emailjs from '@emailjs/browser';
 import { InlineGuide } from './InlineGuide';
 import { CareerLifecycleManager } from './CareerLifecycleManager';
@@ -578,6 +578,14 @@ Hãy đưa ra nhận xét ngắn gọn 3-4 câu đánh giá tính thực thi, đ
   };
 
   const handleGenerateRoadmap = async () => {
+    if (!isFeatureUnlocked(user, 'detailedRoadmap')) {
+      if (onRequestUpgrade) {
+        onRequestUpgrade(language === Language.VI ? 'Personalized Career Roadmap (Gói Premium / Max)' : 'Personalized Career Roadmap (Premium / Max)');
+      }
+      showToast(language === Language.VI ? 'Tạo Lộ trình Phát triển Sự nghiệp Cá nhân hóa là đặc quyền của gói Premium và Max. Vui lòng nâng cấp!' : 'Personalized Career Roadmap requires Premium or Max tier.', 'info');
+      return;
+    }
+
     if (chatHistory.length === 0 && messages.length === 0) {
       onNavigateToChat();
       return;

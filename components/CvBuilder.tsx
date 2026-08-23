@@ -1127,10 +1127,10 @@ ${cvData.certifications.map(c => `- ${c}`).join('\n')}
             </div>
             <div>
               <p className="font-bold text-sm">
-                {isVi ? 'Bạn đang ở Gói Miễn Phí (5 Lượt Chat / Ngày)' : 'You are on the Free Tier (5 Chat Limit)'}
+                {isVi ? 'Bạn đang ở Gói Career Guide Free (3 Câu Hỏi AI + 1 Lần Soi Học Bạ/CV)' : 'You are on Career Guide Free (3 AI Queries + 1 CV Audit)'}
               </p>
               <p className="text-xs text-amber-100 mt-0.5">
-                {isVi ? 'Nâng cấp lên Gói Micro-pass (15k) hoặc Pro để mở khóa không giới hạn AI Tối Ưu CV & Phỏng Vấn Thử.' : 'Upgrade to Micro-pass or Pro to unlock unlimited AI CV Polish & Mock Interviews.'}
+                {isVi ? 'Mua thêm lượt AI Academic Record / CV Review (5k/lượt) hoặc nâng cấp Premium/Max để mở khóa AI Tối Ưu CV không giới hạn.' : 'Purchase AI Academic Record / CV Review (5k/turn) or upgrade to Premium/Max.'}
               </p>
             </div>
           </div>

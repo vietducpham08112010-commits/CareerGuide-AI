@@ -26,7 +26,7 @@ import { CvBuilder } from './components/CvBuilder';
 import { UpgradeModal } from './components/UpgradeModal';
 import { PromptBuilderModal } from './components/PromptBuilderModal';
 import { FoundersSection } from './components/FoundersSection';
-import { getSubscriptionDetails } from './utils/subscriptionUtils';
+import { getSubscriptionDetails, DEFAULT_FREE_SUBSCRIPTION } from './utils/subscriptionUtils';
 import { 
   syncUserProfileToCloud, 
   fetchUserProfileFromCloud, 
@@ -1648,7 +1648,8 @@ export default function App() {
             aiProvider: AIProvider.GEMINI,
             customEndpoint: 'http://localhost:11434/v1/chat/completions',
             customModelName: 'llama3',
-            provider: 'email'
+            provider: 'email',
+            subscription: DEFAULT_FREE_SUBSCRIPTION
         };
 
         // Sync initially to cloud
@@ -1814,7 +1815,7 @@ export default function App() {
   };
 
   const handleGuestLogin = () => {
-    const guestUser = { name: t.guest, email: '', careerGoal: t.exploring, isGuest: true, avatar: getRandomAvatar(), aiProvider: AIProvider.GEMINI };
+    const guestUser = { name: t.guest, email: '', careerGoal: t.exploring, isGuest: true, avatar: getRandomAvatar(), aiProvider: AIProvider.GEMINI, subscription: DEFAULT_FREE_SUBSCRIPTION };
     localStorage.setItem('currentUser', JSON.stringify(guestUser));
     setAuth({ isAuthenticated: true, user: guestUser });
     setMode(AppMode.DASHBOARD);
@@ -1840,6 +1841,7 @@ export default function App() {
       level: 4,
       badges: ["NextX 2026 Pioneer", "Code Ninja", "High Achiever", "Scholar Champion"],
       hasCompletedOnboarding: true,
+      subscription: DEFAULT_FREE_SUBSCRIPTION,
       portfolio: [
         {
           id: 'p1',
@@ -2053,12 +2055,12 @@ export default function App() {
     
     if (!textToSend && !selectedFile && currentPastedTexts.length === 0) return;
 
-    // Check freemium query limit (5 questions per day)
+    // Check freemium query limit (3 questions hook for Free tier)
     const subDetails = getSubscriptionDetails(auth.user?.subscription);
     if (subDetails.tier === 'free') {
       if (subDetails.dailyQueriesUsed >= subDetails.dailyQueriesLimit && (subDetails.extraQueriesCredits || 0) <= 0) {
-        triggerUpgradeModal(lang === Language.VI ? 'Hạn ngạch 5 câu hỏi/ngày (Gói Miễn phí)' : 'Daily 5 Questions Limit (Free Tier)');
-        showToast(lang === Language.VI ? 'Bạn đã dùng hết 5 lượt hỏi AI miễn phí hôm nay! Nâng cấp gói để hỏi không giới hạn.' : 'You reached your daily 5 free question limit! Upgrade for unlimited access.', 'error');
+        triggerUpgradeModal(lang === Language.VI ? 'Hạn ngạch 3 câu hỏi AI (Gói Career Guide Free)' : '3 Free AI Questions Limit (Free Tier)');
+        showToast(lang === Language.VI ? 'Bạn đã dùng hết 3 lượt hỏi AI miễn phí! Nâng cấp gói Premium/Max hoặc mua AI Credits (25k/10 câu) để tiếp tục.' : 'You reached your 3 free AI question limit! Upgrade or buy AI Credits for more.', 'error');
         return;
       }
     }
@@ -3430,18 +3432,27 @@ export default function App() {
                                     <p className="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                                         {auth.user?.name}
                                     </p>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setIsUpgradeModalOpen(true); }}
-                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase border transition-all flex items-center gap-0.5 flex-shrink-0 cursor-pointer ${
-                                            auth.user?.subscription?.tier === 'free'
-                                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
-                                                : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                                        }`}
-                                        title="Bấm để xem/nâng cấp gói"
-                                    >
-                                        <Icons.Zap className="w-2.5 h-2.5 fill-current" />
-                                        {auth.user?.subscription?.tier === 'free' ? 'FREE' : (auth.user?.subscription?.tierNameVi || 'PRO')}
-                                    </button>
+                                    {(() => {
+                                        const userSub = getSubscriptionDetails(auth.user?.subscription);
+                                        const isFreeSub = userSub.tier === 'free';
+                                        const isMaxSub = userSub.tier === 'max_monthly' || userSub.tier === 'max_yearly';
+                                        return (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setIsUpgradeModalOpen(true); }}
+                                                className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase border transition-all flex items-center gap-0.5 flex-shrink-0 cursor-pointer ${
+                                                    isFreeSub
+                                                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+                                                        : isMaxSub
+                                                        ? 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30'
+                                                        : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                                }`}
+                                                title="Bấm để xem/nâng cấp gói"
+                                            >
+                                                <Icons.Zap className="w-2.5 h-2.5 fill-current" />
+                                                {isFreeSub ? 'FREE' : isMaxSub ? 'MAX VIP' : 'PREMIUM'}
+                                            </button>
+                                        );
+                                    })()}
                                 </div>
                                 <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{auth.user?.isGuest ? t.guestSession : auth.user?.email}</p>
                             </div>
@@ -3581,13 +3592,26 @@ export default function App() {
             <div className="flex items-center gap-1.5">
                 <CareerGuideLogo className="w-5 h-5" />
                 <span className="font-bold text-xs tracking-tight text-gray-900 dark:text-white uppercase">{t.appName}</span>
-                <button
-                    onClick={() => setIsUpgradeModalOpen(true)}
-                    className="text-[9px] font-black px-2 py-0.5 rounded-full uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 cursor-pointer"
-                >
-                    <Icons.Zap className="w-2.5 h-2.5 fill-current text-amber-500" />
-                    {auth.user?.subscription?.tier === 'free' ? 'FREE' : (auth.user?.subscription?.tierNameVi || 'PRO')}
-                </button>
+                {(() => {
+                    const userSub = getSubscriptionDetails(auth.user?.subscription);
+                    const isFreeSub = userSub.tier === 'free';
+                    const isMaxSub = userSub.tier === 'max_monthly' || userSub.tier === 'max_yearly';
+                    return (
+                        <button
+                            onClick={() => setIsUpgradeModalOpen(true)}
+                            className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase border flex items-center gap-1 cursor-pointer ${
+                                isFreeSub
+                                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                                    : isMaxSub
+                                    ? 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30'
+                                    : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                            }`}
+                        >
+                            <Icons.Zap className="w-2.5 h-2.5 fill-current text-amber-500" />
+                            {isFreeSub ? 'FREE' : isMaxSub ? 'MAX VIP' : 'PREMIUM'}
+                        </button>
+                    );
+                })()}
             </div>
             <motion.button 
                 whileHover={{ scale: 1.1 }}
