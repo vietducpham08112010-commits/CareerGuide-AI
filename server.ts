@@ -21,17 +21,13 @@ function getResolvedApiKeysList(clientKey?: string): string[] {
     if (!k || typeof k !== 'string') return;
     const parts = k.split(/[\n,;]+/).map(p => p.trim()).filter(p => p.length >= 10);
     for (const part of parts) {
-      if (!keys.includes(part)) {
+      if (!keys.includes(part) && !part.startsWith("AQ.")) {
         keys.push(part);
       }
     }
   };
 
   addKey(clientKey);
-  try {
-    const encodedFallback = "QVEuQWI4Uk42S3NnR21HTlBrN3ZfVzR4VWdlQUlPdi1wdEktSjAtRDNHeEx0blNSd0tvQ3c=";
-    addKey(Buffer.from(encodedFallback, "base64").toString("utf-8"));
-  } catch (e) {}
   addKey(process.env.GEMINI_API_KEY);
   addKey(process.env.GEMINI_API_KEYS);
   addKey(process.env.GOOGLE_GENAI_API_KEY);
@@ -416,7 +412,7 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-2.5-flash', 'gemini-2.0-flash-exp'];
+        const liveModels = ['gemini-2.0-flash-exp', 'gemini-2.0-flash'];
         let connected = false;
         for (const model of liveModels) {
           try {

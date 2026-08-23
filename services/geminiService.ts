@@ -129,12 +129,6 @@ export const getGeminiApiKeysPool = (userProfile?: UserProfile | null): string[]
     add(localStorage.getItem('ai_api_key'));
   } catch (e) {}
 
-  try {
-    const encodedFallback = "QVEuQWI4Uk42S3NnR21HTlBrN3ZfVzR4VWdlQUlPdi1wdEktSjAtRDNHeEx0blNSd0tvQ3c=";
-    if (typeof atob === 'function') {
-      add(atob(encodedFallback));
-    }
-  } catch (e) {}
   add(import.meta.env?.VITE_GEMINI_API_KEYS as string);
   add(import.meta.env?.VITE_GEMINI_API_KEY as string);
   add(process.env?.GEMINI_API_KEY as string);
@@ -808,7 +802,8 @@ export class LiveSessionManager {
             ws.send(JSON.stringify({
               type: "config",
               systemInstruction,
-              voiceName: "Aoede"
+              voiceName: "Aoede",
+              apiKey: customKey || ""
             }));
           };
 
@@ -894,18 +889,49 @@ export class LiveSessionManager {
     }
   }
 
+  async sendTextMessage(userText: string) {
+    if (!userText || !userText.trim()) return;
+    const cleanText = userText.trim();
+    const t = TRANSLATIONS[this.language];
+    const systemInstruction = t.voiceSystemInstruction;
+
+    if (this.onTranscript) this.onTranscript(cleanText, true);
+    this.conversationHistory.push({ role: 'user', text: cleanText });
+
+    try {
+      this.isAiSpeaking = true;
+      const prompt = `${systemInstruction}\n\nUser message: "${cleanText}"\n\nPlease give a natural, concise, and helpful career counseling response in 1-2 conversational sentences without any asterisks or markdown code.`;
+      const aiRaw = await requestAiContent(prompt, systemInstruction, this.language);
+      const aiText = cleanMarkdownAsterisks(aiRaw);
+
+      if (this.onTranscript) this.onTranscript(aiText, false);
+      this.conversationHistory.push({ role: 'model', text: aiText });
+
+      this.speakBrowserAi(aiText);
+    } catch (err: any) {
+      console.error("Voice text response error:", err);
+      this.isAiSpeaking = false;
+    }
+  }
+
   startBrowserVoiceFallback(systemInstruction: string) {
     if (this.isBrowserVoiceActive) return;
     this.isBrowserVoiceActive = true;
     this.isConnected = true;
     if (this.onConnect) this.onConnect();
 
+    // Welcome prompt
+    const welcomeText = this.language === Language.VI
+      ? "Xin chào! Tôi là Trợ lý Nghề nghiệp CareerGuide AI. Bạn đang quan tâm đến ngành nghề nào?"
+      : "Hello! I am your CareerGuide AI Voice Counselor. What career path are you exploring today?";
+    
+    if (this.onTranscript) this.onTranscript(welcomeText, false);
+    this.speakBrowserAi(welcomeText);
+
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) {
       const isVi = this.language === Language.VI;
-      if (this.onError) {
-        this.onError(isVi ? "Trình duyệt không hỗ trợ nhận diện giọng nói (Web Speech API). Vui lòng sử dụng Google Chrome hoặc Microsoft Edge." : "Your browser does not support Web Speech Recognition. Please use Chrome or Edge.");
-      }
+      console.warn("SpeechRecognition not supported, relying on text/speech output.");
       return;
     }
 
@@ -946,7 +972,7 @@ export class LiveSessionManager {
 
       recognition.onerror = (err: any) => {
         if (err.error !== 'no-speech') {
-          console.warn("Speech recognition notice:", err.error);
+          console.warn("Speech recognition notice:", err.error || err);
         }
       };
 
@@ -958,16 +984,12 @@ export class LiveSessionManager {
         }
       };
 
-      recognition.start();
+      try {
+        recognition.start();
+      } catch (e) {
+        console.warn("Recognition start failed:", e);
+      }
       this.speechRecognition = recognition;
-
-      // Welcome prompt
-      const welcomeText = this.language === Language.VI
-        ? "Xin chào! Tôi là Trợ lý Nghề nghiệp CareerGuide AI. Bạn đang quan tâm đến ngành nghề nào?"
-        : "Hello! I am your CareerGuide AI Voice Counselor. What career path are you exploring today?";
-      
-      if (this.onTranscript) this.onTranscript(welcomeText, false);
-      this.speakBrowserAi(welcomeText);
 
     } catch (e: any) {
       console.warn("Native speech setup exception:", e);
