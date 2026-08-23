@@ -36,7 +36,6 @@ export const FeedbackModal: React.FC<Props> = ({ isOpen, onClose, userId, lang, 
       }, 2500);
     } catch (e) {
       console.error(e);
-      alert(lang === 'vi' ? 'Đã xảy ra lỗi khi gửi đánh giá. Vui lòng thử lại.' : 'Error sending feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

@@ -274,7 +274,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({
 
   const handleNextQuestion = () => {
     if (!currentAnswer.trim()) {
-      alert(t.emptyAnswer);
+      setErrorMsg(t.emptyAnswer);
       return;
     }
     const updatedAnswers = [...answers, currentAnswer];
