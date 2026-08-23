@@ -149,8 +149,8 @@ export const cleanFrontEndErrorMessage = (error: any, language: Language): strin
   
   if (errMsg.includes("API key not valid") || errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key must be set") || errMsg.includes("401") || errMsg.includes("403")) {
     return isVi 
-      ? "Hệ thống máy chủ AI đang được bảo trì hoặc cập nhật cấu hình. Vui lòng thử lại sau ít phút!"
-      : "The AI service is currently updating configuration. Please try again shortly!";
+      ? "Chưa thể kết nối AI: Khóa API trên máy chủ chưa hợp lệ hoặc chưa được cấu hình. Bạn có thể mở menu Cài đặt (Settings) trên ứng dụng để nhập Gemini API Key cá nhân và tiếp tục sử dụng ngay!"
+      : "Cannot connect to AI: Invalid or unconfigured API Key. Please open Settings to enter your Gemini API Key!";
   }
   if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("Quota exceeded")) {
     return isVi 
@@ -168,8 +168,8 @@ export const cleanFrontEndErrorMessage = (error: any, language: Language): strin
       const msg = parsed.error.message;
       if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID") || msg.includes("API key must be set") || msg.includes("401") || msg.includes("403")) {
         return isVi 
-          ? "Hệ thống máy chủ AI đang được bảo trì hoặc cập nhật cấu hình. Vui lòng thử lại sau ít phút!"
-          : "The AI service is currently updating configuration. Please try again shortly!";
+          ? "Chưa thể kết nối AI: Khóa API trên máy chủ chưa hợp lệ hoặc chưa được cấu hình. Bạn có thể mở menu Cài đặt (Settings) trên ứng dụng để nhập Gemini API Key cá nhân và tiếp tục sử dụng ngay!"
+          : "Cannot connect to AI: Invalid or unconfigured API Key. Please open Settings to enter your Gemini API Key!";
       }
       if (msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota") || msg.includes("Quota exceeded") || msg.includes("429")) {
         return isVi 
@@ -189,7 +189,7 @@ export const cleanFrontEndErrorMessage = (error: any, language: Language): strin
   return errMsg;
 };
 
-// Generic helper to call AI with JSON prompt via backend proxy or client fallback
+// Generic helper to call AI with prompt via backend proxy or client fallback
 export const requestAiContent = async (
   prompt: string,
   systemInstruction: string = "You are a helpful assistant. Do not use asterisks (*) in text formatting.",
@@ -199,6 +199,7 @@ export const requestAiContent = async (
   const activeKey = getGeminiApiKey();
 
   const callApi = async () => {
+    let lastError: any = null;
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -217,25 +218,28 @@ export const requestAiContent = async (
       if (isJson) {
         const resData = await response.json();
         if (response.ok && resData.text) {
-          return cleanMarkdownAsterisks(resData.text);
+          const cleaned = cleanMarkdownAsterisks(resData.text);
+          if (cleaned && cleaned !== "{}" && cleaned !== "[]") {
+            return cleaned;
+          }
         }
-        if (!response.ok && resData.error) {
-          if (!activeKey) throw new Error(resData.error);
+        if (resData.error) {
+          throw new Error(resData.error);
         }
+      }
+      if (!response.ok) {
+        throw new Error(`Server HTTP ${response.status}`);
       }
     } catch (e: any) {
       if (e?.message && e.message.includes("Chưa cấu hình khóa API")) {
         throw e;
       }
-      console.warn("Backend chat proxy response handled, proceeding with fallback if needed:", e);
-    }
-
-    if (keysPool.length === 0 && !activeKey) {
-      return "{}";
+      lastError = e;
+      console.warn("Backend chat proxy error, checking client fallback:", e);
     }
 
     // Direct Client Custom Key Execution across available keys
-    const candidateKeys = keysPool.length > 0 ? keysPool : [activeKey];
+    const candidateKeys = keysPool.length > 0 ? keysPool : (activeKey ? [activeKey] : []);
     for (const key of candidateKeys) {
       try {
         const ai = new GoogleGenAI({ apiKey: key });
@@ -245,20 +249,26 @@ export const requestAiContent = async (
           config: { systemInstruction }
         });
         if (aiResponse.text) {
-          return cleanMarkdownAsterisks(aiResponse.text);
+          const cleaned = cleanMarkdownAsterisks(aiResponse.text);
+          if (cleaned && cleaned !== "{}" && cleaned !== "[]") {
+            return cleaned;
+          }
         }
       } catch (err: any) {
-        if (candidateKeys.indexOf(key) === candidateKeys.length - 1) {
-          throw err;
-        }
+        lastError = err;
       }
     }
-    return "{}";
+
+    if (lastError) {
+      throw lastError;
+    }
+
+    throw new Error(language === Language.VI ? "Lỗi kết nối AI: Không nhận được phản hồi từ mô hình." : "AI connection error: No response from model.");
   };
 
   try {
     return await retryWithBackoff(callApi);
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(cleanFrontEndErrorMessage(error, language));
   }
 };
@@ -905,13 +915,25 @@ export class LiveSessionManager {
       const aiRaw = await requestAiContent(prompt, systemInstruction, this.language);
       const aiText = cleanMarkdownAsterisks(aiRaw);
 
-      if (this.onTranscript) this.onTranscript(aiText, false);
-      this.conversationHistory.push({ role: 'model', text: aiText });
-
-      this.speakBrowserAi(aiText);
+      if (aiText && aiText !== "{}" && !aiText.startsWith("{")) {
+        if (this.onTranscript) this.onTranscript(aiText, false);
+        this.conversationHistory.push({ role: 'model', text: aiText });
+        this.speakBrowserAi(aiText);
+      } else {
+        const fallback = this.language === Language.VI 
+          ? "Tôi đã ghi nhận ý kiến của bạn. Bạn muốn tư vấn thêm điều gì nữa không?"
+          : "I received your message. What else would you like to discuss?";
+        if (this.onTranscript) this.onTranscript(fallback, false);
+        this.conversationHistory.push({ role: 'model', text: fallback });
+        this.speakBrowserAi(fallback);
+      }
     } catch (err: any) {
       console.error("Voice text response error:", err);
       this.isAiSpeaking = false;
+      const errMsg = cleanFrontEndErrorMessage(err, this.language);
+      if (this.onTranscript) this.onTranscript(errMsg, false);
+      this.conversationHistory.push({ role: 'model', text: errMsg });
+      this.speakBrowserAi(errMsg);
     }
   }
 
@@ -931,7 +953,6 @@ export class LiveSessionManager {
 
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) {
-      const isVi = this.language === Language.VI;
       console.warn("SpeechRecognition not supported, relying on text/speech output.");
       return;
     }
@@ -969,14 +990,25 @@ export class LiveSessionManager {
               const aiRaw = await requestAiContent(prompt, systemInstruction, this.language);
               const aiText = cleanMarkdownAsterisks(aiRaw);
               
-              if (this.onTranscript) this.onTranscript(aiText, false);
-              this.conversationHistory.push({ role: 'model', text: aiText });
-
-              // Speak AI Response
-              this.speakBrowserAi(aiText);
+              if (aiText && aiText !== "{}" && !aiText.startsWith("{")) {
+                if (this.onTranscript) this.onTranscript(aiText, false);
+                this.conversationHistory.push({ role: 'model', text: aiText });
+                this.speakBrowserAi(aiText);
+              } else {
+                const fallback = this.language === Language.VI 
+                  ? "Tôi đã ghi nhận câu hỏi của bạn. Bạn có muốn tư vấn chi tiết hơn không?"
+                  : "I got your question. Would you like more details?";
+                if (this.onTranscript) this.onTranscript(fallback, false);
+                this.conversationHistory.push({ role: 'model', text: fallback });
+                this.speakBrowserAi(fallback);
+              }
             } catch (err: any) {
               console.error("Browser voice AI response error:", err);
               this.isAiSpeaking = false;
+              const errMsg = cleanFrontEndErrorMessage(err, this.language);
+              if (this.onTranscript) this.onTranscript(errMsg, false);
+              this.conversationHistory.push({ role: 'model', text: errMsg });
+              this.speakBrowserAi(errMsg);
             }
           }
         }
