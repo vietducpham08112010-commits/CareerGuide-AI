@@ -64,6 +64,7 @@ const generateClientContentWithFallback = async (
         config?: any;
     }): Promise<any> => {
     const defaultModels = [
+        "gemini-3.6-flash",
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
         "gemini-2.0-flash",
@@ -244,7 +245,7 @@ export const requestAiContent = async (
       try {
         const ai = new GoogleGenAI({ apiKey: key });
         const aiResponse = await generateClientContentWithFallback(ai, {
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.6-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { systemInstruction }
         });

@@ -38,7 +38,7 @@ function getResolvedApiKeysList(clientKey?: string): string[] {
 
     const parts = val.split(/[\n,;]+/).map(p => p.trim()).filter(p => p.length >= 10);
     for (const part of parts) {
-      if (!keys.includes(part) && !part.startsWith("AQ.")) {
+      if (!keys.includes(part)) {
         keys.push(part);
       }
     }
@@ -127,6 +127,7 @@ async function generateContentWithFallback(
     }
 ) {
     const modelsToTry = [
+        "gemini-3.6-flash",
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
         "gemini-2.0-flash",
