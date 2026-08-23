@@ -1144,22 +1144,9 @@ export default function App() {
   const [audioLevel, setAudioLevel] = useState(0);
   const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
-  const [voiceText, setVoiceText] = useState('');
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
-
-  const handleSendVoiceText = useCallback(async () => {
-    if (!voiceText.trim()) return;
-    const msg = voiceText.trim();
-    setVoiceText('');
-    if (!isVoiceActive) {
-      await handleVoiceToggle();
-    }
-    setTimeout(() => {
-      liveSessionRef.current?.sendTextMessage(msg);
-    }, 200);
-  }, [voiceText, isVoiceActive]);
 
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(() => {
@@ -4146,70 +4133,48 @@ export default function App() {
                     </div>
                  </div>
 
-                 {/* Floating Controls Toolbar with Text Input option */}
-                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-xl flex flex-col gap-2 z-20">
-                     <form 
-                        onSubmit={(e) => { e.preventDefault(); handleSendVoiceText(); }}
-                        className="flex items-center gap-2 bg-white/95 dark:bg-[#111]/95 backdrop-blur-xl p-1.5 pl-4 rounded-full border border-gray-200 dark:border-white/10 shadow-2xl"
-                     >
-                         <input 
-                            type="text"
-                            value={voiceText}
-                            onChange={(e) => setVoiceText(e.target.value)}
-                            placeholder={lang === Language.VI ? "Nhập câu hỏi thoại trực tiếp với AI..." : "Type a live voice query to AI..."}
-                            className="flex-1 bg-transparent text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none placeholder:text-gray-400"
-                         />
-                         <button 
-                            type="submit"
-                            disabled={!voiceText.trim()}
-                            className="p-2 rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white transition-all cursor-pointer flex-shrink-0"
+                 {/* Floating Controls Toolbar */}
+                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 sm:gap-4 bg-white/90 dark:bg-[#111]/90 backdrop-blur-xl px-4 py-2.5 rounded-full border border-gray-200/50 dark:border-white/10 shadow-xl z-20">
+                     <div className="flex items-center gap-2 pl-2">
+                         <div className={`w-2 h-2 rounded-full ${isVoiceActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+                         <Icons.Settings className="w-4 h-4 text-gray-500" />
+                         <select 
+                            value={selectedDeviceId} 
+                            onChange={(e) => setSelectedDeviceId(e.target.value)} 
+                            disabled={isVoiceActive} 
+                            className="appearance-none bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none font-medium text-xs sm:text-sm w-28 sm:w-40 truncate cursor-pointer disabled:opacity-50"
                          >
-                             <Icons.Send className="w-3.5 h-3.5" />
-                         </button>
-                     </form>
-
-                     <div className="flex items-center justify-between bg-white/80 dark:bg-[#111]/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-gray-200/50 dark:border-white/10 shadow-md">
-                         <div className="flex items-center gap-1.5">
-                             <div className={`w-2 h-2 rounded-full ${isVoiceActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
-                             <Icons.Settings className="w-3.5 h-3.5 text-gray-500" />
-                             <select 
-                                value={selectedDeviceId} 
-                                onChange={(e) => setSelectedDeviceId(e.target.value)} 
-                                disabled={isVoiceActive} 
-                                className="appearance-none bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none font-medium text-xs w-28 sm:w-40 truncate cursor-pointer disabled:opacity-50"
-                             >
-                                 {inputDevices.map((device, devIdx) => (
-                                    <option key={device.deviceId ? `${device.deviceId}-${devIdx}` : `dev-${devIdx}`} value={device.deviceId} className="bg-white dark:bg-black">
-                                        {device.label || `${t.microphone} ${device.deviceId ? device.deviceId.slice(0, 5) : devIdx}...`}
-                                    </option>
-                                 ))}
-                             </select>
-                             <Icons.ChevronDown className="w-3 h-3 text-gray-400 pointer-events-none" />
-                         </div>
-
-                         <div className="flex items-center gap-2">
-                             <button
-                                onClick={handleVoiceToggle}
-                                className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                                    isVoiceActive
-                                        ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/20'
-                                        : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20'
-                                }`}
-                             >
-                                 {isVoiceActive ? (
-                                     <>
-                                         <Icons.Square className="w-3 h-3 fill-current" />
-                                         {lang === Language.VI ? 'Dừng cuộc gọi' : 'End Call'}
-                                     </>
-                                 ) : (
-                                     <>
-                                         <Icons.PhoneCall className="w-3 h-3" />
-                                         {lang === Language.VI ? 'Kết nối thoại' : 'Connect Voice'}
-                                     </>
-                                 )}
-                             </button>
-                         </div>
+                             {inputDevices.map((device, devIdx) => (
+                                <option key={device.deviceId ? `${device.deviceId}-${devIdx}` : `dev-${devIdx}`} value={device.deviceId} className="bg-white dark:bg-black">
+                                    {device.label || `${t.microphone} ${device.deviceId ? device.deviceId.slice(0, 5) : devIdx}...`}
+                                </option>
+                             ))}
+                         </select>
+                         <Icons.ChevronDown className="w-3 h-3 text-gray-400 mr-2 pointer-events-none" />
                      </div>
+                     
+                     <div className="w-px h-6 bg-gray-200 dark:bg-white/10" />
+
+                     <button
+                        onClick={handleVoiceToggle}
+                        className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                            isVoiceActive
+                                ? 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/20'
+                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20'
+                        }`}
+                     >
+                         {isVoiceActive ? (
+                             <>
+                                 <Icons.Square className="w-3.5 h-3.5 fill-current" />
+                                 {lang === Language.VI ? 'Dừng cuộc gọi' : 'End Call'}
+                             </>
+                         ) : (
+                             <>
+                                 <Icons.PhoneCall className="w-3.5 h-3.5" />
+                                 {lang === Language.VI ? 'Kết nối thoại' : 'Connect Voice'}
+                             </>
+                         )}
+                     </button>
                  </div>
              </div>
         )}
