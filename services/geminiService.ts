@@ -67,8 +67,8 @@ const generateClientContentWithFallback = async (
         "gemini-3.6-flash",
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite"
+        "gemini-3.6-flash",
+        "gemini-3.6-flash-lite"
     ];
     const modelsToTry = options.model ? [options.model, ...defaultModels] : defaultModels;
     const uniqueModels = Array.from(new Set(modelsToTry));
@@ -718,7 +718,7 @@ export class LiveSessionManager {
       // If user has custom key, connect via client SDK Live API
       if (customKey) {
         const ai = new GoogleGenAI({ apiKey: customKey });
-        const liveModels = ['gemini-2.0-flash', 'gemini-2.0-flash-exp'];
+        const liveModels = ['gemini-3.6-flash', 'gemini-3.6-flash-exp'];
         let modelIndex = 0;
 
         const attemptNextModel = async (): Promise<any> => {
@@ -1141,7 +1141,23 @@ export class LiveSessionManager {
     this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
     
     try {
-        await this.inputContext.audioWorklet.addModule('/audio-processor.js');
+        const workletCode = `
+class AudioProcessor extends AudioWorkletProcessor {
+  process(inputs, outputs, parameters) {
+    const input = inputs[0];
+    if (input && input.length > 0) {
+      const channelData = input[0];
+      this.port.postMessage(channelData);
+    }
+    return true;
+  }
+}
+registerProcessor('audio-processor', AudioProcessor);
+`;
+        const blob = new Blob([workletCode], { type: 'application/javascript' });
+        const workletUrl = URL.createObjectURL(blob);
+        await this.inputContext.audioWorklet.addModule(workletUrl);
+        
         this.processor = new AudioWorkletNode(this.inputContext, 'audio-processor');
         this.processor.port.onmessage = (e) => {
             const inputData = e.data;
