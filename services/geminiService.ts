@@ -625,15 +625,13 @@ export class LiveSessionManager {
   inputContext: AudioContext | null;
   outputContext: AudioContext | null;
   inputSource: MediaStreamAudioSourceNode | null;
-  processor: any | null;
+  analyser: AnalyserNode | null;
+  meterAnimFrame: number | null = null;
   stream: MediaStream | null;
-  nextStartTime: number;
-  sources: Set<AudioBufferSourceNode>;
   speechRecognition: any | null;
   speechSynthUtterance: SpeechSynthesisUtterance | null;
-  isBrowserVoiceActive: boolean = false;
   isAiSpeaking: boolean = false;
-  speechRate: number = 1.5;
+  speechRate: number = 1.35;
   conversationHistory: { role: string; text: string }[] = [];
   
   onConnect?: () => void;
@@ -651,14 +649,12 @@ export class LiveSessionManager {
     this.inputContext = null;
     this.outputContext = null;
     this.inputSource = null;
-    this.processor = null;
+    this.analyser = null;
+    this.meterAnimFrame = null;
     this.stream = null;
-    this.nextStartTime = 0;
-    this.sources = new Set();
     this.isConnected = false;
     this.speechRecognition = null;
     this.speechSynthUtterance = null;
-    this.isBrowserVoiceActive = false;
     this.isAiSpeaking = false;
     this.conversationHistory = [];
   }
@@ -675,7 +671,7 @@ export class LiveSessionManager {
     } catch (e) { return []; }
   }
 
-  async connect(deviceId: string, decodeAudioDataFn: any, createBlobFn: any, decodeFn: any) {
+  async connect(deviceId?: string, decodeAudioDataFn?: any, createBlobFn?: any, decodeFn?: any) {
     const t = TRANSLATIONS[this.language];
     let systemInstruction = t.voiceSystemInstruction;
     
@@ -684,205 +680,42 @@ export class LiveSessionManager {
     }
 
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          // If media devices not available, try browser speech recognition fallback directly
-          return this.startBrowserVoiceFallback(systemInstruction);
-      }
-      
-      this.inputContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      this.outputContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      
-      if (this.inputContext.state === 'suspended') { await this.inputContext.resume(); }
-      if (this.outputContext.state === 'suspended') { await this.outputContext.resume(); }
-
-      try {
-        const constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
-        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (micErr: any) {
-        console.warn("Microphone access denied or unavailable:", micErr);
-        const isVi = this.language === Language.VI;
-        const msg = (micErr?.name === 'NotAllowedError' || micErr?.message?.includes('Permission denied') || micErr?.message?.includes('denied'))
-          ? (isVi ? 'Trình duyệt chưa được cấp quyền truy cập Micro. Vui lòng cho phép quyền micro trên trình duyệt để tiếp tục.' : 'Microphone permission was denied. Please allow microphone access in your browser to proceed.')
-          : (micErr?.message || t.micPermission);
-        if (this.onError) this.onError(msg);
-        this.cleanup();
-        if (this.onDisconnect) this.onDisconnect();
-        return;
-      }
-
-      // Start input level meter so visualizer animates
-      this.startMicLevelMeter();
-
-      const customKey = getGeminiApiKey(this.userProfile);
-
-      // If user has custom key, connect via client SDK Live API
-      if (customKey) {
-        const ai = new GoogleGenAI({ apiKey: customKey });
-        const liveModels = ['gemini-3.6-flash', 'gemini-3.6-flash-exp'];
-        let modelIndex = 0;
-
-        const attemptNextModel = async (): Promise<any> => {
-          if (modelIndex >= liveModels.length) {
-            // Fallback to browser voice assistant
-            console.log("Live API connection exhausted, switching to Browser Voice Assistant mode.");
-            return this.startBrowserVoiceFallback(systemInstruction);
-          }
-
-          const model = liveModels[modelIndex];
-          modelIndex++;
-
-          let hasOpened = false;
-          let sessionPromise: Promise<any>;
-
-          try {
-            sessionPromise = ai.live.connect({
-              model,
-              callbacks: {
-                onopen: () => {
-                  hasOpened = true;
-                  this.isConnected = true;
-                  this.startAudioStreaming(createBlobFn, sessionPromise);
-                  if (this.onConnect) this.onConnect();
-                },
-                onmessage: async (message: LiveServerMessage) => {
-                  const serverContent = message.serverContent;
-                  if (serverContent) {
-                    if (serverContent.outputTranscription) {
-                      const text = serverContent.outputTranscription.text;
-                      if (text && this.onTranscript) this.onTranscript(text, false);
-                    } else if (serverContent.inputTranscription) {
-                      const text = serverContent.inputTranscription.text;
-                      if (text && this.onTranscript) this.onTranscript(text, true);
-                    }
-                    
-                    const base64Audio = serverContent.modelTurn?.parts?.[0]?.inlineData?.data;
-                    if (base64Audio && this.outputContext) {
-                      const audioBuffer = await decodeAudioDataFn(decodeFn(base64Audio), this.outputContext, 24000, 1);
-                      this.playAudio(audioBuffer);
-                    }
-                    
-                    if (serverContent.interrupted) this.stopCurrentAudio();
-                  }
-                },
-                onclose: () => {
-                  if (!hasOpened && !this.isConnected) {
-                    attemptNextModel();
-                  } else {
-                    this.cleanup();
-                    if (this.onDisconnect) this.onDisconnect();
-                  }
-                },
-                onerror: () => {
-                  if (!hasOpened && !this.isConnected) {
-                    attemptNextModel();
-                  } else {
-                    this.startBrowserVoiceFallback(systemInstruction);
-                  }
-                }
-              },
-              config: {
-                responseModalities: [Modality.AUDIO],
-                outputAudioTranscription: {},
-                inputAudioTranscription: {},
-                systemInstruction: systemInstruction,
-                speechConfig: { 
-                  voiceConfig: { 
-                    prebuiltVoiceConfig: { 
-                      voiceName: 'Aoede' 
-                    } 
-                  } 
-                }
-              }
-            });
-            this.session = await sessionPromise;
-          } catch (err) {
-            if (!hasOpened && !this.isConnected) {
-              await attemptNextModel();
-            }
-          }
-        };
-
-        await attemptNextModel();
-      } else {
-        // Connect via backend WebSocket proxy on /ws with immediate fallback
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
-          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-          const wsUrl = `${protocol}//${window.location.host}/ws`;
-          const ws = new WebSocket(wsUrl);
-
-          let hasWsConnected = false;
-          const fallbackTimer = setTimeout(() => {
-            if (!hasWsConnected && !this.isConnected) {
-              try { ws.close(); } catch (e) {}
-              this.startBrowserVoiceFallback(systemInstruction);
-            }
-          }, 3500);
-
-          ws.onopen = () => {
-            ws.send(JSON.stringify({
-              type: "config",
-              systemInstruction,
-              voiceName: "Aoede",
-              apiKey: customKey || ""
-            }));
-          };
-
-          ws.onmessage = async (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              if (data.type === "connected") {
-                hasWsConnected = true;
-                clearTimeout(fallbackTimer);
-                this.isConnected = true;
-                this.startWebSocketAudioStreaming(createBlobFn, ws);
-                if (this.onConnect) this.onConnect();
-              } else if (data.error) {
-                clearTimeout(fallbackTimer);
-                this.startBrowserVoiceFallback(systemInstruction);
-              } else if (data.serverContent) {
-                const serverContent = data.serverContent;
-                if (serverContent.outputTranscription?.text && this.onTranscript) {
-                  this.onTranscript(serverContent.outputTranscription.text, false);
-                } else if (serverContent.inputTranscription?.text && this.onTranscript) {
-                  this.onTranscript(serverContent.inputTranscription.text, true);
-                }
-                const base64Audio = serverContent.modelTurn?.parts?.[0]?.inlineData?.data;
-                if (base64Audio && this.outputContext) {
-                  const audioBuffer = await decodeAudioDataFn(decodeFn(base64Audio), this.outputContext, 24000, 1);
-                  this.playAudio(audioBuffer);
-                }
-                if (serverContent.interrupted) this.stopCurrentAudio();
-              }
-            } catch (e) {
-              console.error("WS Parse error", e);
-            }
-          };
-
-          ws.onerror = () => {
-            clearTimeout(fallbackTimer);
-            if (!hasWsConnected) {
-              this.startBrowserVoiceFallback(systemInstruction);
-            }
-          };
-
-          ws.onclose = () => {
-            clearTimeout(fallbackTimer);
-            if (!hasWsConnected && !this.isConnected) {
-              this.startBrowserVoiceFallback(systemInstruction);
-            } else if (!this.isBrowserVoiceActive) {
-              this.cleanup();
-              if (this.onDisconnect) this.onDisconnect();
-            }
-          };
-
-          this.session = ws;
-        } catch (wsErr) {
-          this.startBrowserVoiceFallback(systemInstruction);
+          const constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
+          this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+          
+          this.inputContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+          if (this.inputContext.state === 'suspended') { 
+            await this.inputContext.resume(); 
+          }
+          
+          this.startMicLevelMeter();
+        } catch (micErr: any) {
+          console.warn("Microphone access notice:", micErr);
+          const isVi = this.language === Language.VI;
+          const isDenied = micErr?.name === 'NotAllowedError' || micErr?.message?.includes('Permission denied') || micErr?.message?.includes('denied');
+          if (isDenied) {
+            const msg = isVi 
+              ? 'Trình duyệt chưa được cấp quyền Micro. Vui lòng bật quyền truy cập Micro trên thanh địa chỉ trình duyệt.' 
+              : 'Microphone permission was denied. Please allow microphone access in your browser.';
+            if (this.onError) this.onError(msg);
+            this.cleanup();
+            if (this.onDisconnect) this.onDisconnect();
+            return;
+          }
         }
       }
 
-    } catch (e) { 
-      this.startBrowserVoiceFallback(systemInstruction);
+      this.isConnected = true;
+      if (this.onConnect) this.onConnect();
+
+      // Start voice interaction loop
+      this.startVoiceInteraction(systemInstruction);
+
+    } catch (e: any) { 
+      console.warn("Voice connection init notice:", e);
+      this.startVoiceInteraction(systemInstruction);
     }
   }
 
@@ -890,22 +723,37 @@ export class LiveSessionManager {
     if (!this.inputContext || !this.stream) return;
     try {
       this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
-      this.processor = this.inputContext.createScriptProcessor(2048, 1, 1);
-      this.processor.onaudioprocess = (e: any) => {
-        const inputData = e.inputBuffer.getChannelData(0);
+      this.analyser = this.inputContext.createAnalyser();
+      this.analyser.fftSize = 256;
+      this.inputSource.connect(this.analyser);
+
+      const bufferLength = this.analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const updateMeter = () => {
+        if (!this.isConnected || !this.analyser) return;
+
+        this.analyser.getByteFrequencyData(dataArray);
         let sum = 0;
-        for (let i = 0; i < inputData.length; i++) {
-          sum += inputData[i] * inputData[i];
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
         }
-        const rms = Math.sqrt(sum / inputData.length);
+        const avg = (sum / bufferLength) / 255;
+        
         if (this.onAudioLevel) {
-          this.onAudioLevel(this.isAiSpeaking ? Math.min(0.8, rms * 4 + 0.15) : rms);
+          if (this.isAiSpeaking) {
+            this.onAudioLevel(0.25 + Math.random() * 0.4);
+          } else {
+            this.onAudioLevel(avg);
+          }
         }
+
+        this.meterAnimFrame = requestAnimationFrame(updateMeter);
       };
-      this.inputSource.connect(this.processor);
-      this.processor.connect(this.inputContext.destination);
+
+      updateMeter();
     } catch (e) {
-      console.warn("Mic level meter setup failed", e);
+      console.warn("AnalyserNode setup notice:", e);
     }
   }
 
@@ -920,7 +768,7 @@ export class LiveSessionManager {
 
     try {
       this.isAiSpeaking = true;
-      const prompt = `${systemInstruction}\n\nUser message: "${cleanText}"\n\nPlease give a natural, concise, and helpful career counseling response in 1-2 conversational sentences without any asterisks or markdown code.`;
+      const prompt = `${systemInstruction}\n\nNgười dùng nhắn: "${cleanText}"\n\nHãy trả lời bằng 1-2 câu cực kỳ ngắn gọn, tự nhiên, truyền cảm hứng và đi thẳng vào trọng tâm tư vấn nghề nghiệp. Tuyệt đối không dùng ký hiệu markdown hay hoa thị (*).`;
       const aiRaw = await requestAiContent(prompt, systemInstruction, this.language);
       const aiText = cleanMarkdownAsterisks(aiRaw);
 
@@ -930,8 +778,8 @@ export class LiveSessionManager {
         this.speakBrowserAi(aiText);
       } else {
         const fallback = this.language === Language.VI 
-          ? "Tôi đã ghi nhận ý kiến của bạn. Bạn muốn tư vấn thêm điều gì nữa không?"
-          : "I received your message. What else would you like to discuss?";
+          ? "Tôi đã ghi nhận ý kiến của bạn. Bạn muốn tư vấn thêm về lộ trình hay ngành nghề nào?"
+          : "I have noted your question. Which career path or roadmap would you like to explore further?";
         if (this.onTranscript) this.onTranscript(fallback, false);
         this.conversationHistory.push({ role: 'model', text: fallback });
         this.speakBrowserAi(fallback);
@@ -946,23 +794,18 @@ export class LiveSessionManager {
     }
   }
 
-  startBrowserVoiceFallback(systemInstruction: string) {
-    if (this.isBrowserVoiceActive) return;
-    this.isBrowserVoiceActive = true;
-    this.isConnected = true;
-    if (this.onConnect) this.onConnect();
-
-    // Welcome prompt
+  startVoiceInteraction(systemInstruction: string) {
+    // Initial welcome greeting
     const welcomeText = this.language === Language.VI
-      ? "Xin chào! Tôi là Trợ lý Nghề nghiệp CareerGuide AI. Bạn đang quan tâm đến ngành nghề nào?"
-      : "Hello! I am your CareerGuide AI Voice Counselor. What career path are you exploring today?";
+      ? "Xin chào! Tôi là Trợ lý Định hướng Nghề nghiệp AI. Bạn đang quan tâm hay cần tư vấn về ngành nghề nào?"
+      : "Hello! I am your AI Career Counselor. What career field or direction are you interested in today?";
     
     if (this.onTranscript) this.onTranscript(welcomeText, false);
     this.speakBrowserAi(welcomeText);
 
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) {
-      console.warn("SpeechRecognition not supported, relying on text/speech output.");
+      console.warn("SpeechRecognition not supported in this browser.");
       return;
     }
 
@@ -973,7 +816,7 @@ export class LiveSessionManager {
       recognition.lang = this.language === Language.VI ? 'vi-VN' : 'en-US';
 
       recognition.onresult = async (event: any) => {
-        // Guard: Ignore mic input while AI is speaking or synthesis is active
+        // Ignore mic input while AI is speaking
         if (this.isAiSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking)) {
           return;
         }
@@ -983,7 +826,7 @@ export class LiveSessionManager {
         if (lastResult && lastResult[0]) {
           const userSpeech = lastResult[0].transcript?.trim();
           if (userSpeech && userSpeech.length > 1) {
-            // Avoid processing duplicate consecutive speech
+            // Guard against duplicate transcript trigger
             const lastMsg = this.conversationHistory[this.conversationHistory.length - 1];
             if (lastMsg && lastMsg.role === 'user' && lastMsg.text === userSpeech) {
               return;
@@ -992,10 +835,10 @@ export class LiveSessionManager {
             if (this.onTranscript) this.onTranscript(userSpeech, true);
             this.conversationHistory.push({ role: 'user', text: userSpeech });
             
-            // Generate AI Response
+            // Query AI for direct voice advice
             try {
               this.isAiSpeaking = true;
-              const prompt = `${systemInstruction}\n\nNgười dùng vừa nói: "${userSpeech}"\n\nHãy trả lời bằng 1-2 câu cực kỳ ngắn gọn, tự nhiên, đi thẳng vào vấn đề. Tuyệt đối không dùng ký tự đặc biệt hoặc định dạng markdown.`;
+              const prompt = `${systemInstruction}\n\nNgười dùng vừa nói: "${userSpeech}"\n\nHãy trả lời bằng 1-2 câu súc tích, tự nhiên, thân thiện và đi thẳng vào trọng tâm hướng nghiệp. Không dùng ký hiệu markdown hay hoa thị (*).`;
               const aiRaw = await requestAiContent(prompt, systemInstruction, this.language);
               const aiText = cleanMarkdownAsterisks(aiRaw);
               
@@ -1005,14 +848,14 @@ export class LiveSessionManager {
                 this.speakBrowserAi(aiText);
               } else {
                 const fallback = this.language === Language.VI 
-                  ? "Tôi đã ghi nhận câu hỏi của bạn. Bạn có muốn tư vấn chi tiết hơn không?"
-                  : "I got your question. Would you like more details?";
+                  ? "Tôi đã nghe rõ câu hỏi của bạn. Bạn muốn định hướng về kỹ năng hay cơ hội việc làm của ngành này?"
+                  : "I heard your question clearly. Would you like advice on skills or job opportunities in this field?";
                 if (this.onTranscript) this.onTranscript(fallback, false);
                 this.conversationHistory.push({ role: 'model', text: fallback });
                 this.speakBrowserAi(fallback);
               }
             } catch (err: any) {
-              console.error("Browser voice AI response error:", err);
+              console.error("Voice AI counseling error:", err);
               this.isAiSpeaking = false;
               const errMsg = cleanFrontEndErrorMessage(err, this.language);
               if (this.onTranscript) this.onTranscript(errMsg, false);
@@ -1025,24 +868,12 @@ export class LiveSessionManager {
 
       recognition.onerror = (err: any) => {
         if (err.error !== 'no-speech' && err.error !== 'aborted') {
-          console.warn("Speech recognition notice:", err.error || err);
+          console.warn("Speech recognition event notice:", err.error || err);
         }
-        if (this.isBrowserVoiceActive && this.isConnected) {
+        if (this.isConnected) {
           setTimeout(() => {
             try {
-              if (this.speechRecognition === recognition) {
-                recognition.start();
-              }
-            } catch (e) {}
-          }, 400);
-        }
-      };
-
-      recognition.onend = () => {
-        if (this.isBrowserVoiceActive && this.isConnected) {
-          setTimeout(() => {
-            try {
-              if (this.speechRecognition === recognition) {
+              if (this.speechRecognition === recognition && this.isConnected) {
                 recognition.start();
               }
             } catch (e) {}
@@ -1050,15 +881,27 @@ export class LiveSessionManager {
         }
       };
 
+      recognition.onend = () => {
+        if (this.isConnected) {
+          setTimeout(() => {
+            try {
+              if (this.speechRecognition === recognition && this.isConnected) {
+                recognition.start();
+              }
+            } catch (e) {}
+          }, 250);
+        }
+      };
+
       try {
         recognition.start();
       } catch (e) {
-        console.warn("Recognition start failed:", e);
+        console.warn("Recognition start notice:", e);
       }
       this.speechRecognition = recognition;
 
     } catch (e: any) {
-      console.warn("Native speech setup exception:", e);
+      console.warn("Speech recognition setup notice:", e);
     }
   }
 
@@ -1068,11 +911,9 @@ export class LiveSessionManager {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = this.language === Language.VI ? 'vi-VN' : 'en-US';
-      // Fast, responsive & energetic speech rate (configured rate or fast 1.5x default)
-      utterance.rate = this.speechRate || (this.language === Language.VI ? 1.5 : 1.35);
+      utterance.rate = this.speechRate || (this.language === Language.VI ? 1.4 : 1.3);
       utterance.pitch = 1.0;
 
-      // Select high quality voice if available
       const voices = window.speechSynthesis.getVoices();
       const matchedVoice = voices.find(v => 
         (this.language === Language.VI && (v.lang.startsWith('vi') || v.lang.includes('vi-VN'))) ||
@@ -1081,19 +922,11 @@ export class LiveSessionManager {
       if (matchedVoice) utterance.voice = matchedVoice;
 
       this.isAiSpeaking = true;
-      let pulseInterval: any = setInterval(() => {
-        if (this.isAiSpeaking && this.onAudioLevel) {
-          this.onAudioLevel(0.25 + Math.random() * 0.45);
-        }
-      }, 100);
 
       const finishSpeaking = () => {
-        clearInterval(pulseInterval);
-        if (this.onAudioLevel) this.onAudioLevel(0);
-        // Add 350ms delay before allowing speech recognition to hear user again to avoid room echo
         setTimeout(() => {
           this.isAiSpeaking = false;
-        }, 350);
+        }, 300);
       };
 
       utterance.onend = finishSpeaking;
@@ -1106,128 +939,11 @@ export class LiveSessionManager {
     }
   }
 
-  async startWebSocketAudioStreaming(createBlobFn: any, ws: WebSocket) {
-    if (!this.inputContext || !this.stream) return;
-    try {
-      this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
-      this.processor = this.inputContext.createScriptProcessor(2048, 1, 1);
-      this.processor.onaudioprocess = (e: any) => {
-        const inputData = e.inputBuffer.getChannelData(0);
-        let sum = 0; for(let i=0; i<inputData.length; i++) sum += inputData[i] * inputData[i];
-        if (this.onAudioLevel) this.onAudioLevel(Math.sqrt(sum / inputData.length));
-        
-        const downsampled = downsampleBuffer(inputData, this.inputContext?.sampleRate || 16000, 16000);
-        const pcmBlob = createBlobFn(downsampled, 16000);
-        
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          try {
-            ws.send(JSON.stringify({
-              realtimeInput: [{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]
-            }));
-          } catch (wsErr) {
-            // Ignore socket closure frame errors during teardown
-          }
-        }
-      };
-      this.inputSource.connect(this.processor);
-      this.processor.connect(this.inputContext.destination);
-    } catch (err) {
-      console.warn("ScriptProcessor fallback failed", err);
-    }
-  }
-
-  async startAudioStreaming(createBlobFn: any, sessionPromise?: Promise<any>) {
-    if (!this.inputContext || !this.stream) return;
-    this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
-    
-    try {
-        const workletCode = `
-class AudioProcessor extends AudioWorkletProcessor {
-  process(inputs, outputs, parameters) {
-    const input = inputs[0];
-    if (input && input.length > 0) {
-      const channelData = input[0];
-      this.port.postMessage(channelData);
-    }
-    return true;
-  }
-}
-registerProcessor('audio-processor', AudioProcessor);
-`;
-        const blob = new Blob([workletCode], { type: 'application/javascript' });
-        const workletUrl = URL.createObjectURL(blob);
-        await this.inputContext.audioWorklet.addModule(workletUrl);
-        
-        this.processor = new AudioWorkletNode(this.inputContext, 'audio-processor');
-        this.processor.port.onmessage = (e) => {
-            const inputData = e.data;
-            let sum = 0; for(let i=0; i<inputData.length; i++) sum += inputData[i] * inputData[i];
-            if (this.onAudioLevel) this.onAudioLevel(Math.sqrt(sum / inputData.length));
-            
-            const downsampled = downsampleBuffer(inputData, this.inputContext?.sampleRate || 16000, 16000);
-            const pcmBlob = createBlobFn(downsampled, 16000);
-            
-            if (sessionPromise) {
-                sessionPromise.then(session => {
-                    if (this.isConnected) {
-                        session.sendRealtimeInput([{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]);
-                    }
-                });
-            } else if (this.session && this.isConnected) {
-                this.session.sendRealtimeInput([{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]);
-            }
-        };
-        this.inputSource.connect(this.processor);
-        this.processor.connect(this.inputContext.destination);
-    } catch (err) {
-        console.warn("AudioWorklet failed, falling back to ScriptProcessorNode", err);
-        if (!this.inputContext) return;
-        this.processor = this.inputContext.createScriptProcessor(2048, 1, 1);
-        this.processor.onaudioprocess = (e) => {
-          const inputData = e.inputBuffer.getChannelData(0);
-          let sum = 0; for(let i=0; i<inputData.length; i++) sum += inputData[i] * inputData[i];
-          if (this.onAudioLevel) this.onAudioLevel(Math.sqrt(sum / inputData.length));
-          
-          const downsampled = downsampleBuffer(inputData, this.inputContext?.sampleRate || 16000, 16000);
-          const pcmBlob = createBlobFn(downsampled, 16000);
-          
-          if (sessionPromise) {
-              sessionPromise.then(session => {
-                  if (this.isConnected) {
-                      session.sendRealtimeInput([{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]);
-                  }
-              });
-          } else if (this.session && this.isConnected) {
-              this.session.sendRealtimeInput([{ data: pcmBlob.data, mimeType: pcmBlob.mimeType }]);
-          }
-        };
-        this.inputSource.connect(this.processor);
-        this.processor.connect(this.inputContext.destination);
-    }
-  }
-
-  playAudio(buffer: AudioBuffer) {
-    if (!this.outputContext) return;
-    this.nextStartTime = Math.max(this.nextStartTime, this.outputContext.currentTime);
-    const source = this.outputContext.createBufferSource();
-    source.buffer = buffer;
-    if (this.speechRate && this.speechRate !== 1.0) {
-      source.playbackRate.value = Math.min(2.0, Math.max(0.75, this.speechRate));
-    }
-    source.connect(this.outputContext.destination);
-    source.addEventListener('ended', () => { this.sources.delete(source); });
-    source.start(this.nextStartTime);
-    this.nextStartTime += buffer.duration;
-    this.sources.add(source);
-  }
-
   stopCurrentAudio() {
-      this.sources.forEach(s => s.stop()); this.sources.clear();
-      this.nextStartTime = 0;
-      if (this.outputContext) this.nextStartTime = this.outputContext.currentTime;
       if ('speechSynthesis' in window) {
         try { window.speechSynthesis.cancel(); } catch (e) {}
       }
+      this.isAiSpeaking = false;
   }
 
   disconnect() { 
@@ -1238,22 +954,24 @@ registerProcessor('audio-processor', AudioProcessor);
       if ('speechSynthesis' in window) {
         try { window.speechSynthesis.cancel(); } catch (e) {}
       }
-      if (this.session) {
-          if (typeof this.session.close === 'function') {
-            this.session.close();
-          }
-      }
       this.cleanup(); 
   }
 
   cleanup() {
-      this.isBrowserVoiceActive = false;
+      if (this.meterAnimFrame !== null) {
+        cancelAnimationFrame(this.meterAnimFrame);
+        this.meterAnimFrame = null;
+      }
       this.isAiSpeaking = false;
-      this.processor?.disconnect(); this.inputSource?.disconnect();
+      this.analyser?.disconnect();
+      this.inputSource?.disconnect();
       this.stream?.getTracks().forEach(t => t.stop());
-      this.inputContext?.close(); this.outputContext?.close();
-      this.inputContext = null; this.outputContext = null; this.stream = null; this.processor = null;
-      this.sources.clear(); this.nextStartTime = 0;
+      this.inputContext?.close();
+      this.outputContext?.close();
+      this.inputContext = null;
+      this.outputContext = null;
+      this.stream = null;
+      this.analyser = null;
       this.session = null;
       this.isConnected = false;
   }
