@@ -1147,7 +1147,6 @@ export default function App() {
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [speechRate, setSpeechRate] = useState<number>(1.0);
   const [selectedVoice, setSelectedVoice] = useState<string>('Aoede');
-  const [voiceInputText, setVoiceInputText] = useState('');
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -2218,24 +2217,6 @@ export default function App() {
       }
     }
   }, [isVoiceActive, lang, t, selectedDeviceId, speechRate, selectedVoice]);
-
-  const handleSendVoiceQuestion = async (queryText?: string) => {
-    const textToSend = (queryText || voiceInputText).trim();
-    if (!textToSend) return;
-    setVoiceInputText('');
-
-    if (!isVoiceActive || !liveSessionRef.current) {
-      setVoiceStatus(lang === Language.VI ? 'Đang kết nối thoại...' : 'Connecting voice...');
-      await handleVoiceToggle();
-      setTimeout(async () => {
-        if (liveSessionRef.current) {
-          await liveSessionRef.current.sendTextMessage(textToSend);
-        }
-      }, 600);
-    } else {
-      await liveSessionRef.current.sendTextMessage(textToSend);
-    }
-  };
 
   const switchToVoice = () => {
       setTab(DashboardTab.VOICE);
@@ -4163,33 +4144,15 @@ export default function App() {
                  </div>
 
                  {/* Dedicated Transcript Display (Scrollable Box BELOW the Orb) */}
-                 <div className="relative z-10 flex-1 max-w-2xl w-full mx-auto px-4 min-h-0 flex flex-col justify-end mb-28">
-                    {/* Quick Question Chips */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2 mb-2">
-                        {[
-                            { vi: "🎯 Gợi ý nghề nghiệp phù hợp", en: "🎯 Career recommendations" },
-                            { vi: "🚀 Lộ trình phát triển IT / AI", en: "🚀 IT / AI roadmap" },
-                            { vi: "💼 Kỹ năng phỏng vấn xin việc", en: "💼 Interview preparation" },
-                            { vi: "📈 Xu hướng tuyển dụng 2026", en: "📈 Job market trends 2026" }
-                        ].map((chip, idx) => (
-                            <button
-                                key={`chip-${idx}`}
-                                onClick={() => handleSendVoiceQuestion(lang === Language.VI ? chip.vi : chip.en)}
-                                className="whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold bg-white/80 dark:bg-white/10 hover:bg-indigo-50 dark:hover:bg-white/20 text-gray-700 dark:text-gray-200 border border-gray-200/80 dark:border-white/10 transition-all shadow-xs cursor-pointer flex-shrink-0"
-                            >
-                                {lang === Language.VI ? chip.vi : chip.en}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="w-full h-full max-h-[28vh] sm:max-h-[32vh] overflow-y-auto px-4 py-3 space-y-3 rounded-2xl bg-white/70 dark:bg-[#121216]/70 backdrop-blur-md border border-gray-200/60 dark:border-white/10 shadow-inner no-scrollbar">
+                 <div className="relative z-10 flex-1 max-w-2xl w-full mx-auto px-4 min-h-0 flex flex-col justify-end mb-24">
+                    <div className="w-full h-full max-h-[36vh] sm:max-h-[42vh] overflow-y-auto px-4 py-3.5 space-y-3 rounded-2xl bg-white/70 dark:bg-[#121216]/70 backdrop-blur-md border border-gray-200/60 dark:border-white/10 shadow-inner no-scrollbar">
                         {transcripts.length === 0 ? (
-                            <div className="h-full min-h-[90px] flex flex-col items-center justify-center text-center p-3 text-gray-400 dark:text-gray-500">
-                                <Icons.MessageSquare className="w-5 h-5 mb-1.5 opacity-50 text-indigo-500" />
+                            <div className="h-full min-h-[120px] flex flex-col items-center justify-center text-center p-4 text-gray-400 dark:text-gray-500">
+                                <Icons.Microphone className="w-6 h-6 mb-2 opacity-60 text-indigo-500 animate-pulse" />
                                 <p className="text-xs sm:text-sm font-medium">
                                     {isVoiceActive 
-                                        ? (lang === Language.VI ? '🎤 Đang lắng nghe... Bạn hãy nói hoặc gõ câu hỏi bên dưới.' : '🎤 Listening... Please speak or type your question below.')
-                                        : (lang === Language.VI ? 'Nhấn "Kết nối thoại" hoặc bấm vào câu hỏi gợi ý để bắt đầu.' : 'Click "Connect Voice" or tap any topic chip above to start.')}
+                                        ? (lang === Language.VI ? '🎤 Đang lắng nghe... Bạn hãy nói trực tiếp vào micro.' : '🎤 Listening... Speak directly into your microphone.')
+                                        : (lang === Language.VI ? 'Nhấn "Kết nối thoại" bên dưới để bắt đầu hội thoại trực tiếp với Cố vấn AI.' : 'Click "Connect Voice" below to start speaking directly with your AI Counselor.')}
                                 </p>
                             </div>
                         ) : (
@@ -4210,31 +4173,6 @@ export default function App() {
                         )}
                         <div ref={transcriptEndRef} />
                     </div>
-
-                    {/* Interactive Direct Message Input */}
-                    <form 
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            handleSendVoiceQuestion();
-                        }}
-                        className="mt-2 flex items-center gap-2 bg-white/90 dark:bg-[#18181f]/90 backdrop-blur-md rounded-xl p-1.5 border border-gray-200/80 dark:border-white/10 shadow-sm"
-                    >
-                        <input 
-                            type="text"
-                            value={voiceInputText}
-                            onChange={(e) => setVoiceInputText(e.target.value)}
-                            placeholder={lang === Language.VI ? "Nhập câu hỏi hoặc nói trực tiếp qua micro..." : "Type question or speak directly via mic..."}
-                            className="flex-1 bg-transparent px-3 py-1.5 text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:outline-none placeholder:text-gray-400"
-                        />
-                        <button
-                            type="submit"
-                            disabled={!voiceInputText.trim()}
-                            className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer flex-shrink-0"
-                        >
-                            <span>{lang === Language.VI ? 'Gửi' : 'Send'}</span>
-                            <Icons.Send className="w-3.5 h-3.5" />
-                        </button>
-                    </form>
                  </div>
 
                  {/* Fixed Controls Toolbar */}

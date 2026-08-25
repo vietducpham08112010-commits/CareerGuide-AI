@@ -1049,6 +1049,7 @@ export class LiveSessionManager {
 
   async startFallbackVoiceInteraction(systemInstruction: string) {
     this.isConnected = true;
+    this.isLiveApiActive = false;
     if (this.onConnect) this.onConnect();
 
     // Initial welcome greeting
@@ -1057,89 +1058,106 @@ export class LiveSessionManager {
       : "Hello! I am your AI Career Counselor. What career field or direction are you interested in today?";
     
     if (this.onTranscript) this.onTranscript(welcomeText, false);
+    this.conversationHistory.push({ role: 'model', text: welcomeText });
     await this.speakAi(welcomeText);
 
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) {
+      console.warn("SpeechRecognition not supported in this browser");
       return;
     }
 
     try {
+      if (this.speechRecognition) {
+        try { this.speechRecognition.stop(); } catch (e) {}
+      }
+
       const recognition = new SpeechRec();
       recognition.continuous = true;
       recognition.interimResults = false;
       recognition.lang = this.language === Language.VI ? 'vi-VN' : 'en-US';
 
+      let isProcessingVoice = false;
+      let lastSpokenText = '';
+
       recognition.onresult = async (event: any) => {
+        // If AI is currently speaking and user speaks, stop AI immediately to listen to user (Natural Interruption)
         if (this.isAiSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking)) {
-          return;
+          this.stopAllActiveAudio();
+          this.isAiSpeaking = false;
         }
 
         const results = event.results;
-        const lastResult = results[results.length - 1];
-        if (lastResult && lastResult[0]) {
-          const userSpeech = lastResult[0].transcript?.trim();
-          if (userSpeech && userSpeech.length > 1) {
-            const lastMsg = this.conversationHistory[this.conversationHistory.length - 1];
-            if (lastMsg && lastMsg.role === 'user' && lastMsg.text === userSpeech) {
-              return;
-            }
+        for (let i = event.resultIndex; i < results.length; i++) {
+          const item = results[i];
+          if (item && item[0]) {
+            const userSpeech = item[0].transcript?.trim();
+            if (userSpeech && userSpeech.length > 1 && userSpeech !== lastSpokenText && !isProcessingVoice) {
+              lastSpokenText = userSpeech;
+              isProcessingVoice = true;
 
-            if (this.onTranscript) this.onTranscript(userSpeech, true);
-            this.conversationHistory.push({ role: 'user', text: userSpeech });
-            
-            try {
-              this.isAiSpeaking = true;
-              const prompt = `${systemInstruction}\n\nNgười dùng vừa nói: "${userSpeech}"\n\nHãy trả lời bằng 1-2 câu súc tích, tự nhiên, thân thiện và đi thẳng vào trọng tâm hướng nghiệp. Không dùng ký hiệu markdown hay hoa thị (*).`;
-              const aiRaw = await requestAiContent(prompt, systemInstruction, this.language);
-              const aiText = cleanMarkdownAsterisks(aiRaw);
+              if (this.onTranscript) this.onTranscript(userSpeech, true);
+              this.conversationHistory.push({ role: 'user', text: userSpeech });
               
-              if (aiText && aiText !== "{}" && !aiText.startsWith("{")) {
-                if (this.onTranscript) this.onTranscript(aiText, false);
-                this.conversationHistory.push({ role: 'model', text: aiText });
-                await this.speakAi(aiText);
-              } else {
-                const fallback = this.language === Language.VI 
-                  ? "Tôi đã nghe rõ câu hỏi của bạn. Bạn muốn định hướng về kỹ năng hay cơ hội việc làm của ngành này?"
-                  : "I heard your question clearly. Would you like advice on skills or job opportunities in this field?";
-                if (this.onTranscript) this.onTranscript(fallback, false);
-                this.conversationHistory.push({ role: 'model', text: fallback });
-                await this.speakAi(fallback);
+              try {
+                this.isAiSpeaking = true;
+                const prompt = `${systemInstruction}\n\nNgười dùng vừa nói: "${userSpeech}"\n\nHãy trả lời bằng 1-2 câu súc tích, tự nhiên, thân thiện và đi thẳng vào trọng tâm hướng nghiệp. Không dùng ký hiệu markdown hay hoa thị (*).`;
+                const aiRaw = await requestAiContent(prompt, systemInstruction, this.language);
+                const aiText = cleanMarkdownAsterisks(aiRaw);
+                
+                if (aiText && aiText !== "{}" && !aiText.startsWith("{")) {
+                  if (this.onTranscript) this.onTranscript(aiText, false);
+                  this.conversationHistory.push({ role: 'model', text: aiText });
+                  await this.speakAi(aiText);
+                } else {
+                  const fallback = this.language === Language.VI 
+                    ? "Tôi đã nghe rõ câu hỏi của bạn. Bạn muốn định hướng về kỹ năng hay cơ hội việc làm của ngành này?"
+                    : "I heard your question clearly. Would you like advice on skills or job opportunities in this field?";
+                  if (this.onTranscript) this.onTranscript(fallback, false);
+                  this.conversationHistory.push({ role: 'model', text: fallback });
+                  await this.speakAi(fallback);
+                }
+              } catch (err: any) {
+                console.error("Voice AI counseling error:", err);
+                this.isAiSpeaking = false;
+                const errMsg = cleanFrontEndErrorMessage(err, this.language);
+                if (this.onTranscript) this.onTranscript(errMsg, false);
+                this.conversationHistory.push({ role: 'model', text: errMsg });
+                await this.speakAi(errMsg);
+              } finally {
+                isProcessingVoice = false;
+                setTimeout(() => {
+                  if (lastSpokenText === userSpeech) {
+                    lastSpokenText = '';
+                  }
+                }, 3000);
               }
-            } catch (err: any) {
-              console.error("Voice AI counseling error:", err);
-              this.isAiSpeaking = false;
-              const errMsg = cleanFrontEndErrorMessage(err, this.language);
-              if (this.onTranscript) this.onTranscript(errMsg, false);
-              this.conversationHistory.push({ role: 'model', text: errMsg });
-              await this.speakAi(errMsg);
             }
           }
         }
       };
 
-      recognition.onerror = (err: any) => {
-        if (this.isConnected && !this.isLiveApiActive) {
+      const restartSpeechRecognition = () => {
+        if (this.isConnected && !this.isLiveApiActive && this.speechRecognition === recognition) {
           setTimeout(() => {
             try {
-              if (this.speechRecognition === recognition && this.isConnected) {
-                recognition.start();
-              }
-            } catch (e) {}
+              recognition.start();
+            } catch (e) {
+              // Ignore if already active
+            }
           }, 300);
         }
       };
 
-      recognition.onend = () => {
-        if (this.isConnected && !this.isLiveApiActive) {
-          setTimeout(() => {
-            try {
-              if (this.speechRecognition === recognition && this.isConnected) {
-                recognition.start();
-              }
-            } catch (e) {}
-          }, 250);
+      recognition.onerror = (err: any) => {
+        if (err?.error !== 'no-speech' && err?.error !== 'aborted') {
+          console.warn("Speech recognition error notice:", err?.error || err);
         }
+        restartSpeechRecognition();
+      };
+
+      recognition.onend = () => {
+        restartSpeechRecognition();
       };
 
       try {

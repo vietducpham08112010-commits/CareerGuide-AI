@@ -526,6 +526,9 @@ wss.on("connection", (ws: WebSocket) => {
             session = await connectToGemini(model);
             connected = true;
             console.log(`Successfully connected to Gemini Live model: ${model}`);
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: "connected", model }));
+            }
             break;
           } catch (err: any) {
             console.warn(`Failed with model ${model}, trying next...`, err?.message || err);
