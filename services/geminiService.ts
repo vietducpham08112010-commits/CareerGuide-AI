@@ -633,11 +633,12 @@ export class LiveSessionManager {
   speechRecognition: any | null = null;
   speechSynthUtterance: SpeechSynthesisUtterance | null = null;
   isAiSpeaking: boolean = false;
-  speechRate: number = 1.35;
+  speechRate: number = 1.0;
   voiceName: string = 'Aoede';
   conversationHistory: { role: string; text: string }[] = [];
   activeSources: AudioBufferSourceNode[] = [];
   nextStartTime: number = 0;
+  currentAudioElement: HTMLAudioElement | null = null;
   
   onConnect?: () => void;
   onDisconnect?: () => void;
@@ -666,9 +667,11 @@ export class LiveSessionManager {
     this.speechRecognition = null;
     this.speechSynthUtterance = null;
     this.isAiSpeaking = false;
+    this.speechRate = 1.0;
     this.conversationHistory = [];
     this.activeSources = [];
     this.nextStartTime = 0;
+    this.currentAudioElement = null;
   }
 
   async getAudioInputDevices() {
@@ -744,13 +747,16 @@ export class LiveSessionManager {
       const ws = new WebSocket(wsUrl);
       this.ws = ws;
 
+      const activeKey = getGeminiApiKey();
+
       ws.onopen = () => {
         console.log("Connected to Gemini Live WebSocket proxy");
-        // Send initial configuration to start Gemini Live with gemini-3.1-flash-live-preview
+        // Send initial configuration to start Gemini Live with live model
         ws.send(JSON.stringify({
           type: "config",
           systemInstruction,
-          voiceName: this.voiceName || 'Aoede'
+          voiceName: this.voiceName || 'Aoede',
+          apiKey: activeKey || undefined
         }));
 
         this.isConnected = true;
@@ -1013,14 +1019,14 @@ export class LiveSessionManager {
       if (aiText && aiText !== "{}" && !aiText.startsWith("{")) {
         if (this.onTranscript) this.onTranscript(aiText, false);
         this.conversationHistory.push({ role: 'model', text: aiText });
-        this.speakBrowserAi(aiText);
+        await this.speakAi(aiText);
       } else {
         const fallback = this.language === Language.VI 
           ? "Tôi đã ghi nhận ý kiến của bạn. Bạn muốn tư vấn thêm về lộ trình hay ngành nghề nào?"
           : "I have noted your question. Which career path or roadmap would you like to explore further?";
         if (this.onTranscript) this.onTranscript(fallback, false);
         this.conversationHistory.push({ role: 'model', text: fallback });
-        this.speakBrowserAi(fallback);
+        await this.speakAi(fallback);
       }
     } catch (err: any) {
       console.error("Voice text response error:", err);
@@ -1028,21 +1034,21 @@ export class LiveSessionManager {
       const errMsg = cleanFrontEndErrorMessage(err, this.language);
       if (this.onTranscript) this.onTranscript(errMsg, false);
       this.conversationHistory.push({ role: 'model', text: errMsg });
-      this.speakBrowserAi(errMsg);
+      await this.speakAi(errMsg);
     }
   }
 
-  startFallbackVoiceInteraction(systemInstruction: string) {
+  async startFallbackVoiceInteraction(systemInstruction: string) {
     this.isConnected = true;
     if (this.onConnect) this.onConnect();
 
     // Initial welcome greeting
     const welcomeText = this.language === Language.VI
-      ? "Xin chào! Tôi là Trợ lý Định hướng Nghề nghiệp AI qua Gemini Live. Bạn đang quan tâm hay cần tư vấn về ngành nghề nào?"
-      : "Hello! I am your AI Career Counselor powered by Gemini Live. What career field or direction are you interested in today?";
+      ? "Xin chào! Tôi là Cố vấn Hướng nghiệp AI. Bạn đang quan tâm hay cần tư vấn về ngành nghề nào?"
+      : "Hello! I am your AI Career Counselor. What career field or direction are you interested in today?";
     
     if (this.onTranscript) this.onTranscript(welcomeText, false);
-    this.speakBrowserAi(welcomeText);
+    await this.speakAi(welcomeText);
 
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) {
@@ -1082,14 +1088,14 @@ export class LiveSessionManager {
               if (aiText && aiText !== "{}" && !aiText.startsWith("{")) {
                 if (this.onTranscript) this.onTranscript(aiText, false);
                 this.conversationHistory.push({ role: 'model', text: aiText });
-                this.speakBrowserAi(aiText);
+                await this.speakAi(aiText);
               } else {
                 const fallback = this.language === Language.VI 
                   ? "Tôi đã nghe rõ câu hỏi của bạn. Bạn muốn định hướng về kỹ năng hay cơ hội việc làm của ngành này?"
                   : "I heard your question clearly. Would you like advice on skills or job opportunities in this field?";
                 if (this.onTranscript) this.onTranscript(fallback, false);
                 this.conversationHistory.push({ role: 'model', text: fallback });
-                this.speakBrowserAi(fallback);
+                await this.speakAi(fallback);
               }
             } catch (err: any) {
               console.error("Voice AI counseling error:", err);
@@ -1097,7 +1103,7 @@ export class LiveSessionManager {
               const errMsg = cleanFrontEndErrorMessage(err, this.language);
               if (this.onTranscript) this.onTranscript(errMsg, false);
               this.conversationHistory.push({ role: 'model', text: errMsg });
-              this.speakBrowserAi(errMsg);
+              await this.speakAi(errMsg);
             }
           }
         }
@@ -1137,21 +1143,91 @@ export class LiveSessionManager {
     }
   }
 
+  async playBase64Audio(base64Data: string, mimeType: string = 'audio/wav') {
+    try {
+      this.stopCurrentAudio();
+      const audioUrl = `data:${mimeType};base64,${base64Data}`;
+      const audio = new Audio(audioUrl);
+      this.currentAudioElement = audio;
+      this.isAiSpeaking = true;
+
+      audio.onended = () => {
+        this.isAiSpeaking = false;
+        this.currentAudioElement = null;
+      };
+      audio.onerror = () => {
+        this.isAiSpeaking = false;
+        this.currentAudioElement = null;
+      };
+
+      await audio.play();
+    } catch (playErr) {
+      console.warn("Audio playback error:", playErr);
+      this.isAiSpeaking = false;
+    }
+  }
+
+  async speakAi(text: string) {
+    if (!text || !text.trim()) return;
+    const cleanText = text.replace(/[*_#`~[\]()]/g, ' ').trim();
+
+    // 1. Try High-Quality Server Gemini Native Audio TTS
+    try {
+      const activeKey = getGeminiApiKey();
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: cleanText,
+          voiceName: this.voiceName || 'Aoede',
+          language: this.language === Language.VI ? 'vi' : 'en',
+          apiKey: activeKey || undefined
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.audioData) {
+          await this.playBase64Audio(data.audioData, data.mimeType || 'audio/wav');
+          return;
+        }
+      }
+    } catch (ttsErr) {
+      console.warn("Server TTS attempt notice, switching to browser TTS:", ttsErr);
+    }
+
+    // 2. High-Quality Browser Speech Synthesis Fallback (Rate = 1.0, Priority on Natural/Google Voices)
+    this.speakBrowserAi(cleanText);
+  }
+
   speakBrowserAi(text: string) {
     if (!('speechSynthesis' in window)) return;
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = this.language === Language.VI ? 'vi-VN' : 'en-US';
-      utterance.rate = this.speechRate || (this.language === Language.VI ? 1.4 : 1.3);
+      utterance.rate = this.speechRate || 1.0;
       utterance.pitch = 1.0;
 
       const voices = window.speechSynthesis.getVoices();
-      const matchedVoice = voices.find(v => 
-        (this.language === Language.VI && (v.lang.startsWith('vi') || v.lang.includes('vi-VN'))) ||
-        (this.language === Language.EN && (v.lang.startsWith('en-US') || v.lang.startsWith('en-GB')))
-      );
-      if (matchedVoice) utterance.voice = matchedVoice;
+      if (this.language === Language.VI) {
+        // Prioritize natural Vietnamese voices
+        const viVoice = voices.find(v => 
+          v.name.toLowerCase().includes("google") && (v.lang.startsWith("vi") || v.lang.includes("vi-VN"))
+        ) || voices.find(v => 
+          (v.name.toLowerCase().includes("hoaimy") || v.name.toLowerCase().includes("namminh") || v.name.toLowerCase().includes("natural") || v.name.toLowerCase().includes("linh") || v.name.toLowerCase().includes("an")) &&
+          (v.lang.startsWith("vi") || v.lang.includes("vi-VN"))
+        ) || voices.find(v => v.lang.startsWith("vi") || v.lang.includes("vi-VN"));
+
+        if (viVoice) utterance.voice = viVoice;
+      } else {
+        const enVoice = voices.find(v => 
+          (v.name.toLowerCase().includes("google") || v.name.toLowerCase().includes("natural") || v.name.toLowerCase().includes("samantha")) &&
+          (v.lang.startsWith("en-US") || v.lang.startsWith("en-GB"))
+        ) || voices.find(v => v.lang.startsWith("en-US") || v.lang.startsWith("en-GB"));
+
+        if (enVoice) utterance.voice = enVoice;
+      }
 
       this.isAiSpeaking = true;
 
@@ -1173,6 +1249,13 @@ export class LiveSessionManager {
 
   stopCurrentAudio() {
     this.stopAllActiveAudio();
+    if (this.currentAudioElement) {
+      try {
+        this.currentAudioElement.pause();
+        this.currentAudioElement.currentTime = 0;
+      } catch (e) {}
+      this.currentAudioElement = null;
+    }
     if ('speechSynthesis' in window) {
       try { window.speechSynthesis.cancel(); } catch (e) {}
     }

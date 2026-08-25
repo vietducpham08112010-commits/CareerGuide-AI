@@ -369,6 +369,67 @@ Cấu trúc JSON chính xác như sau:
   }
 });
 
+// --- High-Quality Server-Side TTS (Gemini Native Audio) API ---
+app.post("/api/tts", async (req, res) => {
+  try {
+    const { text, voiceName = "Aoede", language = "vi", apiKey } = req.body;
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({ error: "Missing text for TTS" });
+    }
+
+    const aiInstance = getAiClient(apiKey);
+    const cleanText = text.replace(/[*_#`~[\]()]/g, ' ').trim();
+    const prompt = language === "vi"
+      ? `Đọc to đoạn sau bằng tiếng Việt tự nhiên, ấm áp, rõ ràng, truyền cảm: "${cleanText}"`
+      : `Please read aloud the following text in a warm, natural, engaging voice: "${cleanText}"`;
+
+    const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-3.6-flash"];
+    let audioData: string | null = null;
+    let mimeType = "audio/wav";
+
+    for (const model of candidateModels) {
+      try {
+        const response: any = await aiInstance.models.generateContent({
+          model,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: voiceName || "Aoede"
+                }
+              }
+            }
+          }
+        });
+
+        if (response?.candidates?.[0]?.content?.parts) {
+          for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData && part.inlineData.data) {
+              audioData = part.inlineData.data;
+              mimeType = part.inlineData.mimeType || "audio/wav";
+              break;
+            }
+          }
+        }
+        if (audioData) break;
+      } catch (err: any) {
+        console.warn(`TTS generation with model ${model} failed, trying next:`, err?.message || err);
+      }
+    }
+
+    if (audioData) {
+      return res.json({ audioData, mimeType });
+    }
+
+    return res.status(500).json({ error: "Could not generate audio stream" });
+  } catch (error: any) {
+    console.warn("TTS API error:", error?.message || error);
+    return res.status(500).json({ error: error?.message || "TTS API error" });
+  }
+});
+
 // --- Email/Milestone Reminder API ---
 app.post("/api/send-reminder", (req, res) => {
   const { email, milestone } = req.body;
@@ -434,7 +495,7 @@ wss.on("connection", (ws: WebSocket) => {
                   responseModalities: [Modality.AUDIO],
                   outputAudioTranscription: {},
                   inputAudioTranscription: {},
-                  systemInstruction: msg.systemInstruction || "You are an intelligent, friendly AI Career Counselor speaking naturally in Vietnamese or English.",
+                  systemInstruction: msg.systemInstruction || "Bạn là chuyên gia tư vấn hướng nghiệp Career Compass AI. Hãy trò chuyện bằng tiếng Việt cực kỳ tự nhiên, ngữ điệu thân thiện, ấm áp, câu từ ngắn gọn (1-2 câu), truyền cảm hứng và gần gũi.",
                   speechConfig: { 
                     voiceConfig: {
                        prebuiltVoiceConfig: { 
@@ -446,7 +507,7 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-2.5-flash-live-preview', 'gemini-2.0-flash-exp'];
+        const liveModels = ['gemini-2.5-flash-live-preview', 'gemini-2.0-flash-exp', 'gemini-2.0-flash-realtime-exp', 'gemini-3.1-flash-live-preview'];
         let connected = false;
         for (const model of liveModels) {
           try {

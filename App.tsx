@@ -1145,7 +1145,7 @@ export default function App() {
   const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
-  const [speechRate, setSpeechRate] = useState<number>(1.5);
+  const [speechRate, setSpeechRate] = useState<number>(1.0);
   const [selectedVoice, setSelectedVoice] = useState<string>('Aoede');
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -4219,11 +4219,10 @@ export default function App() {
                                 }}
                                 className="appearance-none bg-transparent text-indigo-700 dark:text-indigo-300 font-bold text-xs focus:outline-none cursor-pointer pr-1"
                              >
-                                 <option value="1" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.0x</option>
-                                 <option value="1.25" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.25x</option>
-                                 <option value="1.5" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.5x</option>
-                                 <option value="1.75" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.75x</option>
-                                 <option value="2" className="bg-white dark:bg-black text-gray-900 dark:text-white">2.0x</option>
+                                 <option value="0.9" className="bg-white dark:bg-black text-gray-900 dark:text-white">0.9x (Chậm rãi)</option>
+                                 <option value="1" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.0x (Tự nhiên)</option>
+                                 <option value="1.1" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.1x (Vừa phải)</option>
+                                 <option value="1.25" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.25x (Nhanh)</option>
                              </select>
                              <Icons.ChevronDown className="w-3 h-3 text-indigo-500 pointer-events-none flex-shrink-0" />
                          </div>
