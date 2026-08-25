@@ -446,15 +446,16 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-3.6-flash-exp', 'gemini-3.6-flash'];
+        const liveModels = ['gemini-3.1-flash-live-preview', 'gemini-2.5-flash-live-preview', 'gemini-2.0-flash-exp'];
         let connected = false;
         for (const model of liveModels) {
           try {
             session = await connectToGemini(model);
             connected = true;
+            console.log(`Successfully connected to Gemini Live model: ${model}`);
             break;
-          } catch (err) {
-            console.warn(`Failed with model ${model}, trying next...`, err);
+          } catch (err: any) {
+            console.warn(`Failed with model ${model}, trying next...`, err?.message || err);
           }
         }
         
@@ -472,8 +473,14 @@ wss.on("connection", (ws: WebSocket) => {
                   });
                 } else if (chunk && chunk.audio) {
                   session.sendRealtimeInput({ audio: chunk.audio });
+                } else if (chunk && chunk.text) {
+                  session.sendRealtimeInput({ text: chunk.text });
                 }
               }
+          }
+      } else if (msg.text) {
+          if (session) {
+              session.sendRealtimeInput({ text: msg.text });
           }
       } else if (msg.toolResponse) {
           if (session) {

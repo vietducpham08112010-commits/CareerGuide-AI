@@ -1146,6 +1146,7 @@ export default function App() {
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [speechRate, setSpeechRate] = useState<number>(1.5);
+  const [selectedVoice, setSelectedVoice] = useState<string>('Aoede');
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -2167,7 +2168,7 @@ export default function App() {
     } else {
       setVoiceStatus(t.connecting);
       setTranscripts([]);
-      const session = new LiveSessionManager(lang, auth.user);
+      const session = new LiveSessionManager(lang, auth.user, selectedVoice);
       session.speechRate = speechRate;
       session.onConnect = () => { setIsVoiceActive(true); setVoiceStatus(t.listening); };
       session.onDisconnect = () => { 
@@ -2208,7 +2209,7 @@ export default function App() {
           setIsVoiceActive(false);
       }
     }
-  }, [isVoiceActive, lang, t, selectedDeviceId, speechRate]);
+  }, [isVoiceActive, lang, t, selectedDeviceId, speechRate, selectedVoice]);
 
   const switchToVoice = () => {
       setTab(DashboardTab.VOICE);
@@ -4089,21 +4090,27 @@ export default function App() {
 
                  {/* Top Status Header */}
                  <div className="relative z-10 pt-6 pb-2 px-6 text-center flex-shrink-0">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 shadow-sm backdrop-blur-md mb-2">
-                        <div className={`w-2.5 h-2.5 rounded-full ${isVoiceActive ? (audioLevel > 0.1 ? 'bg-purple-500 animate-ping' : 'bg-emerald-500 animate-pulse') : 'bg-gray-400'}`} />
-                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                            {isVoiceActive 
-                                ? (audioLevel > 0.1 ? (lang === Language.VI ? 'AI đang nói...' : 'AI Speaking...') : (lang === Language.VI ? 'Đang lắng nghe...' : 'Listening...')) 
-                                : (lang === Language.VI ? 'Chưa kết nối' : 'Disconnected')}
-                        </span>
+                    <div className="inline-flex flex-wrap items-center justify-center gap-2 mb-2">
+                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 shadow-sm backdrop-blur-md">
+                            <div className={`w-2.5 h-2.5 rounded-full ${isVoiceActive ? (audioLevel > 0.1 ? 'bg-purple-500 animate-ping' : 'bg-emerald-500 animate-pulse') : 'bg-gray-400'}`} />
+                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                {isVoiceActive 
+                                    ? (audioLevel > 0.1 ? (lang === Language.VI ? 'AI đang nói...' : 'AI Speaking...') : (lang === Language.VI ? 'Đang lắng nghe...' : 'Listening...')) 
+                                    : (lang === Language.VI ? 'Chưa kết nối' : 'Disconnected')}
+                            </span>
+                        </div>
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50/90 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm backdrop-blur-md">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                            <span>Gemini Live API (gemini-3.1-flash-live-preview)</span>
+                        </div>
                     </div>
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
                         {lang === Language.VI ? 'Trợ lý Giọng nói CareerGuide AI' : 'CareerGuide AI Voice Counselor'}
                     </h2>
                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 max-w-md mx-auto truncate">
                         {voiceStatus || (isVoiceActive 
-                            ? (lang === Language.VI ? 'Trải nghiệm cuộc nói chuyện tư vấn nghề nghiệp trực tiếp' : 'Live career counseling voice session') 
-                            : (lang === Language.VI ? 'Nhấn "Kết nối thoại" bên dưới để bắt đầu' : 'Click "Connect Voice" below to start'))}
+                            ? (lang === Language.VI ? 'Trò chuyện hai chiều thời gian thực qua Gemini Live' : 'Real-time duplex voice session via Gemini Live') 
+                            : (lang === Language.VI ? 'Nhấn "Kết nối thoại" bên dưới để bắt đầu hội thoại' : 'Click "Connect Voice" below to start conversation'))}
                     </p>
                  </div>
 
@@ -4130,8 +4137,8 @@ export default function App() {
                  </div>
 
                  {/* Dedicated Transcript Display (Scrollable Box BELOW the Orb) */}
-                 <div className="relative z-10 flex-1 max-w-2xl w-full mx-auto px-4 min-h-0 flex flex-col justify-end mb-20">
-                    <div className="w-full h-full max-h-[35vh] sm:max-h-[40vh] overflow-y-auto px-4 py-3 space-y-3 rounded-2xl bg-white/70 dark:bg-[#121216]/70 backdrop-blur-md border border-gray-200/60 dark:border-white/10 shadow-inner no-scrollbar">
+                 <div className="relative z-10 flex-1 max-w-2xl w-full mx-auto px-4 min-h-0 flex flex-col justify-end mb-24">
+                    <div className="w-full h-full max-h-[32vh] sm:max-h-[36vh] overflow-y-auto px-4 py-3 space-y-3 rounded-2xl bg-white/70 dark:bg-[#121216]/70 backdrop-blur-md border border-gray-200/60 dark:border-white/10 shadow-inner no-scrollbar">
                         {transcripts.length === 0 ? (
                             <div className="h-full min-h-[100px] flex flex-col items-center justify-center text-center p-4 text-gray-400 dark:text-gray-500">
                                 <Icons.MessageSquare className="w-6 h-6 mb-2 opacity-50" />
@@ -4150,7 +4157,7 @@ export default function App() {
                                             : 'bg-white dark:bg-[#1e1e24] text-gray-800 dark:text-gray-100 rounded-tl-xs border border-gray-200/70 dark:border-white/10'
                                     }`}>
                                         <div className="text-[10px] uppercase font-bold tracking-wider mb-1 opacity-75">
-                                            {tr.isUser ? (lang === Language.VI ? 'Bạn' : 'You') : 'CareerGuide AI'}
+                                            {tr.isUser ? (lang === Language.VI ? 'Bạn' : 'You') : 'CareerGuide AI (Gemini Live)'}
                                         </div>
                                         {tr.text}
                                     </div>
@@ -4162,25 +4169,45 @@ export default function App() {
                  </div>
 
                  {/* Fixed Controls Toolbar */}
-                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-xl flex items-center justify-between gap-3 bg-white/90 dark:bg-[#111]/90 backdrop-blur-xl px-5 py-3 rounded-full border border-gray-200/80 dark:border-white/10 shadow-2xl z-30">
-                     <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
-                         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isVoiceActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
-                         <Icons.Settings className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                         <select 
-                            value={selectedDeviceId} 
-                            onChange={(e) => setSelectedDeviceId(e.target.value)} 
-                            disabled={isVoiceActive} 
-                            className="appearance-none bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none font-medium text-xs sm:text-sm max-w-[100px] sm:max-w-[160px] truncate cursor-pointer disabled:opacity-50"
-                         >
-                             {inputDevices.map((device, devIdx) => (
-                                <option key={device.deviceId ? `${device.deviceId}-${devIdx}` : `dev-${devIdx}`} value={device.deviceId} className="bg-white dark:bg-black">
-                                    {device.label || `${t.microphone} ${device.deviceId ? device.deviceId.slice(0, 5) : devIdx}...`}
-                                </option>
-                             ))}
-                         </select>
-                         <Icons.ChevronDown className="w-3.5 h-3.5 text-gray-400 pointer-events-none flex-shrink-0" />
+                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 bg-white/95 dark:bg-[#111]/95 backdrop-blur-xl px-4 py-2.5 rounded-2xl sm:rounded-full border border-gray-200/80 dark:border-white/10 shadow-2xl z-30">
+                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                         <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-2.5 py-1 rounded-full">
+                            <Icons.Microphone className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                            <select 
+                               value={selectedDeviceId} 
+                               onChange={(e) => setSelectedDeviceId(e.target.value)} 
+                               disabled={isVoiceActive} 
+                               className="appearance-none bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none font-medium text-xs max-w-[100px] sm:max-w-[120px] truncate cursor-pointer disabled:opacity-50"
+                            >
+                                {inputDevices.map((device, devIdx) => (
+                                    <option key={device.deviceId ? `${device.deviceId}-${devIdx}` : `dev-${devIdx}`} value={device.deviceId} className="bg-white dark:bg-black">
+                                        {device.label || `${t.microphone} ${devIdx + 1}`}
+                                    </option>
+                                ))}
+                            </select>
+                            <Icons.ChevronDown className="w-3 h-3 text-gray-400 pointer-events-none flex-shrink-0" />
+                         </div>
 
-                         <div className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 px-2 py-0.5 rounded-full flex-shrink-0">
+                         {/* Voice Persona Selector */}
+                         <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-950/60 border border-purple-200/70 dark:border-purple-800/70 px-2.5 py-1 rounded-full">
+                            <Icons.Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                            <select
+                               value={selectedVoice}
+                               onChange={(e) => setSelectedVoice(e.target.value)}
+                               disabled={isVoiceActive}
+                               className="appearance-none bg-transparent text-purple-700 dark:text-purple-300 font-semibold text-xs focus:outline-none cursor-pointer disabled:opacity-50"
+                            >
+                                <option value="Aoede" className="bg-white dark:bg-black text-gray-900 dark:text-white">Aoede (Nữ truyền cảm)</option>
+                                <option value="Kore" className="bg-white dark:bg-black text-gray-900 dark:text-white">Kore (Nữ chuẩn mực)</option>
+                                <option value="Puck" className="bg-white dark:bg-black text-gray-900 dark:text-white">Puck (Nam năng động)</option>
+                                <option value="Fenrir" className="bg-white dark:bg-black text-gray-900 dark:text-white">Fenrir (Nam trầm ấm)</option>
+                                <option value="Zephyr" className="bg-white dark:bg-black text-gray-900 dark:text-white">Zephyr (Nam cân bằng)</option>
+                            </select>
+                            <Icons.ChevronDown className="w-3 h-3 text-purple-500 pointer-events-none flex-shrink-0" />
+                         </div>
+
+                         {/* Speech Rate */}
+                         <div className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 px-2.5 py-1 rounded-full">
                              <select
                                 value={speechRate}
                                 onChange={(e) => {
@@ -4192,38 +4219,38 @@ export default function App() {
                                 }}
                                 className="appearance-none bg-transparent text-indigo-700 dark:text-indigo-300 font-bold text-xs focus:outline-none cursor-pointer pr-1"
                              >
-                                 <option value="1" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.0x Chuẩn</option>
-                                 <option value="1.25" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.25x Nhanh vừa</option>
-                                 <option value="1.5" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.5x Nhanh</option>
-                                 <option value="1.75" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.75x Rất nhanh</option>
-                                 <option value="2" className="bg-white dark:bg-black text-gray-900 dark:text-white">2.0x Siêu tốc</option>
+                                 <option value="1" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.0x</option>
+                                 <option value="1.25" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.25x</option>
+                                 <option value="1.5" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.5x</option>
+                                 <option value="1.75" className="bg-white dark:bg-black text-gray-900 dark:text-white">1.75x</option>
+                                 <option value="2" className="bg-white dark:bg-black text-gray-900 dark:text-white">2.0x</option>
                              </select>
                              <Icons.ChevronDown className="w-3 h-3 text-indigo-500 pointer-events-none flex-shrink-0" />
                          </div>
                      </div>
                      
-                     <div className="w-px h-6 bg-gray-200 dark:bg-white/10 flex-shrink-0" />
-
-                     <button
-                        onClick={handleVoiceToggle}
-                        className={`whitespace-nowrap flex-shrink-0 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer shadow-md ${
-                            isVoiceActive
-                                ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20'
-                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20'
-                        }`}
-                     >
-                         {isVoiceActive ? (
-                             <>
-                                 <Icons.Square className="w-3.5 h-3.5 fill-current flex-shrink-0" />
-                                 <span>{lang === Language.VI ? 'Dừng cuộc gọi' : 'End Call'}</span>
-                             </>
-                         ) : (
-                             <>
-                                 <Icons.PhoneCall className="w-3.5 h-3.5 flex-shrink-0" />
-                                 <span>{lang === Language.VI ? 'Kết nối thoại' : 'Connect Voice'}</span>
-                             </>
-                         )}
-                     </button>
+                     <div className="flex items-center gap-2 ml-auto">
+                        <button
+                            onClick={handleVoiceToggle}
+                            className={`whitespace-nowrap flex-shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
+                                isVoiceActive
+                                    ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20'
+                                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20'
+                            }`}
+                        >
+                            {isVoiceActive ? (
+                                <>
+                                    <Icons.Square className="w-3.5 h-3.5 fill-current flex-shrink-0" />
+                                    <span>{lang === Language.VI ? 'Dừng cuộc gọi' : 'End Call'}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Icons.PhoneCall className="w-3.5 h-3.5 flex-shrink-0" />
+                                    <span>{lang === Language.VI ? 'Kết nối thoại' : 'Connect Voice'}</span>
+                                </>
+                            )}
+                        </button>
+                     </div>
                  </div>
              </div>
         )}

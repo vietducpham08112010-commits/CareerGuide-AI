@@ -621,18 +621,23 @@ const sendN8NMessage = async (
 export class LiveSessionManager {
   language: Language;
   userProfile?: UserProfile | null;
-  session: any | null;
-  inputContext: AudioContext | null;
-  outputContext: AudioContext | null;
-  inputSource: MediaStreamAudioSourceNode | null;
-  analyser: AnalyserNode | null;
+  ws: WebSocket | null = null;
+  inputContext: AudioContext | null = null;
+  outputContext: AudioContext | null = null;
+  inputSource: MediaStreamAudioSourceNode | null = null;
+  processor: ScriptProcessorNode | null = null;
+  analyser: AnalyserNode | null = null;
+  outputAnalyser: AnalyserNode | null = null;
   meterAnimFrame: number | null = null;
-  stream: MediaStream | null;
-  speechRecognition: any | null;
-  speechSynthUtterance: SpeechSynthesisUtterance | null;
+  stream: MediaStream | null = null;
+  speechRecognition: any | null = null;
+  speechSynthUtterance: SpeechSynthesisUtterance | null = null;
   isAiSpeaking: boolean = false;
   speechRate: number = 1.35;
+  voiceName: string = 'Aoede';
   conversationHistory: { role: string; text: string }[] = [];
+  activeSources: AudioBufferSourceNode[] = [];
+  nextStartTime: number = 0;
   
   onConnect?: () => void;
   onDisconnect?: () => void;
@@ -640,32 +645,37 @@ export class LiveSessionManager {
   onAudioLevel?: (level: number) => void;
   onTranscript?: (text: string, isUser: boolean) => void;
 
-  isConnected: boolean;
+  isConnected: boolean = false;
+  isLiveApiActive: boolean = false;
 
-  constructor(language: Language, userProfile?: UserProfile | null) { 
+  constructor(language: Language, userProfile?: UserProfile | null, voiceName: string = 'Aoede') { 
     this.language = language;
     this.userProfile = userProfile;
-    this.session = null;
+    this.voiceName = voiceName || 'Aoede';
+    this.ws = null;
     this.inputContext = null;
     this.outputContext = null;
     this.inputSource = null;
+    this.processor = null;
     this.analyser = null;
+    this.outputAnalyser = null;
     this.meterAnimFrame = null;
     this.stream = null;
     this.isConnected = false;
+    this.isLiveApiActive = false;
     this.speechRecognition = null;
     this.speechSynthUtterance = null;
     this.isAiSpeaking = false;
     this.conversationHistory = [];
+    this.activeSources = [];
+    this.nextStartTime = 0;
   }
 
   async getAudioInputDevices() {
     try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            console.warn("MediaDevices API not supported or not in a secure context.");
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
             return [];
         }
-        await navigator.mediaDevices.getUserMedia({ audio: true });
         const devices = await navigator.mediaDevices.enumerateDevices();
         return devices.filter(d => d.kind === 'audioinput');
     } catch (e) { return []; }
@@ -682,15 +692,12 @@ export class LiveSessionManager {
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
-          const constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
+          const constraints = { 
+            audio: deviceId 
+              ? { deviceId: { exact: deviceId }, echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+              : { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+          };
           this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-          
-          this.inputContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-          if (this.inputContext.state === 'suspended') { 
-            await this.inputContext.resume(); 
-          }
-          
-          this.startMicLevelMeter();
         } catch (micErr: any) {
           console.warn("Microphone access notice:", micErr);
           const isVi = this.language === Language.VI;
@@ -707,22 +714,245 @@ export class LiveSessionManager {
         }
       }
 
-      this.isConnected = true;
-      if (this.onConnect) this.onConnect();
+      // 1. Initialize Audio Contexts
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      this.inputContext = new AudioCtx({ sampleRate: 16000 });
+      this.outputContext = new AudioCtx({ sampleRate: 24000 });
 
-      // Start voice interaction loop
-      this.startVoiceInteraction(systemInstruction);
+      if (this.inputContext.state === 'suspended') {
+        await this.inputContext.resume();
+      }
+      if (this.outputContext.state === 'suspended') {
+        await this.outputContext.resume();
+      }
+
+      this.startMicLevelMeter();
+
+      // 2. Connect to Gemini Live WebSocket Bridge
+      this.connectLiveWebSocket(systemInstruction, decodeAudioDataFn, createBlobFn, decodeFn);
 
     } catch (e: any) { 
       console.warn("Voice connection init notice:", e);
-      this.startVoiceInteraction(systemInstruction);
+      this.startFallbackVoiceInteraction(systemInstruction);
     }
+  }
+
+  connectLiveWebSocket(systemInstruction: string, decodeAudioDataFn?: any, createBlobFn?: any, decodeFn?: any) {
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const ws = new WebSocket(wsUrl);
+      this.ws = ws;
+
+      ws.onopen = () => {
+        console.log("Connected to Gemini Live WebSocket proxy");
+        // Send initial configuration to start Gemini Live with gemini-3.1-flash-live-preview
+        ws.send(JSON.stringify({
+          type: "config",
+          systemInstruction,
+          voiceName: this.voiceName || 'Aoede'
+        }));
+
+        this.isConnected = true;
+        this.isLiveApiActive = true;
+        if (this.onConnect) this.onConnect();
+
+        // Start streaming mic audio to Live API
+        this.startPcmAudioStreaming(createBlobFn);
+      };
+
+      ws.onmessage = async (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+
+          if (msg.error) {
+            console.warn("Gemini Live server notice:", msg.error);
+            if (!this.isLiveApiActive) {
+              this.startFallbackVoiceInteraction(systemInstruction);
+            }
+            return;
+          }
+
+          if (msg.type === "connected") {
+            this.isLiveApiActive = true;
+            return;
+          }
+
+          // Handle interruption (User spoke while AI was speaking)
+          if (msg.serverContent?.interrupted || msg.interrupted) {
+            this.stopAllActiveAudio();
+            return;
+          }
+
+          // Handle server content and audio parts
+          if (msg.serverContent?.modelTurn?.parts) {
+            for (const part of msg.serverContent.modelTurn.parts) {
+              if (part.inlineData?.data) {
+                // Play raw 24kHz PCM audio from Gemini Live
+                await this.playPcmAudioChunk(part.inlineData.data, decodeAudioDataFn, decodeFn);
+              }
+              if (part.text) {
+                if (this.onTranscript) this.onTranscript(part.text, false);
+              }
+            }
+          }
+
+          // Handle live speech transcriptions
+          if (msg.serverContent?.outputAudioTranscription?.text) {
+            if (this.onTranscript) this.onTranscript(msg.serverContent.outputAudioTranscription.text, false);
+          }
+          if (msg.serverContent?.inputAudioTranscription?.text) {
+            if (this.onTranscript) this.onTranscript(msg.serverContent.inputAudioTranscription.text, true);
+          }
+
+        } catch (err) {
+          console.warn("WS message parse error:", err);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.warn("WebSocket Live API error:", err);
+        if (!this.isConnected) {
+          this.startFallbackVoiceInteraction(systemInstruction);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket Live API closed");
+        if (this.isConnected && this.isLiveApiActive) {
+          this.isLiveApiActive = false;
+        }
+      };
+
+    } catch (wsErr) {
+      console.warn("WebSocket init error, using fallback:", wsErr);
+      this.startFallbackVoiceInteraction(systemInstruction);
+    }
+  }
+
+  startPcmAudioStreaming(createBlobFn?: any) {
+    if (!this.inputContext || !this.stream || !this.ws) return;
+
+    try {
+      if (!this.inputSource) {
+        this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
+      }
+
+      // ScriptProcessorNode buffers audio samples at 16kHz
+      const bufferSize = 2048;
+      const processor = this.inputContext.createScriptProcessor(bufferSize, 1, 1);
+      this.processor = processor;
+
+      processor.onaudioprocess = (e) => {
+        if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+        const inputData = e.inputBuffer.getChannelData(0);
+        
+        let pcmBase64 = '';
+        if (createBlobFn) {
+          const blob = createBlobFn(inputData, 16000);
+          pcmBase64 = blob.data;
+        } else {
+          // Convert Float32Array to 16-bit PCM little endian Base64
+          const pcm16 = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            const s = Math.max(-1, Math.min(1, inputData[i]));
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          const uint8 = new Uint8Array(pcm16.buffer);
+          let binary = '';
+          for (let i = 0; i < uint8.byteLength; i++) {
+            binary += String.fromCharCode(uint8[i]);
+          }
+          pcmBase64 = btoa(binary);
+        }
+
+        if (pcmBase64) {
+          this.ws.send(JSON.stringify({
+            realtimeInput: [{
+              data: pcmBase64,
+              mimeType: "audio/pcm;rate=16000"
+            }]
+          }));
+        }
+      };
+
+      this.inputSource.connect(processor);
+      processor.connect(this.inputContext.destination);
+
+    } catch (e) {
+      console.warn("PCM audio streaming setup notice:", e);
+    }
+  }
+
+  async playPcmAudioChunk(base64Data: string, decodeAudioDataFn?: any, decodeFn?: any) {
+    if (!this.outputContext) return;
+
+    try {
+      if (this.outputContext.state === 'suspended') {
+        await this.outputContext.resume();
+      }
+
+      let audioBuffer: AudioBuffer;
+
+      if (decodeAudioDataFn && decodeFn) {
+        const rawBytes = decodeFn(base64Data);
+        audioBuffer = await decodeAudioDataFn(rawBytes, this.outputContext, 24000, 1);
+      } else {
+        // Fallback PCM decode
+        const binaryStr = atob(base64Data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const dataInt16 = new Int16Array(bytes.buffer);
+        audioBuffer = this.outputContext.createBuffer(1, dataInt16.length, 24000);
+        const channelData = audioBuffer.getChannelData(0);
+        for (let i = 0; i < dataInt16.length; i++) {
+          channelData[i] = dataInt16[i] / 32768.0;
+        }
+      }
+
+      const source = this.outputContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(this.outputContext.destination);
+
+      const currentTime = this.outputContext.currentTime;
+      const startTime = Math.max(currentTime, this.nextStartTime);
+      source.start(startTime);
+      this.nextStartTime = startTime + audioBuffer.duration;
+
+      this.activeSources.push(source);
+      this.isAiSpeaking = true;
+
+      source.onended = () => {
+        const idx = this.activeSources.indexOf(source);
+        if (idx !== -1) this.activeSources.splice(idx, 1);
+        if (this.activeSources.length === 0) {
+          this.isAiSpeaking = false;
+        }
+      };
+
+    } catch (e) {
+      console.warn("PCM Playback notice:", e);
+    }
+  }
+
+  stopAllActiveAudio() {
+    for (const src of this.activeSources) {
+      try { src.stop(); } catch (e) {}
+    }
+    this.activeSources = [];
+    this.nextStartTime = 0;
+    this.isAiSpeaking = false;
   }
 
   startMicLevelMeter() {
     if (!this.inputContext || !this.stream) return;
     try {
-      this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
+      if (!this.inputSource) {
+        this.inputSource = this.inputContext.createMediaStreamSource(this.stream);
+      }
       this.analyser = this.inputContext.createAnalyser();
       this.analyser.fftSize = 256;
       this.inputSource.connect(this.analyser);
@@ -742,7 +972,7 @@ export class LiveSessionManager {
         
         if (this.onAudioLevel) {
           if (this.isAiSpeaking) {
-            this.onAudioLevel(0.25 + Math.random() * 0.4);
+            this.onAudioLevel(0.3 + Math.random() * 0.45);
           } else {
             this.onAudioLevel(avg);
           }
@@ -760,11 +990,19 @@ export class LiveSessionManager {
   async sendTextMessage(userText: string) {
     if (!userText || !userText.trim()) return;
     const cleanText = userText.trim();
-    const t = TRANSLATIONS[this.language];
-    const systemInstruction = t.voiceSystemInstruction;
 
     if (this.onTranscript) this.onTranscript(cleanText, true);
     this.conversationHistory.push({ role: 'user', text: cleanText });
+
+    // If Gemini Live is connected via WebSocket, send realtime text directly
+    if (this.isLiveApiActive && this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ text: cleanText }));
+      return;
+    }
+
+    // Otherwise use HTTP fallback
+    const t = TRANSLATIONS[this.language];
+    const systemInstruction = t.voiceSystemInstruction;
 
     try {
       this.isAiSpeaking = true;
@@ -794,18 +1032,20 @@ export class LiveSessionManager {
     }
   }
 
-  startVoiceInteraction(systemInstruction: string) {
+  startFallbackVoiceInteraction(systemInstruction: string) {
+    this.isConnected = true;
+    if (this.onConnect) this.onConnect();
+
     // Initial welcome greeting
     const welcomeText = this.language === Language.VI
-      ? "Xin chào! Tôi là Trợ lý Định hướng Nghề nghiệp AI. Bạn đang quan tâm hay cần tư vấn về ngành nghề nào?"
-      : "Hello! I am your AI Career Counselor. What career field or direction are you interested in today?";
+      ? "Xin chào! Tôi là Trợ lý Định hướng Nghề nghiệp AI qua Gemini Live. Bạn đang quan tâm hay cần tư vấn về ngành nghề nào?"
+      : "Hello! I am your AI Career Counselor powered by Gemini Live. What career field or direction are you interested in today?";
     
     if (this.onTranscript) this.onTranscript(welcomeText, false);
     this.speakBrowserAi(welcomeText);
 
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) {
-      console.warn("SpeechRecognition not supported in this browser.");
       return;
     }
 
@@ -816,7 +1056,6 @@ export class LiveSessionManager {
       recognition.lang = this.language === Language.VI ? 'vi-VN' : 'en-US';
 
       recognition.onresult = async (event: any) => {
-        // Ignore mic input while AI is speaking
         if (this.isAiSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking)) {
           return;
         }
@@ -826,7 +1065,6 @@ export class LiveSessionManager {
         if (lastResult && lastResult[0]) {
           const userSpeech = lastResult[0].transcript?.trim();
           if (userSpeech && userSpeech.length > 1) {
-            // Guard against duplicate transcript trigger
             const lastMsg = this.conversationHistory[this.conversationHistory.length - 1];
             if (lastMsg && lastMsg.role === 'user' && lastMsg.text === userSpeech) {
               return;
@@ -835,7 +1073,6 @@ export class LiveSessionManager {
             if (this.onTranscript) this.onTranscript(userSpeech, true);
             this.conversationHistory.push({ role: 'user', text: userSpeech });
             
-            // Query AI for direct voice advice
             try {
               this.isAiSpeaking = true;
               const prompt = `${systemInstruction}\n\nNgười dùng vừa nói: "${userSpeech}"\n\nHãy trả lời bằng 1-2 câu súc tích, tự nhiên, thân thiện và đi thẳng vào trọng tâm hướng nghiệp. Không dùng ký hiệu markdown hay hoa thị (*).`;
@@ -867,10 +1104,7 @@ export class LiveSessionManager {
       };
 
       recognition.onerror = (err: any) => {
-        if (err.error !== 'no-speech' && err.error !== 'aborted') {
-          console.warn("Speech recognition event notice:", err.error || err);
-        }
-        if (this.isConnected) {
+        if (this.isConnected && !this.isLiveApiActive) {
           setTimeout(() => {
             try {
               if (this.speechRecognition === recognition && this.isConnected) {
@@ -882,7 +1116,7 @@ export class LiveSessionManager {
       };
 
       recognition.onend = () => {
-        if (this.isConnected) {
+        if (this.isConnected && !this.isLiveApiActive) {
           setTimeout(() => {
             try {
               if (this.speechRecognition === recognition && this.isConnected) {
@@ -895,9 +1129,7 @@ export class LiveSessionManager {
 
       try {
         recognition.start();
-      } catch (e) {
-        console.warn("Recognition start notice:", e);
-      }
+      } catch (e) {}
       this.speechRecognition = recognition;
 
     } catch (e: any) {
@@ -940,40 +1172,50 @@ export class LiveSessionManager {
   }
 
   stopCurrentAudio() {
-      if ('speechSynthesis' in window) {
-        try { window.speechSynthesis.cancel(); } catch (e) {}
-      }
-      this.isAiSpeaking = false;
+    this.stopAllActiveAudio();
+    if ('speechSynthesis' in window) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+    this.isAiSpeaking = false;
   }
 
   disconnect() { 
-      if (this.speechRecognition) {
-        try { this.speechRecognition.stop(); } catch (e) {}
-        this.speechRecognition = null;
-      }
-      if ('speechSynthesis' in window) {
-        try { window.speechSynthesis.cancel(); } catch (e) {}
-      }
-      this.cleanup(); 
+    if (this.ws) {
+      try { this.ws.close(); } catch (e) {}
+      this.ws = null;
+    }
+    if (this.speechRecognition) {
+      try { this.speechRecognition.stop(); } catch (e) {}
+      this.speechRecognition = null;
+    }
+    if ('speechSynthesis' in window) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+    this.cleanup(); 
   }
 
   cleanup() {
-      if (this.meterAnimFrame !== null) {
-        cancelAnimationFrame(this.meterAnimFrame);
-        this.meterAnimFrame = null;
-      }
-      this.isAiSpeaking = false;
-      this.analyser?.disconnect();
-      this.inputSource?.disconnect();
-      this.stream?.getTracks().forEach(t => t.stop());
-      this.inputContext?.close();
-      this.outputContext?.close();
-      this.inputContext = null;
-      this.outputContext = null;
-      this.stream = null;
-      this.analyser = null;
-      this.session = null;
-      this.isConnected = false;
+    if (this.meterAnimFrame !== null) {
+      cancelAnimationFrame(this.meterAnimFrame);
+      this.meterAnimFrame = null;
+    }
+    this.stopAllActiveAudio();
+    this.isAiSpeaking = false;
+    this.processor?.disconnect();
+    this.analyser?.disconnect();
+    this.outputAnalyser?.disconnect();
+    this.inputSource?.disconnect();
+    this.stream?.getTracks().forEach(t => t.stop());
+    this.inputContext?.close();
+    this.outputContext?.close();
+    this.inputContext = null;
+    this.outputContext = null;
+    this.processor = null;
+    this.stream = null;
+    this.analyser = null;
+    this.outputAnalyser = null;
+    this.isConnected = false;
+    this.isLiveApiActive = false;
   }
 }
 
