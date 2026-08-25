@@ -1570,6 +1570,13 @@ export default function App() {
       
       try {
           localStorage.setItem('currentUser', JSON.stringify(newUser));
+          if (updates.customWsUrl !== undefined) {
+              if (updates.customWsUrl) {
+                  localStorage.setItem('gemini_live_ws_url', updates.customWsUrl);
+              } else {
+                  localStorage.removeItem('gemini_live_ws_url');
+              }
+          }
           if (firebaseAuth?.currentUser) {
               syncUserProfileToCloud(firebaseAuth.currentUser.uid, newUser).catch(e => console.error("Cloud profile sync failed:", e));
           }
@@ -4653,6 +4660,23 @@ export default function App() {
                                 <p className="text-[10px] text-gray-500">{t.n8nNote}</p>
                             </div>
                         )}
+                        {/* Voice Engine & Custom Gemini Live WebSocket Server */}
+                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5 space-y-2">
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                {lang === Language.VI ? '🎙️ Cấu hình Máy Chủ Gemini Live (WebSocket URL)' : '🎙️ Gemini Live WebSocket Server URL'}
+                            </label>
+                            <input 
+                                value={auth.user?.customWsUrl || ''} 
+                                onChange={(e) => updateUserProfile({ customWsUrl: e.target.value })} 
+                                placeholder="wss://your-backend.up.railway.app/ws (để trống nếu dùng mặc định)" 
+                                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-xl text-gray-900 dark:text-white text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:text-gray-400"
+                            />
+                            <p className="text-[10px] text-gray-500 leading-relaxed">
+                                {lang === Language.VI 
+                                    ? "• Khi chạy trên Vercel: Để trống sẽ tự động dùng Bộ phát âm thanh AI Serverless Neural Voice (tránh tiếng robot). Hoặc nhập WebSocket URL backend của bạn (Railway, Render, VPS) để kết nối trực tiếp Gemini Live 2 chiều." 
+                                    : "• On Vercel: Leave blank to use Built-in Serverless Neural Voice TTS (eliminates robotic voice), or provide your backend WS URL (Railway/Render) for full Gemini Live speech-to-speech."}
+                            </p>
+                        </div>
                     </div>
                     
                     <div className="mt-8 pt-6 border-t border-gray-100 dark:border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

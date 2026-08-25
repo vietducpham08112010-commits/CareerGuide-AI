@@ -136,6 +136,7 @@ export interface UserProfile {
   customEndpoint?: string; // e.g., http://localhost:11434/v1/chat/completions OR n8n Webhook URL
   customModelName?: string; // e.g., llama3 (Not used for n8n)
   customGeminiApiKey?: string; // Custom Gemini API Key provided by user
+  customWsUrl?: string; // Custom Gemini Live WebSocket proxy URL (e.g. wss://your-backend.up.railway.app/ws)
   streak?: number;
   lastCheckIn?: string;
   provider?: 'google' | 'local' | 'email';

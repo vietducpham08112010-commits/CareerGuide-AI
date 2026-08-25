@@ -743,7 +743,11 @@ export class LiveSessionManager {
   connectLiveWebSocket(systemInstruction: string, decodeAudioDataFn?: any, createBlobFn?: any, decodeFn?: any) {
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const customWsUrl = localStorage.getItem('gemini_live_ws_url') || 
+                          (import.meta.env as any).VITE_LIVE_WS_URL || 
+                          (import.meta.env as any).VITE_WS_URL;
+      const wsUrl = customWsUrl || `${protocol}//${window.location.host}/ws`;
+      console.log("Connecting to WebSocket URL:", wsUrl);
       const ws = new WebSocket(wsUrl);
       this.ws = ws;
 
