@@ -518,8 +518,8 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        // Primary user requested model: gemini-2.5-flash-live-preview
-        const liveModels = ['gemini-2.5-flash-live-preview', 'gemini-3.1-flash-live-preview'];
+        // Primary live models in priority order
+        const liveModels = ['gemini-2.5-flash-live-preview', 'gemini-2.0-flash-exp', 'gemini-2.0-flash-realtime-exp', 'gemini-3.1-flash-live-preview'];
         let connected = false;
         for (const model of liveModels) {
           try {
@@ -533,7 +533,8 @@ wss.on("connection", (ws: WebSocket) => {
         }
         
         if (!connected) {
-          ws.send(JSON.stringify({ error: "Failed to connect to Gemini Live. Please verify model availability." }));
+          console.log("Live API connection unavailable, notifying client to use Voice Assistant mode.");
+          ws.send(JSON.stringify({ type: "fallback", message: "Live API unavailable, using Voice Assistant mode." }));
         }
 
       } else if (msg.realtimeInput) {
@@ -542,18 +543,46 @@ wss.on("connection", (ws: WebSocket) => {
               for (const chunk of inputChunks) {
                 if (chunk && chunk.data) {
                   session.sendRealtimeInput({
-                    audio: { data: chunk.data, mimeType: chunk.mimeType || "audio/pcm;rate=16000" }
+                    media: { data: chunk.data, mimeType: chunk.mimeType || "audio/pcm;rate=16000" }
                   });
-                } else if (chunk && chunk.audio) {
-                  session.sendRealtimeInput({ audio: chunk.audio });
-                } else if (chunk && chunk.text) {
-                  session.sendRealtimeInput({ text: chunk.text });
+                } else if (chunk && chunk.media) {
+                  session.sendRealtimeInput({ media: chunk.media });
                 }
               }
           }
       } else if (msg.text) {
           if (session) {
-              session.sendRealtimeInput({ text: msg.text });
+              session.sendClientContent({
+                turns: [{ role: "user", parts: [{ text: msg.text }] }],
+                turnComplete: true
+              });
+          } else {
+              // Fallback text query over WebSocket
+              try {
+                const liveApiKey = getResolvedApiKey(msg.apiKey);
+                const ai = new GoogleGenAI({ 
+                  apiKey: liveApiKey || undefined,
+                  httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+                });
+                const prompt = msg.text;
+                const sys = msg.systemInstruction || "Bạn là chuyên gia tư vấn hướng nghiệp Career Compass AI. Hãy nói chuyện bằng tiếng Việt cực kỳ tự nhiên, ngữ điệu truyền cảm, ấm áp, câu trả lời ngắn gọn (1-2 câu).";
+                const response = await generateContentWithFallback(ai, {
+                  contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                  systemInstruction: sys
+                });
+                if (response && response.text && ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({
+                    serverContent: {
+                      modelTurn: {
+                        parts: [{ text: response.text }]
+                      },
+                      turnComplete: true
+                    }
+                  }));
+                }
+              } catch (e: any) {
+                console.warn("WebSocket fallback text error:", e?.message);
+              }
           }
       } else if (msg.toolResponse) {
           if (session) {

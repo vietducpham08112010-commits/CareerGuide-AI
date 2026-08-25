@@ -760,7 +760,6 @@ export class LiveSessionManager {
         }));
 
         this.isConnected = true;
-        this.isLiveApiActive = true;
         if (this.onConnect) this.onConnect();
 
         // Start streaming mic audio to Live API
@@ -771,11 +770,10 @@ export class LiveSessionManager {
         try {
           const msg = JSON.parse(event.data);
 
-          if (msg.error) {
-            console.warn("Gemini Live server notice:", msg.error);
-            if (!this.isLiveApiActive) {
-              this.startFallbackVoiceInteraction(systemInstruction);
-            }
+          if (msg.error || msg.type === "fallback") {
+            console.log("Live API fallback notice, starting assistant voice mode:", msg.error || msg.message);
+            this.isLiveApiActive = false;
+            this.startFallbackVoiceInteraction(systemInstruction);
             return;
           }
 
@@ -792,13 +790,19 @@ export class LiveSessionManager {
 
           // Handle server content and audio parts
           if (msg.serverContent?.modelTurn?.parts) {
+            let hasInlineAudio = false;
             for (const part of msg.serverContent.modelTurn.parts) {
               if (part.inlineData?.data) {
+                hasInlineAudio = true;
                 // Play raw 24kHz PCM audio from Gemini Live
                 await this.playPcmAudioChunk(part.inlineData.data, decodeAudioDataFn, decodeFn);
               }
               if (part.text) {
                 if (this.onTranscript) this.onTranscript(part.text, false);
+                this.conversationHistory.push({ role: 'model', text: part.text });
+                if (!hasInlineAudio) {
+                  await this.speakAi(part.text);
+                }
               }
             }
           }
@@ -818,7 +822,7 @@ export class LiveSessionManager {
 
       ws.onerror = (err) => {
         console.warn("WebSocket Live API error:", err);
-        if (!this.isConnected) {
+        if (!this.isLiveApiActive) {
           this.startFallbackVoiceInteraction(systemInstruction);
         }
       };
@@ -827,6 +831,7 @@ export class LiveSessionManager {
         console.log("WebSocket Live API closed");
         if (this.isConnected && this.isLiveApiActive) {
           this.isLiveApiActive = false;
+          this.startFallbackVoiceInteraction(systemInstruction);
         }
       };
 
@@ -1201,7 +1206,10 @@ export class LiveSessionManager {
   }
 
   speakBrowserAi(text: string) {
-    if (!('speechSynthesis' in window)) return;
+    if (!('speechSynthesis' in window)) {
+      this.isAiSpeaking = false;
+      return;
+    }
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
@@ -1232,16 +1240,26 @@ export class LiveSessionManager {
       this.isAiSpeaking = true;
 
       const finishSpeaking = () => {
-        setTimeout(() => {
-          this.isAiSpeaking = false;
-        }, 300);
+        this.isAiSpeaking = false;
+        this.speechSynthUtterance = null;
+        (window as any)._activeUtterance = null;
       };
 
       utterance.onend = finishSpeaking;
       utterance.onerror = finishSpeaking;
 
       this.speechSynthUtterance = utterance;
+      (window as any)._activeUtterance = utterance; // Prevent garbage-collection cutoff in Chromium
+
       window.speechSynthesis.speak(utterance);
+
+      // Chrome safety watchdog
+      const maxDuration = Math.max(4000, (text.length / 10) * 1000);
+      setTimeout(() => {
+        if (this.isAiSpeaking && !window.speechSynthesis.speaking) {
+          this.isAiSpeaking = false;
+        }
+      }, maxDuration);
     } catch (e) {
       this.isAiSpeaking = false;
     }
