@@ -377,13 +377,24 @@ app.post("/api/tts", async (req, res) => {
       return res.status(400).json({ error: "Missing text for TTS" });
     }
 
-    const aiInstance = getAiClient(apiKey);
+    const resolvedKey = getResolvedApiKey(apiKey);
+    if (!resolvedKey) {
+      return res.status(500).json({ error: "Gemini API key is not available" });
+    }
+    const aiInstance = new GoogleGenAI({
+      apiKey: resolvedKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build'
+        }
+      }
+    });
     const cleanText = text.replace(/[*_#`~[\]()]/g, ' ').trim();
     const prompt = language === "vi"
-      ? `Đọc to đoạn sau bằng tiếng Việt tự nhiên, ấm áp, rõ ràng, truyền cảm: "${cleanText}"`
-      : `Please read aloud the following text in a warm, natural, engaging voice: "${cleanText}"`;
+      ? `Đọc đoạn hội thoại sau bằng tiếng Việt tự nhiên, ấm áp, truyền cảm, có sức sống và ngữ điệu tự nhiên như người thật nói chuyện: "${cleanText}"`
+      : `Please speak the following naturally with warm intonation, expressiveness, and energy: "${cleanText}"`;
 
-    const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-3.6-flash"];
+    const candidateModels = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-live-preview", "gemini-2.5-flash"];
     let audioData: string | null = null;
     let mimeType = "audio/wav";
 
@@ -470,7 +481,7 @@ wss.on("connection", (ws: WebSocket) => {
                   onopen: () => {
                     console.log(`Gemini Live Session Opened (${model})`);
                     if (ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ type: "connected" }));
+                        ws.send(JSON.stringify({ type: "connected", model }));
                     }
                   },
                   onmessage: (message: LiveServerMessage) => {
@@ -495,7 +506,7 @@ wss.on("connection", (ws: WebSocket) => {
                   responseModalities: [Modality.AUDIO],
                   outputAudioTranscription: {},
                   inputAudioTranscription: {},
-                  systemInstruction: msg.systemInstruction || "Bạn là chuyên gia tư vấn hướng nghiệp Career Compass AI. Hãy trò chuyện bằng tiếng Việt cực kỳ tự nhiên, ngữ điệu thân thiện, ấm áp, câu từ ngắn gọn (1-2 câu), truyền cảm hứng và gần gũi.",
+                  systemInstruction: msg.systemInstruction || "Bạn là chuyên gia tư vấn hướng nghiệp Career Compass AI. Hãy nói chuyện bằng tiếng Việt cực kỳ tự nhiên, ngữ điệu truyền cảm, ấm áp, sống động và giàu năng lượng. Mỗi câu trả lời ngắn gọn (1-2 câu), đi thẳng vào trọng tâm, tuyệt đối không đọc như robot hoặc sách giáo khoa.",
                   speechConfig: { 
                     voiceConfig: {
                        prebuiltVoiceConfig: { 
@@ -507,7 +518,8 @@ wss.on("connection", (ws: WebSocket) => {
             });
         };
 
-        const liveModels = ['gemini-2.5-flash-live-preview', 'gemini-2.0-flash-exp', 'gemini-2.0-flash-realtime-exp', 'gemini-3.1-flash-live-preview'];
+        // Primary user requested model: gemini-2.5-flash-live-preview
+        const liveModels = ['gemini-2.5-flash-live-preview', 'gemini-3.1-flash-live-preview'];
         let connected = false;
         for (const model of liveModels) {
           try {
