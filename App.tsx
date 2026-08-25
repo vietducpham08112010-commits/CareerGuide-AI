@@ -1146,7 +1146,7 @@ export default function App() {
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [speechRate, setSpeechRate] = useState<number>(1.0);
-  const [selectedVoice, setSelectedVoice] = useState<string>('Aoede');
+  const [selectedVoice, setSelectedVoice] = useState<string>('Kore');
   const liveSessionRef = useRef<LiveSessionManager | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
