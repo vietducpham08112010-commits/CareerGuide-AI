@@ -69,24 +69,57 @@ Dành cho Ban Giám Khảo (BGK) muốn trải nghiệm nhanh toàn bộ luồng
 
 ## ⚙️ HƯỚNG DẪN CÀI ĐẶT & KHỞI CHẠY (Setup & Run)
 
-Nền tảng chạy trực tiếp trong môi trường sandbox của container. Để khởi chạy tại môi trường nội bộ của bạn:
+### 1. Cài đặt các gói thư viện (Dependencies):
+```bash
+npm install
+```
 
-1. **Cài đặt các gói thư viện cần thiết**:
-   ```bash
-   npm install
-   ```
+### 2. Cấu hình biến môi trường:
+Tạo tệp `.env` từ tệp `.env.example` và điền các khóa API của bạn:
+```env
+# Gemini API Key (Server-side)
+GEMINI_API_KEY=your_gemini_api_key_here
 
-2. **Cấu hình biến môi trường**:
-   Sao chép `.env.example` thành `.env` và cung cấp khóa của bạn:
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key
-   # Cấu hình Firebase
-   VITE_FIREBASE_API_KEY=your_firebase_api_key
-   ```
+# Firebase Configuration (Client-side)
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
+```
 
-3. **Chạy ứng dụng chế độ Phát triển (Dev Mode)**:
-   ```bash
-   npm run dev
-   ```
+### 3. Chạy ứng dụng chế độ Phát triển (Dev Mode):
+```bash
+npm run dev
+```
+Ứng dụng sẽ chạy tại `http://localhost:3000`.
 
-Ứng dụng sẽ tự động kết nối và mở ở cổng `3000`. Hãy cùng CareerGuide AI định hướng tương lai vững vàng ngay hôm nay!
+### 4. Build và Chạy Production:
+```bash
+npm run build
+npm start
+```
+
+---
+
+## 🚀 ĐẨY LÊN GITHUB (Publish to GitHub)
+
+1. Khởi tạo Git repository (nếu chưa có):
+```bash
+git init
+git add .
+git commit -m "feat: complete CareerGuide AI with Gemini & Firebase"
+```
+
+2. Tạo một Repository mới trên GitHub (ví dụ: `career-guide-ai`).
+
+3. Liên kết và đẩy code lên:
+```bash
+git remote add origin https://github.com/your-username/career-guide-ai.git
+git branch -M main
+git push -u origin main
+```
+
+*(Hoặc sử dụng nút **Export to GitHub** trực tiếp từ Menu Settings trong Google AI Studio).*

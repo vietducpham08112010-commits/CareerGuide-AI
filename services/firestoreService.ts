@@ -13,38 +13,45 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { UserProfile, ChatSession, ChatMessage, Milestone } from '../types';
 
 let firebaseConfig: any = {};
-const configs = import.meta.glob('../firebase-applet-config.json', { eager: true });
+const configs = import.meta.glob(['../firebase-applet-config.json', './firebase-applet-config.json', '/firebase-applet-config.json'], { eager: true });
 const configFiles = Object.keys(configs);
 if (configFiles.length > 0) {
   firebaseConfig = (configs[configFiles[0]] as any).default || {};
 }
 
-const fallbackConfig = {
+// Support standard Vite environment variables for GitHub/Vercel/production deployment
+const envConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "",
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "default"
+};
+
+const fallbackConfig = {
+  apiKey: "AIzaSyDRv2bfw0ncLYCUsjWrUeGoTwglyrpCRdU",
   authDomain: "careerguideaiforeveryone-1.firebaseapp.com",
   projectId: "careerguideaiforeveryone-1",
   storageBucket: "careerguideaiforeveryone-1.firebasestorage.app",
   messagingSenderId: "1024644813771",
-  appId: "1:1024644813771:web:1d3ce4b9ba6e98f6efdc4e",
-  measurementId: "G-M0QS8VL6XY",
+  appId: "1:1024644813771:web:b5ebc74e139031b8efdc4e",
+  measurementId: "G-ST89G4BNL6",
   firestoreDatabaseId: 'default'
 };
 
-const hasConfigFile = Object.keys(configs).length > 0;
-// Check if there is a non-default custom environment variable setup, otherwise default to the user's custom project
-const useEnv = !!(import.meta.env.VITE_FIREBASE_PROJECT_ID && 
-               import.meta.env.VITE_FIREBASE_PROJECT_ID !== 'career-compass-ai-40718');
-
-// Merge workspace config if it exists
+// Merge priority: 1. Workspace firebase-applet-config.json -> 2. Custom environment variables -> 3. Fallback defaults
 const activeFirebaseConfig = {
-  apiKey: firebaseConfig.apiKey || (useEnv ? import.meta.env.VITE_FIREBASE_API_KEY : null) || (hasConfigFile ? fallbackConfig.apiKey : null),
-  authDomain: firebaseConfig.authDomain || (useEnv ? import.meta.env.VITE_FIREBASE_AUTH_DOMAIN : null) || (hasConfigFile ? fallbackConfig.authDomain : null),
-  projectId: firebaseConfig.projectId || (useEnv ? import.meta.env.VITE_FIREBASE_PROJECT_ID : null) || (hasConfigFile ? fallbackConfig.projectId : null),
-  storageBucket: firebaseConfig.storageBucket || (useEnv ? import.meta.env.VITE_FIREBASE_STORAGE_BUCKET : null) || (hasConfigFile ? fallbackConfig.storageBucket : null),
-  messagingSenderId: firebaseConfig.messagingSenderId || (useEnv ? import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID : null) || (hasConfigFile ? fallbackConfig.messagingSenderId : null),
-  appId: firebaseConfig.appId || (useEnv ? import.meta.env.VITE_FIREBASE_APP_ID : null) || (hasConfigFile ? fallbackConfig.appId : null),
-  measurementId: firebaseConfig.measurementId || (useEnv ? import.meta.env.VITE_FIREBASE_MEASUREMENT_ID : null) || (hasConfigFile ? fallbackConfig.measurementId : null),
-  firestoreDatabaseId: firebaseConfig.firestoreDatabaseId || (useEnv ? import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID : null) || (hasConfigFile ? fallbackConfig.firestoreDatabaseId : null)
+  apiKey: firebaseConfig.apiKey || envConfig.apiKey || fallbackConfig.apiKey,
+  authDomain: firebaseConfig.authDomain || envConfig.authDomain || fallbackConfig.authDomain,
+  projectId: firebaseConfig.projectId || envConfig.projectId || fallbackConfig.projectId,
+  storageBucket: firebaseConfig.storageBucket || envConfig.storageBucket || fallbackConfig.storageBucket,
+  messagingSenderId: firebaseConfig.messagingSenderId || envConfig.messagingSenderId || fallbackConfig.messagingSenderId,
+  appId: firebaseConfig.appId || envConfig.appId || fallbackConfig.appId,
+  measurementId: firebaseConfig.measurementId || envConfig.measurementId || fallbackConfig.measurementId,
+  firestoreDatabaseId: firebaseConfig.firestoreDatabaseId || envConfig.firestoreDatabaseId || fallbackConfig.firestoreDatabaseId
 };
 
 console.log("Firebase Active Config:", {
