@@ -156,13 +156,21 @@ export const Onboarding: React.FC<OnboardingProps> = ({
             </span>
           </div>
 
-          <button 
-            onClick={onActivateDemo}
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-full border border-indigo-200/50 dark:border-indigo-500/10 transition-colors duration-200"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{isVi ? 'Dùng thử dữ liệu mẫu' : 'Load Demo Session'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={onActivateDemo}
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-full border border-indigo-200/50 dark:border-indigo-500/10 transition-colors duration-200"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{isVi ? 'Dữ liệu mẫu' : 'Demo Data'}</span>
+            </button>
+            <button 
+              onClick={() => onComplete({ hasCompletedOnboarding: true })}
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/15 text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-full transition-colors duration-200"
+            >
+              <span>{isVi ? 'Bỏ qua & Chat ngay' : 'Skip & Chat Now'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Step Progress Indicators */}

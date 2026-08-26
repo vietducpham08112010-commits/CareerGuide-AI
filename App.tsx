@@ -1470,7 +1470,8 @@ export default function App() {
                   careerGoal: 'Undecided',
                   isGuest: false,
                   aiProvider: AIProvider.GEMINI,
-                  provider: 'google'
+                  provider: 'google',
+                  hasCompletedOnboarding: true
               };
 
               // Check if we already have a cached 'currentUser' in local storage for this email to retain progress
@@ -1479,7 +1480,7 @@ export default function App() {
                   try {
                       const cachedUser = JSON.parse(storedUserStr);
                       if (cachedUser.email === user.email) {
-                          user = { ...user, ...cachedUser };
+                          user = { ...user, ...cachedUser, hasCompletedOnboarding: true };
                       }
                   } catch (e) {
                       console.error("Failed to parse cached user:", e);
@@ -1490,7 +1491,7 @@ export default function App() {
               setAuth({ isAuthenticated: true, user });
               localStorage.setItem('currentUser', JSON.stringify(user));
               
-              if (mode === AppMode.AUTH && !user.isGuest) {
+              if ((mode === AppMode.AUTH || mode === AppMode.LANDING) && !user.isGuest) {
                   setMode(AppMode.DASHBOARD);
               }
 
@@ -1659,6 +1660,7 @@ export default function App() {
             customEndpoint: 'http://localhost:11434/v1/chat/completions',
             customModelName: 'llama3',
             provider: 'email',
+            hasCompletedOnboarding: true,
             subscription: DEFAULT_FREE_SUBSCRIPTION
         };
 
@@ -1825,7 +1827,7 @@ export default function App() {
   };
 
   const handleGuestLogin = () => {
-    const guestUser = { name: t.guest, email: '', careerGoal: t.exploring, isGuest: true, avatar: getRandomAvatar(), aiProvider: AIProvider.GEMINI, subscription: DEFAULT_FREE_SUBSCRIPTION };
+    const guestUser = { name: t.guest, email: '', careerGoal: t.exploring, isGuest: true, avatar: getRandomAvatar(), aiProvider: AIProvider.GEMINI, subscription: DEFAULT_FREE_SUBSCRIPTION, hasCompletedOnboarding: true };
     localStorage.setItem('currentUser', JSON.stringify(guestUser));
     setAuth({ isAuthenticated: true, user: guestUser });
     setMode(AppMode.DASHBOARD);
